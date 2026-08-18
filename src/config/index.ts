@@ -70,9 +70,10 @@ export function VoiceConfigProvider({
 function useVoiceConfigValue(): VoiceConfigValue {
   const value = useContext(VoiceConfigContext);
   if (!value) {
-    // Worth throwing rather than defaulting. There is no sensible default for
-    // an SFU URL, and a silent one would surface much later as a call that
-    // never connects.
+    // Worth throwing rather than defaulting. Half these values have no sensible
+    // default — a microphone gain, a STUN list — and guessing them would
+    // surface much later as a call that connects to nothing or transmits
+    // silence.
     throw new Error(
       "@gryt/voice: no <VoiceConfigProvider> above this hook. Mount one and give it the app's current voice settings.",
     );

@@ -93,8 +93,6 @@ export interface VoiceConfig {
   };
 
   connection: {
-    /** Chosen by the caller. Selecting between several is the app's job. */
-    sfuUrl: string;
     /**
      * STUN servers to gather candidates against.
      *
@@ -153,15 +151,48 @@ export type SfuInbound =
  */
 export interface RoomCoordinator {
   requestAccess(channelId: string): Promise<RoomAccess>;
-  leave(channelId: string): void;
-  announceJoined(channelId: string): void;
-  setStreamState(state: { camera?: boolean; screen?: boolean }): void;
-  onPeerChange(handler: (peerId: string, present: boolean) => void): () => void;
+  /** Mirrors `voice:room:leave`, which carries nothing. */
+  leave(): void;
+  /** Mirrors `voice:channel:joined`. False on the way out. */
+  announceJoined(joined: boolean): void;
+  /**
+   * Mirrors `voice:stream:set`. Null clears it.
+   *
+   * A stream id, not a description of what is being published — the server
+   * matches the id against what arrives at the SFU, and does not care whether
+   * it is a camera or a screen.
+   */
+  setLocalStream(streamId: string | null): void;
+  /**
+   * Mirrors `voice:peer:connected` / `voice:peer:disconnected`.
+   *
+   * The engine is the only thing that can see a remote stream appear or go
+   * away, so it says so. What the server does about it is not its business.
+   */
+  peerChanged(streamId: string, present: boolean): void;
 }
 
 export interface RoomAccess {
   granted: boolean;
   roomId?: string;
+  /**
+   * Where the SFU is, as candidates rather than an answer.
+   *
+   * The server returns these when it grants access, and the engine probes them
+   * and picks — that is what `selectBestSfuUrl` is for, and it has been in this
+   * package since voice#3. Handing over a single chosen URL instead would
+   * either throw that away or move it into every embedder.
+   */
+  sfuUrls?: string[];
+  /** Opaque; the engine forwards it to the SFU and does not read it. */
+  joinToken?: unknown;
+  /**
+   * What to key the chosen-URL cache on, so a reconnect skips the probing.
+   *
+   * Opaque to the engine. The Gryt client passes the server's host, which is
+   * exactly the sort of thing the engine is not supposed to know it is.
+   */
+  cacheKey?: string;
   /** Populated when refused, so the caller can say why rather than "failed". */
   reason?: string;
   retryAfterMs?: number;

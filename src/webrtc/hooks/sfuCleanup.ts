@@ -1,7 +1,7 @@
 import { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { Socket } from "socket.io-client";
 
 import { Streams, StreamSources } from "../types/SFU";
+import type { RoomCoordinator } from "../../types";
 import { voiceLog } from "./voiceLogger";
 
 export interface CleanupRefs {
@@ -17,7 +17,7 @@ export interface CleanupRefs {
 
 export interface CleanupDeps {
   serverId: string | null;
-  sockets: Record<string, Socket>;
+  room: RoomCoordinator | null;
   setStreamSources: Dispatch<SetStateAction<StreamSources>>;
   setStreams: Dispatch<SetStateAction<Streams>>;
 }
@@ -32,7 +32,7 @@ export async function performSfuCleanup(
     reconnectAttemptRef, connectionTimeoutRef,
     isDisconnectingRef, isConnectingRef, previousRemoteStreamsRef,
   } = refs;
-  const { serverId, sockets, setStreamSources, setStreams } = deps;
+  const { room, setStreamSources, setStreams } = deps;
 
   if (isDisconnectingRef.current) {
     voiceLog.warn("DISCONNECT", "Cleanup already in progress — skipping");
@@ -121,14 +121,13 @@ export async function performSfuCleanup(
   }
 
   // Step 4: Notify signaling server
-  if (!skipServerUpdate && serverId && sockets[serverId]) {
+  if (!skipServerUpdate && room) {
     voiceLog.step("DISCONNECT", 4, "Notifying signaling server of disconnect");
     try {
-      const socket = sockets[serverId];
-      socket.emit("voice:channel:joined", false);
+      room.announceJoined(false);
       await new Promise(resolve => setTimeout(resolve, 10));
-      socket.emit("voice:stream:set", "");
-      socket.emit("voice:room:leave");
+      room.setLocalStream(null);
+      room.leave();
       voiceLog.ok("DISCONNECT", 4, "Signaling server notified");
     } catch (error) {
       voiceLog.fail("DISCONNECT", 4, "Error notifying signaling server", error);

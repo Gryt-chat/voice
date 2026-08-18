@@ -6,6 +6,7 @@
  * the Gryt client.
  */
 export * from "./audio/index.js";
+export * from "./webrtc/index.js";
 export {
   useVoiceCallbacks,
   useVoiceConfig,
