@@ -45,7 +45,10 @@ export interface VoiceConfig {
     muted: boolean;
     /** Set by a moderator, not by the person. Distinct from `muted` on purpose. */
     serverMuted: boolean;
+    deafened: boolean;
     serverDeafened: boolean;
+    /** Playback gain for everyone else, 0–1. */
+    outputVolume: number;
     /**
      * Underscores, matching what the client stores and what
      * `microphonePipeline` already compares against.
@@ -170,6 +173,24 @@ export interface RoomCoordinator {
    * away, so it says so. What the server does about it is not its business.
    */
   peerChanged(streamId: string, present: boolean): void;
+
+  /**
+   * Whether signalling to this target is up right now.
+   *
+   * The reconnect policy needs it: retrying the SFU while the signalling
+   * connection is down burns attempts against something that cannot answer.
+   * The client reads its socket; another embedder reads whatever it has.
+   */
+  readonly connected: boolean;
+
+  /**
+   * Fires when signalling comes back after being down.
+   *
+   * Replaces a `server_socket_reconnected` window event with a `host` in its
+   * detail — a DOM event the package had no business listening for, and which
+   * React Native does not have.
+   */
+  onReconnected(handler: () => void): () => void;
 }
 
 export interface RoomAccess {

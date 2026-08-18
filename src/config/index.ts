@@ -19,7 +19,7 @@
 import type { ReactNode } from "react";
 import { createContext, createElement, useContext } from "react";
 
-import type { VoiceConfig } from "../types";
+import type { RoomCoordinator, VoiceConfig } from "../types";
 
 /**
  * The other direction: things the engine finds out and the app needs to store.
@@ -40,9 +40,22 @@ export interface VoiceConfigCallbacks {
   onCameraDeviceChanged?(deviceId: string): void;
 }
 
+/**
+ * Where to connect, and what to talk to when we get there.
+ *
+ * Null when nothing is selected, which is a normal state rather than an error —
+ * the engine simply has nothing to do. The engine never learns what `id` means;
+ * it compares it, reports it on the connection state, and keys a cache with it.
+ */
+export interface VoiceTarget {
+  id: string;
+  room: RoomCoordinator;
+}
+
 interface VoiceConfigValue {
   config: VoiceConfig;
   callbacks: VoiceConfigCallbacks;
+  target: VoiceTarget | null;
 }
 
 const VoiceConfigContext = createContext<VoiceConfigValue | null>(null);
@@ -50,6 +63,7 @@ const VoiceConfigContext = createContext<VoiceConfigValue | null>(null);
 export interface VoiceConfigProviderProps {
   config: VoiceConfig;
   callbacks?: VoiceConfigCallbacks;
+  target?: VoiceTarget | null;
   children?: ReactNode;
 }
 
@@ -58,11 +72,12 @@ const NO_CALLBACKS: VoiceConfigCallbacks = {};
 export function VoiceConfigProvider({
   config,
   callbacks = NO_CALLBACKS,
+  target = null,
   children,
 }: VoiceConfigProviderProps) {
   return createElement(
     VoiceConfigContext.Provider,
-    { value: { config, callbacks } },
+    { value: { config, callbacks, target } },
     children,
   );
 }
@@ -87,4 +102,8 @@ export function useVoiceConfig(): VoiceConfig {
 
 export function useVoiceCallbacks(): VoiceConfigCallbacks {
   return useVoiceConfigValue().callbacks;
+}
+
+export function useVoiceTarget(): VoiceTarget | null {
+  return useVoiceConfigValue().target;
 }
