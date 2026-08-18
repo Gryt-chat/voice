@@ -7,6 +7,10 @@ export {
   QUALITY_CONSTRAINTS,
   useCamera,
 } from "./hooks/useCamera";
+export {
+  type SharedAudioContextValue,
+  useSharedAudioContext,
+} from "./hooks/useAudioContext";
 export { useDeviceEnumeration } from "./hooks/useDeviceEnumeration";
 export { useHandles } from "./hooks/useHandles";
 export { useNativeAudioCapture } from "./hooks/useNativeAudioCapture";
