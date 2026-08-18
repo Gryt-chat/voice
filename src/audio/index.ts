@@ -1,6 +1,5 @@
-// Only what has moved so far. useVoiceLatency is waiting on useSFU, which it
-// imports; useSpeakers and useNativeScreenCapture arrive with the platform
-// adapters. useGlobalHotkeys is staying in the client — see GRYT-340.
+// useGlobalHotkeys is staying in the client — keyboard handling that writes
+// mute and deafen, with no audio graph in it. See GRYT-340.
 export {
   CAMERA_FPS_OPTIONS,
   type CameraFps,
@@ -11,6 +10,7 @@ export {
 export { useDeviceEnumeration } from "./hooks/useDeviceEnumeration";
 export { useHandles } from "./hooks/useHandles";
 export { useMicrophone } from "./hooks/useMicrophone";
+export { useVoiceLatency } from "./hooks/useVoiceLatency";
 export { type PushToTalkGate, usePushToTalkGate } from "./hooks/usePushToTalkGate";
 export {
   EXPERIMENTAL_FPS_OPTIONS,

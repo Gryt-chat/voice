@@ -16,7 +16,6 @@ export interface CleanupRefs {
 }
 
 export interface CleanupDeps {
-  serverId: string | null;
   room: RoomCoordinator | null;
   setStreamSources: Dispatch<SetStateAction<StreamSources>>;
   setStreams: Dispatch<SetStateAction<Streams>>;

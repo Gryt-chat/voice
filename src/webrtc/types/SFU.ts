@@ -35,7 +35,7 @@ export interface SFUInterface {
   streamSources: StreamSources;
   videoStreams: VideoStreams;
   connect: (channelID: string, channelEsportsMode?: boolean, channelMaxBitrate?: number | null) => Promise<void>;
-  disconnect: (playSound?: boolean, onDisconnect?: () => void) => Promise<void>;
+  disconnect: (onDisconnect?: () => void) => Promise<void>;
   addVideoTrack: (track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => void;
   removeVideoTrack: () => void;
   addScreenVideoTrack: (track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => void;
