@@ -53,10 +53,18 @@ in one place rather than ten, so it cannot fall out of step across repositories.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+AGPL-3.0 — see [LICENSE](LICENSE), the same as the client, server, SFU and the
+rest of Gryt.
 
-Like [`@gryt/ui`](https://github.com/Gryt-chat/ui), and for the same reason. The
-Gryt apps are AGPL-3.0, because somebody running a modified Gryt as a service
-should publish their changes. A library meant to be picked up and built on is a
-different thing, and AGPL would make that impossible for most of the people who
-might use it.
+[`@gryt/ui`](https://github.com/Gryt-chat/ui) is the exception in this org, and
+deliberately: it is generic components with nothing of Gryt in them, and
+copyleft there would rule out most of the people who might use it.
+
+This is not that. Signalling, ICE handling, track management and the connection
+state machine are the product, not scaffolding around it. Copyleft here means
+somebody running a modified Gryt voice engine as a service publishes their
+changes, which is the same reason the apps are AGPL and applies more strongly
+here than it does to a button.
+
+It is still yours to embed, self-host and modify. The licence only bites for
+running a modified version as a closed service.
