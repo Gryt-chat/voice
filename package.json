@@ -1,6 +1,6 @@
 {
   "name": "@gryt/voice",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Gryt's voice engine: signalling, ICE, tracks and audio, with web and React Native adapters.",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -25,9 +25,17 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@mediapipe/tasks-vision": "^1.0.1",
+    "@shiguredo/rnnoise-wasm": "^2025.1.5",
+    "@types/node": "^20.19.33",
+    "@types/react": "^19",
+    "socket.io-client": "^4.8.3",
     "typescript": "^5.9.3"
   },
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependencies": {
+    "react": ">=18"
   }
 }
