@@ -10,9 +10,11 @@ export * from "./webrtc/index.js";
 export {
   useVoiceCallbacks,
   useVoiceConfig,
+  useVoiceTarget,
   type VoiceConfigCallbacks,
   VoiceConfigProvider,
   type VoiceConfigProviderProps,
+  type VoiceTarget,
 } from "./config";
 export {
   type NativeAudioCapture,
