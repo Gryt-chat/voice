@@ -22,6 +22,7 @@ const REQUIRED = [
   "useScreenShare", "useSharedAudioContext", "useSpeakers", "useVideoStats",
   "useVoiceCallbacks", "useVoiceConfig", "useVoiceLatency", "useVoiceTarget",
   "voiceLog", "volumeToLevel", "webHost", "VoiceConfigProvider",
+  "VoiceSingletonHooks",
 ];
 
 const mod = await import("../dist/index.js");
@@ -29,6 +30,16 @@ const missing = REQUIRED.filter((name) => !(name in mod));
 
 if (missing.length > 0) {
   console.error(`Missing ${missing.length} export(s): ${missing.join(", ")}`);
+  process.exit(1);
+}
+
+// Every singleton hook needs its body run by VoiceSingletonHooks. A hook whose
+// body never runs returns its initialValue forever, which is silent: useSFU()
+// hands back a connect() that does nothing. If singletonHook is used at all, the
+// host has to be exported.
+const usesSingletons = (await readFile(resolve(import.meta.dirname, "../dist/shared/singletonHook.js"), "utf8")).length > 0;
+if (usesSingletons && !("VoiceSingletonHooks" in mod)) {
+  console.error("singletonHook is in the bundle but VoiceSingletonHooks is not exported — every hook body would be dead");
   process.exit(1);
 }
 
