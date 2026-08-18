@@ -51,4 +51,11 @@ export interface MicrophoneInterface {
   /** True while audio is actually leaving this client. Null if the gate worklet is unavailable. */
   isTransmitting: boolean | null;
   isPttActive: MutableRefObject<boolean>;
+  /**
+   * Opens and closes the transmit gate in push-to-talk mode.
+   *
+   * The embedder owns the trigger — a key on the desktop, a held button on a
+   * phone — and calls this. A no-op in voice-activity mode.
+   */
+  setPushToTalkActive: (active: boolean) => void;
 }
