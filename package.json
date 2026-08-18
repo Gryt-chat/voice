@@ -29,7 +29,6 @@
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "@types/node": "^20.19.33",
     "@types/react": "^19",
-    "socket.io-client": "^4.8.3",
     "typescript": "^5.9.3"
   },
   "publishConfig": {

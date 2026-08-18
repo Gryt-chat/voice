@@ -151,10 +151,25 @@ export type SfuInbound =
  */
 export interface RoomCoordinator {
   requestAccess(channelId: string): Promise<RoomAccess>;
-  leave(channelId: string): void;
-  announceJoined(channelId: string): void;
-  setStreamState(state: { camera?: boolean; screen?: boolean }): void;
-  onPeerChange(handler: (peerId: string, present: boolean) => void): () => void;
+  /** Mirrors `voice:room:leave`, which carries nothing. */
+  leave(): void;
+  /** Mirrors `voice:channel:joined`. False on the way out. */
+  announceJoined(joined: boolean): void;
+  /**
+   * Mirrors `voice:stream:set`. Null clears it.
+   *
+   * A stream id, not a description of what is being published — the server
+   * matches the id against what arrives at the SFU, and does not care whether
+   * it is a camera or a screen.
+   */
+  setLocalStream(streamId: string | null): void;
+  /**
+   * Mirrors `voice:peer:connected` / `voice:peer:disconnected`.
+   *
+   * The engine is the only thing that can see a remote stream appear or go
+   * away, so it says so. What the server does about it is not its business.
+   */
+  peerChanged(streamId: string, present: boolean): void;
 }
 
 export interface RoomAccess {

@@ -1,9 +1,9 @@
 import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
-import { Socket } from "socket.io-client";
 
 import { sliderToOutputGain } from "../../shared/audioVolume";
 
 import { Streams, StreamSources, VideoStreams } from "../types/SFU";
+import type { RoomCoordinator } from "../../types";
 import { voiceLog } from "./voiceLogger";
 
 interface UseSFUStreamsParams {
@@ -17,8 +17,7 @@ interface UseSFUStreamsParams {
   outputVolume: number;
   isDeafened: boolean;
   isConnected: boolean;
-  connectionServerId: string | null;
-  sockets: Record<string, Socket>;
+  room: RoomCoordinator | null;
   previousRemoteStreamsRef: MutableRefObject<Set<string>>;
 }
 
@@ -33,8 +32,7 @@ export function useSFUStreams({
   outputVolume,
   isDeafened,
   isConnected,
-  connectionServerId,
-  sockets,
+  room,
   previousRemoteStreamsRef,
 }: UseSFUStreamsParams): void {
   const streamsRef = useRef(streams);
@@ -60,26 +58,13 @@ export function useSFUStreams({
     const newPeers = [...currentRemoteStreams].filter(streamId => !previousRemoteStreams.has(streamId));
     const disconnectedPeers = [...previousRemoteStreams].filter(streamId => !currentRemoteStreams.has(streamId));
 
-    if (newPeers.length > 0) {
-      if (connectionServerId && sockets[connectionServerId]) {
-        const socket = sockets[connectionServerId];
-        newPeers.forEach(streamId => {
-          socket.emit("voice:peer:connected", streamId);
-        });
-      }
-    }
-
-    if (disconnectedPeers.length > 0) {
-      if (connectionServerId && sockets[connectionServerId]) {
-        const socket = sockets[connectionServerId];
-        disconnectedPeers.forEach(streamId => {
-          socket.emit("voice:peer:disconnected", streamId);
-        });
-      }
+    if (room) {
+      newPeers.forEach(streamId => room.peerChanged(streamId, true));
+      disconnectedPeers.forEach(streamId => room.peerChanged(streamId, false));
     }
 
     previousRemoteStreamsRef.current = currentRemoteStreams;
-  }, [streams, isConnected, connectionServerId, sockets, previousRemoteStreamsRef]);
+  }, [streams, isConnected, room, previousRemoteStreamsRef]);
 
   // Cleanup stale streamSources when streams are removed or their underlying
   // MediaStream is replaced (e.g. alias swap after SFU renegotiation).
