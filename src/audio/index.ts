@@ -9,10 +9,17 @@ export {
 } from "./hooks/useCamera";
 export { useDeviceEnumeration } from "./hooks/useDeviceEnumeration";
 export { useHandles } from "./hooks/useHandles";
+export { useNativeAudioCapture } from "./hooks/useNativeAudioCapture";
+export {
+  type EncodedFrameCallback,
+  useNativeScreenCapture,
+} from "./hooks/useNativeScreenCapture";
 export { useMicrophone } from "./hooks/useMicrophone";
-export { useVoiceLatency } from "./hooks/useVoiceLatency";
+export { useSpeakers } from "./hooks/useSpeakers";
+export { type LatencyBreakdown, useVoiceLatency } from "./hooks/useVoiceLatency";
 export { type PushToTalkGate, usePushToTalkGate } from "./hooks/usePushToTalkGate";
 export {
+  estimateBitrate,
   EXPERIMENTAL_FPS_OPTIONS,
   type ScreenShareFps,
   type ScreenShareQuality,
