@@ -54,17 +54,12 @@ jobs:
       # bundler tolerates. It was caught by someone trying it by hand, so that
       # attempt is a step now. This runs against the real dist, before anything
       # is published.
-      - name: Check the built package actually imports
-        run: |
-          node --input-type=module -e "
-            const m = await import('./dist/index.js');
-            const expected = ['useSFU', 'useMicrophone', 'useCamera', 'VoiceConfigProvider', 'setVoiceHost'];
-            const missing = expected.filter((name) => !(name in m));
-            if (missing.length) {
-              throw new Error('Built package is missing exports: ' + missing.join(', '));
-            }
-            console.log('dist/index.js imports cleanly, ' + Object.keys(m).length + ' exports');
-          "
+      # GRYT-344 shipped a package tsc was happy with and Node could not load at
+      # all. This loads the real dist and checks the whole surface the client
+      # imports, rather than the five names the first version of this step
+      # asserted — which passed while four exports were missing.
+      - name: Check the built package imports and is complete
+        run: npm run check-surface
 
       - name: Set the version
         id: version
