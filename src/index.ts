@@ -5,7 +5,7 @@
  * capture hooks run on them; the SFU connection is the part still living in
  * the Gryt client.
  */
-export * from "./audio";
+export * from "./audio/index.js";
 export {
   useVoiceCallbacks,
   useVoiceConfig,
