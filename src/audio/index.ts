@@ -1,6 +1,6 @@
-// Only what has moved so far. The hooks still missing — useMicrophone,
-// useSpeakers, useVoiceLatency, useGlobalHotkeys and useNativeScreenCapture —
-// reach into the client's settings or its Electron bridge and arrive later.
+// Only what has moved so far. useVoiceLatency is waiting on useSFU, which it
+// imports; useSpeakers and useNativeScreenCapture arrive with the platform
+// adapters. useGlobalHotkeys is staying in the client — see GRYT-340.
 export {
   CAMERA_FPS_OPTIONS,
   type CameraFps,
@@ -10,6 +10,8 @@ export {
 } from "./hooks/useCamera";
 export { useDeviceEnumeration } from "./hooks/useDeviceEnumeration";
 export { useHandles } from "./hooks/useHandles";
+export { useMicrophone } from "./hooks/useMicrophone";
+export { type PushToTalkGate, usePushToTalkGate } from "./hooks/usePushToTalkGate";
 export {
   EXPERIMENTAL_FPS_OPTIONS,
   type ScreenShareFps,

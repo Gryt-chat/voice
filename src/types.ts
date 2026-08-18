@@ -40,13 +40,39 @@ export type ScreenShareFps = 30 | 60 | 90 | 120 | 144 | 165 | 240;
  */
 export interface VoiceConfig {
   audio: {
+    /** Empty means "whatever the platform hands back". */
+    deviceId?: string;
     muted: boolean;
     /** Set by a moderator, not by the person. Distinct from `muted` on purpose. */
     serverMuted: boolean;
     serverDeafened: boolean;
-    inputMode: "voice-activity" | "push-to-talk";
+    /**
+     * Underscores, matching what the client stores and what
+     * `microphonePipeline` already compares against.
+     *
+     * This said "voice-activity" | "push-to-talk" until GRYT-340. Nothing
+     * caught it, because the only code reading it was inside the package and
+     * the only code writing it was in the client — so both halves compiled and
+     * would have met for the first time at runtime, with
+     * `inputMode !== "push_to_talk"` always true and push-to-talk never
+     * engaging.
+     */
+    inputMode: "voice_activity" | "push_to_talk";
+    /** How loud the captured signal is sent, 0–1. */
+    volume: number;
+    /** Play the microphone back locally, for testing it. */
+    loopback: boolean;
     /** Off on native: the platform does its own noise suppression. */
     noiseSuppression: boolean;
+    /** Threshold in dB. 0 disables gating, which push-to-talk relies on. */
+    noiseGate: number;
+    /** How long the gate stays open after the signal drops, in ms. */
+    noiseGateRelease: number;
+    autoGain: {
+      enabled: boolean;
+      targetDb: number;
+    };
+    compressorEnabled: boolean;
     compressorAmount: number;
   };
 

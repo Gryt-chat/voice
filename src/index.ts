@@ -2,9 +2,10 @@
  * @gryt/voice
  *
  * Still mid-extraction — see GRYT-340. The boundary types are settled and the
- * camera and screen-share hooks now run on them; the microphone and the SFU
- * connection are the parts still living in the Gryt client.
+ * capture hooks run on them; the SFU connection is the part still living in
+ * the Gryt client.
  */
+export * from "./audio/index.js";
 export {
   useVoiceCallbacks,
   useVoiceConfig,
