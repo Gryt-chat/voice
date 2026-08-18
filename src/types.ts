@@ -93,8 +93,6 @@ export interface VoiceConfig {
   };
 
   connection: {
-    /** Chosen by the caller. Selecting between several is the app's job. */
-    sfuUrl: string;
     /**
      * STUN servers to gather candidates against.
      *
@@ -162,6 +160,24 @@ export interface RoomCoordinator {
 export interface RoomAccess {
   granted: boolean;
   roomId?: string;
+  /**
+   * Where the SFU is, as candidates rather than an answer.
+   *
+   * The server returns these when it grants access, and the engine probes them
+   * and picks — that is what `selectBestSfuUrl` is for, and it has been in this
+   * package since voice#3. Handing over a single chosen URL instead would
+   * either throw that away or move it into every embedder.
+   */
+  sfuUrls?: string[];
+  /** Opaque; the engine forwards it to the SFU and does not read it. */
+  joinToken?: unknown;
+  /**
+   * What to key the chosen-URL cache on, so a reconnect skips the probing.
+   *
+   * Opaque to the engine. The Gryt client passes the server's host, which is
+   * exactly the sort of thing the engine is not supposed to know it is.
+   */
+  cacheKey?: string;
   /** Populated when refused, so the caller can say why rather than "failed". */
   reason?: string;
   retryAfterMs?: number;
