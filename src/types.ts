@@ -95,6 +95,16 @@ export interface VoiceConfig {
   connection: {
     /** Chosen by the caller. Selecting between several is the app's job. */
     sfuUrl: string;
+    /**
+     * STUN servers to gather candidates against.
+     *
+     * The client derives these from whichever server is on screen, through
+     * `serverDetailsList[host].stun_hosts`. The engine is not told which server
+     * that is — knowing about a server list, and which of it is being looked
+     * at, is the one thing the engine is deliberately kept out of — so it gets
+     * the answer rather than the lookup.
+     */
+    stunHosts: string[];
     /** Lower latency, fewer niceties. */
     eSportsMode: boolean;
     maxBitrate?: number | null;

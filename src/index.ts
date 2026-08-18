@@ -14,6 +14,13 @@ export {
   type VoiceConfigProviderProps,
 } from "./config";
 export {
+  getVoiceSounds,
+  setVoiceSounds,
+  silentSounds,
+  type VoiceSound,
+  type VoiceSounds,
+} from "./sounds/index.js";
+export {
   type NativeAudioCapture,
   type NativeScreenCapture,
   type NativeScreenFrame,
