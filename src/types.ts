@@ -15,6 +15,23 @@
 // ── 1. Config ────────────────────────────────────────────────────────────────
 
 /**
+ * Capture resolutions.
+ *
+ * The client declares this list twice, as `CameraQuality` and
+ * `ScreenShareQuality`, with identical members. They are one type here because
+ * two copies that must stay equal is how they eventually stop being equal.
+ * Both names are still exported from the hooks that used to own them.
+ */
+export type CaptureQuality =
+  | "native" | "4k" | "1440p" | "1080p" | "720p" | "480p" | "360p" | "240p"
+  | "144p" | "96p" | "64p" | "48p" | "32p" | "24p" | "16p" | "8p" | "4p";
+
+export type CameraFps = 5 | 10 | 15 | 24 | 30 | 60;
+
+/** Higher than the camera's, because a screen share of a game wants them. */
+export type ScreenShareFps = 30 | 60 | 90 | 120 | 144 | 165 | 240;
+
+/**
  * What the person has chosen. Passed in, never read from a store.
  *
  * The client holds these in `useSettings` today and will keep doing so; it
@@ -35,15 +52,15 @@ export interface VoiceConfig {
 
   camera: {
     deviceId?: string;
-    quality: string;
-    fps: number;
+    quality: CaptureQuality;
+    fps: CameraFps;
     codec?: string;
     mirrored: boolean;
   };
 
   screen: {
-    quality: string;
-    fps: number;
+    quality: CaptureQuality;
+    fps: ScreenShareFps;
     codec?: string;
     /** Prefers framerate over resolution. */
     gamingMode: boolean;
