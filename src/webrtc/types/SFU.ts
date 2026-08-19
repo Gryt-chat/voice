@@ -46,6 +46,15 @@ export interface SFUInterface {
   currentChannelConnected: string;
   isConnected: boolean;
   connectionState: SFUConnectionState;
+  /**
+   * Why the connection ended, when the engine has something to say.
+   *
+   * "reconnect-failed" means it retried and gave up. Null covers everything
+   * else, including an ordinary hang-up — DISCONNECTED alone cannot tell those
+   * apart, which left an embedder unable to say "the call dropped" without
+   * guessing.
+   */
+  connectionError: string | null;
   isConnecting: boolean;
   getPeerConnection?: () => RTCPeerConnection | null;
   getScreenSenderTrackId?: () => string | null;
