@@ -20,6 +20,14 @@ on:
         type: choice
         options: [latest, beta, next]
 
+# Two dispatches at once is how 0.1.0-beta.6 ended up on npm with no commit
+# behind it: both runs published, and the slower one then failed to push because
+# the faster had already moved main. Releases queue instead of racing, and are
+# never cancelled, because cancelling one mid-publish is worse than waiting.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
   contents: write
   # Trusted publishing. There is no NPM_TOKEN in this repo and there should not
@@ -75,7 +83,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -am "release: v${{ steps.version.outputs.version }} [skip ci]"
-          git tag "v${{ steps.version.outputs.version }}"
+
+          # Annotated, because --follow-tags ignores lightweight tags. The
+          # workflow tagged every release from 0.1.0-beta.1 onwards and pushed
+          # none of them, silently, because of that one flag.
+          git tag -a "v${{ steps.version.outputs.version }}" \
+            -m "v${{ steps.version.outputs.version }}"
+
+          # The publish above cannot be undone, so this must not fail on a busy
+          # main. Rebase onto whatever landed while the build ran.
+          git pull --rebase origin main
           git push origin HEAD:main --follow-tags
 
       - name: Summary
