@@ -572,11 +572,14 @@ function useSfuHook(): SFUInterface {
       // Giving up is reported through the state, not announced. The client
       // decides whether that is worth a toast.
       console.warn("[Voice Recovery] Max reconnect attempts reached — giving up");
+      // Say why. The state alone cannot carry it: giving up and hanging up both
+      // land on DISCONNECTED, and an embedder that wants to tell somebody the
+      // call dropped has no way to tell those apart without this.
       setConnectionState({
         state: SFUConnectionState.DISCONNECTED,
         roomId: null,
         serverId: null,
-        error: null,
+        error: "reconnect-failed",
       });
       reconnectAttemptsRef.current = 0;
       return;
@@ -672,6 +675,7 @@ function useSfuHook(): SFUInterface {
     isConnected,
     currentChannelConnected: connectionState.roomId || "",
     connectionState: connectionState.state,
+    connectionError: connectionState.error,
     isConnecting,
     getPeerConnection: () => peerConnectionRef.current,
     getScreenSenderTrackId: () => screenVideoSenderRef.current?.track?.id ?? null,
@@ -696,6 +700,7 @@ const init: SFUInterface = {
   removeScreenAudioTrack: () => {},
   currentChannelConnected: "",
   currentServerConnected: "",
+  connectionError: null,
   isConnected: false,
   connectionState: SFUConnectionState.DISCONNECTED,
   isConnecting: false,
