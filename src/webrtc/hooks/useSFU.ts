@@ -70,6 +70,41 @@ function useSfuHook(): SFUInterface {
   const { audioContext, remoteBusNode } = useSpeakers();
 
   // Stable refs bundle for cleanup helpers
+  // Keep the transmitted audio track in step with the pipeline.
+  //
+  // The audio sender is created once, at connect, from whatever processedStream
+  // existed then. Rebuilding the pipeline — which happens whenever automatic
+  // gain, the compressor or noise suppression is toggled — produces a *new*
+  // MediaStream, and without this the sender goes on transmitting the old one.
+  //
+  // The symptom is precise and misleading: toggling noise suppression seems to
+  // work while auto gain and the compressor appear dead. All three rebuild the
+  // graph, so all three change what you hear locally through the monitor and
+  // the visualiser. Only noise suppression also swaps the track, because it
+  // re-acquires the microphone on the way through. The other two change nothing
+  // anybody else can hear.
+  useEffect(() => {
+    const track = microphoneBuffer.processedStream?.getAudioTracks()[0];
+    if (!track) return;
+
+    const sender = registeredTracksRef.current.find(
+      (candidate) => candidate.track?.kind === "audio",
+    );
+    if (!sender || sender.track === track) return;
+
+    voiceLog.step("MIC", "replace", "Pipeline rebuilt — replacing sent track", {
+      from: sender.track?.id,
+      to: track.id,
+    });
+
+    sender
+      .replaceTrack(track)
+      .then(() => voiceLog.ok("MIC", "replace", "Sent track replaced"))
+      .catch((error) =>
+        voiceLog.fail("MIC", "replace", "replaceTrack failed", error),
+      );
+  }, [microphoneBuffer.processedStream]);
+
   const cleanupRefs: CleanupRefs = useMemo(() => ({
     peerConnectionRef, sfuWebSocketRef, registeredTracksRef,
     reconnectAttemptRef, connectionTimeoutRef,
