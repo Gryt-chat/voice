@@ -13,16 +13,18 @@ import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const REQUIRED = [
-  "CAMERA_FPS_OPTIONS", "EXPERIMENTAL_FPS_OPTIONS", "QUALITY_CONSTRAINTS",
-  "STANDARD_FPS_OPTIONS", "SFUConnectionState", "estimateBitrate",
-  "getCurrentVolume", "getIsBrowserSupported", "getVoiceHost", "getVolumeDb",
-  "isSpeaking", "setVoiceHost", "useCamera", "useDeviceEnumeration",
+  "CAMERA_FPS_OPTIONS", "CENTRED", "EXPERIMENTAL_FPS_OPTIONS",
+  "QUALITY_CONSTRAINTS", "SFUConnectionState", "STANDARD_FPS_OPTIONS",
+  "VoiceConfigProvider", "VoiceSingletonHooks", "connectToSfuWebSocket",
+  "detectFraming", "estimateBitrate", "getCachedSfuUrl", "getCurrentVolume",
+  "getIsBrowserSupported", "getVoiceHost", "getVolumeDb", "isSpeaking",
+  "performSfuCleanup", "performUnmountCleanup", "selectBestSfuUrl",
+  "setVoiceHost", "sfuConnect", "useCamera", "useDeviceEnumeration",
   "useHandles", "useMicrophone", "useNativeAudioCapture",
   "useNativeScreenCapture", "usePushToTalkGate", "useSFU", "useSFUStreams",
   "useScreenShare", "useSharedAudioContext", "useSpeakers", "useVideoStats",
   "useVoiceCallbacks", "useVoiceConfig", "useVoiceLatency", "useVoiceTarget",
-  "voiceLog", "volumeToLevel", "webHost", "VoiceConfigProvider",
-  "VoiceSingletonHooks",
+  "voiceLog", "volumeToLevel", "warmSfuSelection", "webHost"
 ];
 
 const mod = await import("../dist/index.js");

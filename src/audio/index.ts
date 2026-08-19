@@ -30,6 +30,7 @@ export {
   STANDARD_FPS_OPTIONS,
   useScreenShare,
 } from "./hooks/useScreenShare";
+export { CENTRED, detectFraming, type Framing } from "./lib/faceFraming";
 export { getIsBrowserSupported } from "./utils/mediaDevices";
 export {
   getCurrentVolume,
