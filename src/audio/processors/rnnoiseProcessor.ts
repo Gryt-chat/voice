@@ -107,12 +107,11 @@ export class RNNoiseProcessor {
 
     // .js, not .ts, because this string survives compilation unchanged.
     //
-    // Inside the client it was a .ts path and Vite resolved it against the
-    // source tree. Published, the same string points at a file that does not
-    // exist in dist, and the consumer's bundler fails at build time with
-    // "Could not resolve entry module .../rnnoiseWorker.ts" — after tsc, the
-    // surface check and a successful publish have all passed, because none of
-    // them resolve worker URLs.
+    // A .ts path here would point at a file that does not exist in dist, and
+    // the consumer's bundler would fail at build time with "Could not resolve
+    // entry module .../rnnoiseWorker.ts" — after tsc, the surface check and a
+    // successful publish have all passed, because none of them resolve worker
+    // URLs.
     this.worker = new Worker(
       new URL('./rnnoiseWorker.js', import.meta.url),
       { type: 'module' },

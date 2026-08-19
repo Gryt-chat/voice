@@ -134,10 +134,9 @@ function useSfuHook(): SFUInterface {
     previousRemoteStreamsRef,
   });
 
-  // The auto-disconnect-when-the-server-is-removed effect lived here and has
-  // stayed in the client. It read the whole server map to notice that the one
-  // we are connected to had gone, and knowing which servers exist is the thing
-  // the engine is deliberately kept out of. The client watches its own list and
+  // Ending a call when its server is removed is the embedder's. Noticing takes
+  // the whole server map, and knowing which servers exist is the thing the
+  // engine is deliberately kept out of, so the embedder watches its own list and
   // calls disconnect().
 
   // Cleanup on unmount
@@ -444,12 +443,9 @@ function useSfuHook(): SFUInterface {
   const connectionStateRef = useRef(connectionState);
   useEffect(() => { connectionStateRef.current = connectionState; }, [connectionState]);
 
-  // A `server_voice_disconnect` window event used to be handled here: it
-  // checked the host matched, called disconnect(), and re-dispatched
-  // `voice_disconnect_text_switch` for the UI. All three are the client's. It
-  // owns the event, it knows which server raised it, and it can call
-  // disconnect() itself — which is also the only way this works on a platform
-  // without a DOM.
+  // A server hanging up on us is the embedder's too. It owns the event, it knows
+  // which server raised it, and it can call disconnect() itself — which is also
+  // the only way this works on a platform without a DOM.
 
   // Reconnect voice after the signaling server reconnects. When only the
   // Socket.IO transport dropped (e.g. Cloudflare Tunnel reset) but the SFU

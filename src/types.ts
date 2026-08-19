@@ -5,11 +5,9 @@
  * state machine — is the same wherever it runs. These are the seams where it
  * has to ask the thing embedding it.
  *
- * They exist because the code being extracted currently reaches for them
- * directly: `useSettings` in 10 places, `useSockets` and `useServerManagement`
- * in 4, and `lib/electron` in 7. Moving that as-is would produce a package that
- * only works inside Gryt's desktop client, which is the one outcome worth
- * avoiding.
+ * Without them the engine would reach for a settings store, a socket and an
+ * Electron bridge directly, and be a package that only works inside Gryt's
+ * desktop client.
  */
 
 // ── 1. Config ────────────────────────────────────────────────────────────────
@@ -50,15 +48,13 @@ export interface VoiceConfig {
     /** Playback gain for everyone else, 0–1. */
     outputVolume: number;
     /**
-     * Underscores, matching what the client stores and what
-     * `microphonePipeline` already compares against.
+     * Underscores, matching what `microphonePipeline` compares against.
      *
-     * This said "voice-activity" | "push-to-talk" until GRYT-340. Nothing
-     * caught it, because the only code reading it was inside the package and
-     * the only code writing it was in the client — so both halves compiled and
-     * would have met for the first time at runtime, with
-     * `inputMode !== "push_to_talk"` always true and push-to-talk never
-     * engaging.
+     * Worth checking in whatever fills this in. An embedder whose own settings
+     * type this as a plain string can hand over "push-to-talk", compile on both
+     * sides, and only meet this at runtime — where `inputMode !== "push_to_talk"`
+     * is always true and push-to-talk never engages. That is how it shipped
+     * wrong once (GRYT-340).
      */
     inputMode: "voice_activity" | "push_to_talk";
     /** How loud the captured signal is sent, 0–1. */
@@ -150,7 +146,7 @@ export type SfuInbound =
  * channel and what the capacity is. So the package asks, and something else
  * answers. An embedder that is not Gryt supplies its own.
  *
- * Mirrors the `voice:*` events the client emits today.
+ * The Gryt client satisfies this with the `voice:*` events on its socket.
  */
 export interface RoomCoordinator {
   requestAccess(channelId: string): Promise<RoomAccess>;
@@ -224,8 +220,8 @@ export interface RoomAccess {
 /**
  * Capture, playback and peer construction, which differ per platform.
  *
- * The web implementation is the code moving out of the client. The native one
- * is `react-native-webrtc` plus `react-native-audio-api`.
+ * The web implementation is getUserMedia and the AudioContext graph. A native
+ * one is `react-native-webrtc` plus `react-native-audio-api`.
  *
  * Deliberately narrow: everything that is not capture or playback is shared, so
  * anything added here should be re-examined first.
