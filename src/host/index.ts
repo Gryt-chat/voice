@@ -1,16 +1,14 @@
 /**
  * Native capture, where the platform has it.
  *
- * Three files wanted `isElectron` and `getElectronAPI` from the client's
- * Electron bridge — a 243-line module with 14 exports, of which they used two.
- * Depending on the whole thing would have tied the package to Electron for the
- * sake of two functions, and made the React Native adapter implement a desktop
- * bridge it has no use for.
+ * Narrow on purpose: the methods this package actually calls, and a way to ask
+ * whether they exist at all. Taking a whole Electron bridge instead would tie
+ * the package to Electron and make a React Native adapter implement a desktop
+ * API it has no use for.
  *
- * So this is the narrow version: the nine methods actually called, and a way to
- * ask whether they exist at all. The client satisfies it with its Electron
- * bridge, React Native will satisfy it with its own native modules, and the
- * browser satisfies it by returning null and letting the getUserMedia path run.
+ * The Gryt desktop client satisfies this with its Electron bridge, React Native
+ * with its own native modules, and a browser by returning null and letting the
+ * getUserMedia path run.
  */
 
 export interface NativeScreenFrame {

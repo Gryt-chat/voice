@@ -4,11 +4,10 @@
  * `VoiceConfig` in types.ts says *what* the engine needs to know. This says how
  * it arrives: a provider the embedder mounts, and a hook the engine reads.
  *
- * The alternative was threading the values through every call, which would have
- * meant changing every call site in the client for no gain — these are React
- * hooks either way, and a context is the thing that already re-renders them when
- * a setting changes. The client keeps its `useSettings` store and maps it into
- * the provider; the package never reaches up for it.
+ * Threading the values through every call would work and buys nothing — these
+ * are React hooks either way, and a context is the thing that already re-renders
+ * them when a setting changes. The embedder keeps its own settings store and
+ * maps it into the provider; the package never reaches up for it.
  *
  * A module-level singleton like `setVoiceHost` was the other option and is wrong
  * here. Host capabilities are fixed for the lifetime of the process, so a

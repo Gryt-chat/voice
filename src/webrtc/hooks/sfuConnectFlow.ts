@@ -791,9 +791,9 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     });
     const access = await room.requestAccess(channelID);
     if (!access.granted) {
-      // reason and retryAfterMs are the client's to render. A refusal used to
-      // raise a toast from in here when it was a rate limit, which is not the
-      // engine's call to make.
+      // reason and retryAfterMs are the embedder's to render. Whether a refusal
+      // is worth interrupting anybody is not the engine's call to make, so it
+      // reports and stops.
       voiceLog.fail(
         "CONNECT",
         4,

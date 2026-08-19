@@ -1,6 +1,5 @@
-// The connection half, all of it. The only thing from the client's webRTC tree
-// that has not come across is encodedTransformWorker, which is browser-specific
-// and belongs with the web adapter, and the four .tsx components, which are UI.
+// The connection half. Encoded transforms are browser-specific and belong with
+// the web adapter; the call UI belongs to the embedder.
 export { performSfuCleanup, performUnmountCleanup } from "./hooks/sfuCleanup";
 export type { CleanupRefs } from "./hooks/sfuCleanup";
 export { connectToSfuWebSocket } from "./hooks/sfuConnection";
