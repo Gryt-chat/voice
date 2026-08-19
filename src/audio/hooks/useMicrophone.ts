@@ -22,7 +22,20 @@ import { useSharedAudioContext } from "./useAudioContext";
 import { useHandles } from "./useHandles";
 import { usePushToTalkGate } from "./usePushToTalkGate";
 
-const MIC_RELEASE_GRACE_MS = 30_000;
+/**
+ * How long the microphone is held open after the last consumer lets go.
+ *
+ * This exists to survive re-render churn: a consumer can drop and retake its
+ * handle within a frame, and reopening the device each time would be slow and
+ * would flicker the operating system's in-use indicator.
+ *
+ * It was 30 seconds, which is far longer than churn needs and long enough to
+ * matter: macOS shows an orange dot and a menu bar entry saying Gryt is using
+ * the microphone, and it stayed there for half a minute after leaving a call or
+ * closing settings. The app was not listening, and there was no way to tell that
+ * from the outside.
+ */
+const MIC_RELEASE_GRACE_MS = 2_000;
 
 /**
  * getUserMedia rejects with a DOMException whose `name` says what went wrong.
@@ -586,42 +599,20 @@ function useCreateMicrophoneHook() {
 
     if (!micStreamRef.current) return;
 
-    // If the app is hidden/alt-tabbed and React stops rendering a subtree,
-    // consumers may briefly remove every microphone handle. Do not stop the
-    // OS microphone in that state; voice chat must continue in the background.
-    if (document.hidden) {
-      voiceLog.info(
-        "MIC",
-        "No active handles while document is hidden — keeping microphone alive",
-      );
-
-      const onVisible = () => {
-        if (document.hidden) return;
-        document.removeEventListener("visibilitychange", onVisible);
-
-        if (handles.length === 0) {
-          clearPendingMicRelease();
-
-          releaseMicTimerRef.current = setTimeout(() => {
-            if (handles.length === 0 && !document.hidden) {
-              stopMicStream(
-                "No active handles after returning to foreground — releasing microphone",
-              );
-            }
-          }, MIC_RELEASE_GRACE_MS);
-        }
-      };
-
-      document.addEventListener("visibilitychange", onVisible);
-      return () => {
-        document.removeEventListener("visibilitychange", onVisible);
-      };
-    }
-
+    // A call holds a handle for as long as it lasts, so no handles means no
+    // call — including while the window is hidden.
+    //
+    // This used to special-case being hidden and keep the microphone open
+    // indefinitely, waiting for the window to come back. The intent was to
+    // protect a call running in the background, but a call is exactly the case
+    // that still holds a handle, so all it protected was an idle app: close
+    // settings, minimise, and the microphone stayed open with the indicator lit
+    // until the window was focused again. The grace period below already covers
+    // the render churn this was really guarding against.
     clearPendingMicRelease();
 
     releaseMicTimerRef.current = setTimeout(() => {
-      if (handles.length === 0 && !document.hidden) {
+      if (handles.length === 0) {
         stopMicStream("No active handles — releasing microphone");
       }
     }, MIC_RELEASE_GRACE_MS);
