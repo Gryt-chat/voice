@@ -3,13 +3,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVoiceCallbacks, useVoiceConfig } from "../../config";
 import { getVoicePlatform } from "../../platform";
 import { singletonHook } from "../../shared/singletonHook";
-import type { AudioPipeline } from "../../types";
+import type { AudioPipeline, NoiseSuppressor } from "../../types";
 import { voiceLog } from "../../webrtc/hooks/voiceLogger";
 import {
   createNoiseGateNode,
   ensureNoiseGateWorklet,
 } from "../processors/noiseGateProcessor";
-import { RNNoiseProcessor } from "../processors/rnnoiseProcessor";
 import { getIsBrowserSupported } from "../utils/mediaDevices";
 import {
   MicrophoneBufferType,
@@ -156,7 +155,7 @@ function useCreateMicrophoneHook() {
   );
   const [micRecoveryTick, setMicRecoveryTick] = useState(0);
 
-  const rnnoiseProcessorRef = useRef<RNNoiseProcessor | null>(null);
+  const rnnoiseProcessorRef = useRef<NoiseSuppressor | null>(null);
   const [rnnoiseNode, setRnnoiseNode] = useState<AudioWorkletNode | null>(null);
   const [noiseGateNode, setNoiseGateNode] = useState<AudioWorkletNode | null>(
     null,
@@ -217,8 +216,16 @@ function useCreateMicrophoneHook() {
       return;
     }
 
+    // Undefined where the platform denoises before the engine sees the
+    // stream, which is every native platform. Not a failure — the same shape
+    // as rnnoiseEnabled being off.
+    const processor = platform.createNoiseSuppressor?.();
+    if (!processor) {
+      setRnnoiseNode(null);
+      return;
+    }
+
     let cancelled = false;
-    const processor = new RNNoiseProcessor();
 
     rnnoiseProcessorRef.current = processor;
 
@@ -253,7 +260,7 @@ function useCreateMicrophoneHook() {
       rnnoiseProcessorRef.current = null;
       setRnnoiseNode(null);
     };
-  }, [rnnoiseEnabled, audioContext]);
+  }, [rnnoiseEnabled, audioContext, platform]);
 
   // Register the noise gate worklet. The gate has to run on the audio thread,
   // otherwise it stops applying whenever the window is hidden (GRYT-18).

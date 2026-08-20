@@ -6,6 +6,7 @@
  * desktop client goes on doing exactly what it did.
  */
 
+import { RNNoiseProcessor } from "../audio/processors/rnnoiseProcessor.js";
 import type {
   CameraConstraints,
   ScreenConstraints,
@@ -76,6 +77,10 @@ export const webPlatform: VoicePlatform = {
       video,
       audio: withAudio,
     });
+  },
+
+  createNoiseSuppressor() {
+    return new RNNoiseProcessor();
   },
 
   // createAudioPipeline is deliberately absent. The web graph is not a
