@@ -1,5 +1,6 @@
 import { Dispatch, MutableRefObject, SetStateAction } from "react";
 
+import { getVoicePlatform } from "../../platform";
 import type { RoomCoordinator } from "../../types";
 import { SFUConnectionState, Streams } from "../types/SFU";
 import { getCachedSfuUrl, selectBestSfuUrl } from "./selectBestSfuUrl";
@@ -164,7 +165,7 @@ export function setupPeerConnection(
     certificates: undefined,
   };
 
-  const pc = new RTCPeerConnection(config);
+  const pc = getVoicePlatform().createPeerConnection(config);
   let iceDebugDumped = false;
   let wasConnected = false;
   let disconnectedTimeoutId: ReturnType<typeof setTimeout> | null = null;

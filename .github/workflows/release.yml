@@ -69,6 +69,14 @@ jobs:
       - name: Check the built package imports and is complete
         run: npm run check-surface
 
+      # The React Native entry exists so a phone bundle contains no AudioContext
+      # and no RNNoise worker. Metro follows `new Worker(new URL(...))` as a
+      # dependency, so one convenient import from the wrong file turns into
+      # "Unable to resolve module @shiguredo/rnnoise-wasm" in somebody else's
+      # app, several releases later. This walks dist and checks.
+      - name: Check the React Native entry stays free of web-only code
+        run: npm run check-native-entry
+
       - name: Set the version
         id: version
         run: |

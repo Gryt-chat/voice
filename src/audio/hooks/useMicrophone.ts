@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { useVoiceConfig } from "../../config";
+import { useVoiceCallbacks, useVoiceConfig } from "../../config";
+import { getVoicePlatform } from "../../platform";
 import { singletonHook } from "../../shared/singletonHook";
+import type { AudioPipeline } from "../../types";
 import { voiceLog } from "../../webrtc/hooks/voiceLogger";
 import {
   createNoiseGateNode,
@@ -93,10 +95,38 @@ function pickDefaultDevice(
   return devices.find((d) => !isVirtualInput(d)) ?? devices[0];
 }
 
+/**
+ * Handle ids, which only ever have to be distinct from each other.
+ *
+ * This was `self.crypto.randomUUID()`, which is two separate things React
+ * Native does not have: `self` is a browser and worker global, and Web Crypto
+ * is not present without a polyfill. Either one throws, and it throws inside
+ * the effect that takes a microphone handle — so voice would have failed at
+ * the first attempt to use it, not at import.
+ *
+ * A counter is also a more honest description of the requirement. Nothing
+ * about these ids is secret or guessable-in-a-way-that-matters; they are map
+ * keys with a lifetime of one mounted component.
+ */
+let nextHandleId = 0;
+
+function createHandleId(): string {
+  nextHandleId += 1;
+  return `mic-handle-${nextHandleId}`;
+}
+
 function useCreateMicrophoneHook() {
   const { handles, addHandle, removeHandle, isLoaded } = useHandles();
 
   const config = useVoiceConfig();
+  const { onAudioDeviceChanged } = useVoiceCallbacks();
+
+  // Fixed for the lifetime of the process, so it is read once rather than on
+  // every render. `createAudioPipeline` being present is what says "this
+  // platform builds its own audio graph, do not build the Web Audio one" —
+  // see the comment on VoicePlatform in types.ts.
+  const platform = useMemo(() => getVoicePlatform(), []);
+  const platformPipeline = platform.createAudioPipeline;
   const {
     deviceId: micID,
     loopback: loopbackEnabled,
@@ -142,7 +172,14 @@ function useCreateMicrophoneHook() {
 
   micStreamRef.current = micStream;
 
-  const isBrowserSupported = useMemo(() => getIsBrowserSupported(), []);
+  // "Can this client do voice at all", which is what every caller uses it
+  // for. A platform that supplies its own pipeline can, by definition, and
+  // asking it about `navigator.mediaDevices` would be asking a phone a
+  // question about a browser.
+  const isBrowserSupported = useMemo(
+    () => !!platformPipeline || getIsBrowserSupported(),
+    [platformPipeline],
+  );
 
   const clearPendingMicRelease = useCallback(() => {
     if (releaseMicTimerRef.current) {
@@ -289,7 +326,57 @@ function useCreateMicrophoneHook() {
    */
   const isTransmitting = noiseGateNode ? isGateOpen && !effectiveMuted : null;
 
+  /**
+   * The platform's own pipeline, on platforms that have one.
+   *
+   * Null on the web, where `platformPipeline` is undefined and the Web Audio
+   * graph below is what runs instead. The two paths never both exist.
+   */
+  const [ownPipeline, setOwnPipeline] = useState<AudioPipeline | null>(null);
+
+  useEffect(() => {
+    if (!platformPipeline || !micStream) {
+      setOwnPipeline(null);
+      return;
+    }
+
+    const pipeline = platformPipeline({
+      source: micStream,
+      noiseSuppression: rnnoiseEnabled,
+      compressorAmount,
+    });
+
+    setOwnPipeline(pipeline);
+
+    return () => {
+      pipeline.destroy();
+      setOwnPipeline(null);
+    };
+  }, [platformPipeline, micStream, rnnoiseEnabled, compressorAmount]);
+
+  // Mute and gain are pushed rather than rebuilt into, because rebuilding the
+  // pipeline on every slider drag would restart capture. The web path does the
+  // same thing through usePipelineControls.
+  useEffect(() => {
+    ownPipeline?.setMuted(effectiveMuted);
+  }, [ownPipeline, effectiveMuted]);
+
+  useEffect(() => {
+    ownPipeline?.setGain(micVolume);
+  }, [ownPipeline, micVolume]);
+
   const microphoneBuffer = useMemo<MicrophoneBufferType>(() => {
+    if (platformPipeline) {
+      // Two fields out of eighteen, and the rest stay undefined because they
+      // are AudioNodes and there is no audio graph. `MicrophoneBufferType` has
+      // every field optional already, so the client's meters and microphone
+      // test read undefined and draw nothing rather than throwing — which is
+      // the correct behaviour for a platform that cannot measure a level.
+      return ownPipeline
+        ? { mediaStream: micStream, processedStream: ownPipeline.output }
+        : {};
+    }
+
     if (!audioContext) {
       voiceLog.info("MIC", "No AudioContext yet — pipeline deferred");
       return {};
@@ -318,6 +405,8 @@ function useCreateMicrophoneHook() {
 
     return buf;
   }, [
+    platformPipeline,
+    ownPipeline,
     audioContext,
     micStream,
     rnnoiseNode,
@@ -349,16 +438,19 @@ function useCreateMicrophoneHook() {
   );
 
   const getDevices = useCallback(async () => {
+    if (platformPipeline) {
+      // Nothing to enumerate. On a phone the input is an audio *route* — the
+      // earpiece, the speaker, a connected headset — picked by the OS and
+      // changed from Control Centre, not a device chosen from a list. Running
+      // the enumeration path anyway would produce either an empty list or one
+      // meaningless entry, and an empty list is read below as "no microphone".
+      return;
+    }
+
     if (!isBrowserSupported) return;
 
     try {
-      const permissionStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          autoGainControl: false,
-          echoCancellation: false,
-          noiseSuppression: false,
-        },
-      });
+      const permissionStream = await platform.getMicrophone();
 
       try {
         permissionStream.getTracks().forEach((track) => track.stop());
@@ -441,7 +533,11 @@ function useCreateMicrophoneHook() {
 
   useEffect(() => {
     async function initializeDevice(deviceId: string | undefined) {
-      if (!deviceId) {
+      // A platform with its own pipeline has no device list to have picked
+      // from, so "no device id" is its normal state rather than a race with
+      // enumeration. It means the platform default, which is exactly what
+      // getMicrophone() with no argument asks for.
+      if (!deviceId && !platformPipeline) {
         voiceLog.info("MIC", "No device ID — skipping initialization");
         // Deliberately does not report "no microphone". This runs during normal
         // startup, before enumeration has produced a device to select, and on a
@@ -462,17 +558,7 @@ function useCreateMicrophoneHook() {
       voiceLog.step("MIC", 2, "Requesting getUserMedia", { deviceId });
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            deviceId: { exact: deviceId },
-            autoGainControl: false,
-            echoCancellation: false,
-            noiseSuppression: false,
-            channelCount: 1,
-            sampleRate: 48000,
-            sampleSize: 16,
-          },
-        });
+        const stream = await platform.getMicrophone(deviceId);
 
         const tracks = stream.getAudioTracks();
 
@@ -494,8 +580,18 @@ function useCreateMicrophoneHook() {
         setMicStream(stream);
         setMicUnavailable(null);
 
-        if (deviceId !== micID) {
-          localStorage.setItem("micID", deviceId);
+        // The engine does not own the setting, so it reports rather than
+        // writes — the same shape as onCameraDeviceChanged.
+        //
+        // This was `localStorage.setItem("micID", deviceId)`, which wrote a key
+        // nothing reads. The client keeps micID in its per-user store under
+        // `webKey(userId, "micID")`, so the bare key was written on every
+        // fallback and never read back by anything. Web-only as well, which is
+        // how it surfaced.
+        // Nothing to report when no device was named: that is the platform
+        // default path, and "the default is the default" is not news.
+        if (deviceId && deviceId !== micID) {
+          onAudioDeviceChanged?.(deviceId);
         }
       } catch (error) {
         voiceLog.fail(
@@ -507,16 +603,7 @@ function useCreateMicrophoneHook() {
         voiceLog.step("MIC", "2b", "Trying fallback (default device)");
 
         try {
-          const fallbackStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-              autoGainControl: false,
-              echoCancellation: false,
-              noiseSuppression: false,
-              channelCount: 1,
-              sampleRate: 48000,
-              sampleSize: 16,
-            },
-          });
+          const fallbackStream = await platform.getMicrophone();
 
           voiceLog.ok("MIC", "2b", "Fallback getUserMedia succeeded", {
             tracks: fallbackStream.getAudioTracks().map((t) => ({
@@ -549,7 +636,12 @@ function useCreateMicrophoneHook() {
 
     if (handles.length > 0) {
       clearPendingMicRelease();
-      activateAudioContext();
+
+      // Not on a platform that builds its own graph. `activate` constructs an
+      // `AudioContext`, and on React Native that is a ReferenceError rather
+      // than a degraded pipeline — which would take the microphone down at the
+      // moment somebody joins a channel.
+      if (!platformPipeline) activateAudioContext();
 
       if (audioContext?.state === "suspended") {
         audioContext.resume().catch(() => {});
@@ -629,6 +721,7 @@ function useCreateMicrophoneHook() {
     audioContext,
     clearPendingMicRelease,
     stopMicStream,
+    platformPipeline,
   ]);
 
   useEffect(() => {
@@ -730,7 +823,7 @@ export const useMicrophone = (shouldAccess: boolean = false) => {
     }
 
     if (!handleIdRef.current) {
-      const id = self.crypto.randomUUID();
+      const id = createHandleId();
       handleIdRef.current = id;
       mic.addHandle(id);
     }

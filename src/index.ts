@@ -9,6 +9,21 @@
  * from here. Without it every hook returns its initial value forever and
  * nothing says so.
  */
+import { setDefaultVoicePlatform } from "./platform/index.js";
+import { webPlatform } from "./platform/web.js";
+
+/**
+ * This entry point is the browser's, so it says so on the way in.
+ *
+ * A side effect in a barrel is worth being uncomfortable about, so: the
+ * alternative is a default baked into the registry, and that puts the web
+ * implementation in every bundle including React Native's, where it drags in
+ * the RNNoise worker and the build fails. `setDefault` rather than `set`, so an
+ * embedder that has already chosen keeps its choice no matter which module the
+ * bundler evaluates first.
+ */
+setDefaultVoicePlatform(webPlatform);
+
 export { VoiceSingletonHooks } from "./shared/SingletonHooks.js";
 export * from "./audio/index.js";
 export * from "./webrtc/index.js";
@@ -21,6 +36,8 @@ export {
   type VoiceConfigProviderProps,
   type VoiceTarget,
 } from "./config";
+export { getVoicePlatform, setVoicePlatform } from "./platform";
+export { webPlatform };
 export {
   type NativeAudioCapture,
   type NativeScreenCapture,
@@ -44,7 +61,6 @@ export type {
   SfuOutbound,
   SfuTransport,
   VoiceConfig,
-  VoiceDevice,
   VoiceEngineOptions,
   VoiceLogger,
   VoicePlatform,
