@@ -17,17 +17,25 @@ import { dirname, relative, resolve } from "node:path";
 const dist = resolve(import.meta.dirname, "../dist");
 const entry = resolve(dist, "native.js");
 
-// Reaching any of these from the native entry is the bug this catches.
-const FORBIDDEN = [
-  "AudioContext",
-  "AudioWorklet",
-  "audioWorklet",
-  "new Worker",
-  "import.meta.url",
-  "navigator.mediaDevices",
-  "localStorage",
-  "document.",
-];
+// Constructs a *bundler* can see, which is a narrower list than "web-only
+// APIs" and deliberately so.
+//
+// The native entry re-exports the whole engine, so plenty of Web Audio and DOM
+// code is reachable from here — `microphonePipeline`, `useAudioContext`,
+// `useCamera`. None of it runs on a phone: `useMicrophone` branches on the
+// platform supplying its own pipeline and never activates an AudioContext.
+// Unreachable-at-runtime code costs bundle size and nothing else.
+//
+// What actually breaks a build is a reference a bundler resolves whether or
+// not the code runs. Metro treats `new Worker(new URL(...))` as a dependency
+// and follows it; that one construct, in rnnoiseProcessor, is what kept the
+// engine off React Native. `import.meta.url` is here as its travelling
+// companion rather than because Metro rejects it — measured, it parses fine.
+//
+// So this checks what it can actually promise: the bundle resolves. It does
+// not promise the engine avoids web APIs on a phone. The platform branch in
+// useMicrophone promises that, and only a device can confirm it.
+const FORBIDDEN = ["new Worker", "import.meta.url"];
 
 const seen = new Set();
 
@@ -54,11 +62,13 @@ async function walk(file) {
   for (const term of FORBIDDEN) {
     if (code.includes(term)) {
       console.error(
-        `${relative(dist, file)} reaches "${term}", which React Native does not have.`,
+        `${relative(dist, file)} reaches "${term}", which a bundler resolves ` +
+          "whether or not the code runs.",
       );
       console.error(
-        "Reachable from dist/native.js. Move the shared part into a file that " +
-          "imports neither, the way sliderValue.ts was split out.",
+        "Reachable from dist/native.js, so Metro will follow it and fail. Put " +
+          "the call site behind a VoicePlatform method, the way " +
+          "createNoiseSuppressor moved RNNoiseProcessor into platform/web.ts.",
       );
       process.exit(1);
     }
@@ -76,5 +86,5 @@ async function walk(file) {
 await walk(entry);
 
 console.log(
-  `native entry ok: ${seen.size} file(s) reachable, none touching web-only APIs`,
+  `native entry ok: ${seen.size} file(s) reachable, no bundler-visible web-only references`,
 );

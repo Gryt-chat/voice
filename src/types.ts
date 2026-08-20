@@ -246,6 +246,23 @@ export interface VoicePlatform {
   getScreen?(constraints: ScreenConstraints): Promise<MediaStream>;
 
   /**
+   * Noise suppression, where the platform does it in the audio graph.
+   *
+   * Undefined on React Native, and not because a phone cannot denoise — it
+   * already has, in libwebrtc, before the engine sees the stream. It is a seam
+   * because of where the web implementation lives rather than what it does:
+   * `RNNoiseProcessor` builds its worker with `new Worker(new
+   * URL("./rnnoiseWorker.js", import.meta.url))`, and Metro treats that as a
+   * dependency and follows it into a package `@gryt/voice` does not ship.
+   *
+   * That one construct is the only bundler-visible reference to web-only code
+   * in the package — every other worklet is registered from a blob URL built
+   * at runtime, which no bundler can see. So moving this one call site behind
+   * the seam is what lets a React Native app import the engine's hooks at all.
+   */
+  createNoiseSuppressor?(): NoiseSuppressor;
+
+  /**
    * The audio graph, where the platform can build one outside React.
    *
    * Undefined means "use the Web Audio pipeline", which is what a browser and
@@ -292,6 +309,20 @@ export interface ScreenConstraints {
  * wired to nothing. GRYT-387 covers doing it properly, including what a device
  * list should even mean on a phone, where the answer is an audio route.
  */
+
+/**
+ * The subset of `RNNoiseProcessor` that `useMicrophone` actually uses.
+ *
+ * Written as the caller's requirement rather than as the class's shape, so a
+ * platform can satisfy it with something that is not RNNoise.
+ */
+export interface NoiseSuppressor {
+  initialize(audioContext: AudioContext): Promise<void>;
+  setEnabled(enabled: boolean): void;
+  /** Null until `initialize` resolves, and after `destroy`. */
+  getNode(): AudioWorkletNode | null;
+  destroy(): void;
+}
 
 export interface AudioPipelineOptions {
   /** The capture stream to process. */
