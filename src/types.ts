@@ -227,23 +227,39 @@ export interface RoomAccess {
  * anything added here should be re-examined first.
  */
 export interface VoicePlatform {
+  /** For logs and for the one or two places behaviour genuinely differs. */
+  readonly name: string;
+
   createPeerConnection(config: RTCConfiguration): RTCPeerConnection;
 
+  /**
+   * One attempt at the named device, or at whatever the platform considers
+   * default when the id is undefined.
+   *
+   * Deliberately one attempt. Falling back to the default device when the
+   * stored one has gone away is the engine's decision, not the platform's, and
+   * it makes that decision by calling this a second time with no id.
+   */
   getMicrophone(deviceId?: string): Promise<MediaStream>;
   getCamera(constraints: CameraConstraints): Promise<MediaStream>;
   /** Undefined where the platform has no such concept, which is phones. */
   getScreen?(constraints: ScreenConstraints): Promise<MediaStream>;
 
-  listDevices(): Promise<VoiceDevice[]>;
-
   /**
-   * The audio graph.
+   * The audio graph, where the platform can build one outside React.
    *
-   * Web builds this from AudioContext and AudioWorklet. Native uses
-   * react-native-audio-api, and skips noise suppression entirely because
-   * libwebrtc and the phone already do it.
+   * Undefined means "use the Web Audio pipeline", which is what a browser and
+   * Electron get. It is undefined there rather than a web implementation, and
+   * that is worth explaining: the web graph is not a standalone object. It
+   * hands out the AudioNodes that the client's meters, visualiser, noise gate
+   * and microphone test read directly, and a React effect rebuilds it whenever
+   * a setting changes. Returning an `AudioPipeline` from here would either drop
+   * that surface or grow a second copy of it.
+   *
+   * Native supplies one, and it is nearly empty on purpose — see
+   * `platform/native.ts`.
    */
-  createAudioPipeline(options: AudioPipelineOptions): AudioPipeline;
+  createAudioPipeline?(options: AudioPipelineOptions): AudioPipeline;
 }
 
 export interface CameraConstraints {
@@ -260,13 +276,26 @@ export interface ScreenConstraints {
   withAudio: boolean;
 }
 
-export interface VoiceDevice {
-  id: string;
-  label: string;
-  kind: "audioinput" | "audiooutput" | "videoinput";
-}
+/*
+ * There was a `listDevices(): Promise<VoiceDevice[]>` here, and a `VoiceDevice`
+ * to go with it. Both are gone rather than left declared.
+ *
+ * Nothing called them. Device enumeration in the engine returns
+ * `InputDeviceInfo[]` — the DOM type, straight from `enumerateDevices` — and
+ * both `useMicrophone` and `useDeviceEnumeration` hand that to the client,
+ * whose settings dropdowns read it. Routing that through a narrower type is a
+ * change to the client's surface, and it is the same size of change whether it
+ * happens now or later.
+ *
+ * Leaving the declaration in place until then is the exact thing this file was
+ * being fixed for: a seam that typechecks, exports, reads as supported and is
+ * wired to nothing. GRYT-387 covers doing it properly, including what a device
+ * list should even mean on a phone, where the answer is an audio route.
+ */
 
 export interface AudioPipelineOptions {
+  /** The capture stream to process. */
+  source: MediaStream;
   noiseSuppression: boolean;
   compressorAmount: number;
   /** Ignored where the platform has no equivalent. */
@@ -274,7 +303,15 @@ export interface AudioPipelineOptions {
 }
 
 export interface AudioPipeline {
-  readonly output: MediaStreamTrack;
+  /**
+   * What gets sent.
+   *
+   * A stream rather than a track because that is what every consumer of it
+   * wants: `sfuConnectFlow` reads `processedStream` off the microphone buffer
+   * and hands it to `addTrack`, and the local monitor plays it back. The track
+   * is `output.getAudioTracks()[0]` for anything that needs it.
+   */
+  readonly output: MediaStream;
   /** For the speaking indicator. Null where the platform cannot measure it. */
   getLevel(): number | null;
   setGain(value: number): void;

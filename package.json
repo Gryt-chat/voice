@@ -14,6 +14,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./native": {
+      "types": "./dist/native.d.ts",
+      "default": "./dist/native.js"
     }
   },
   "files": [
@@ -22,20 +26,28 @@
   "scripts": {
     "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "prepublishOnly": "npm run build && npm run check-surface",
-    "check-surface": "node scripts/check-public-surface.mjs"
+    "prepublishOnly": "npm run build && npm run check-surface && npm run check-native-entry",
+    "check-surface": "node scripts/check-public-surface.mjs",
+    "check-native-entry": "node scripts/check-native-entry.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "@types/node": "^20.19.33",
     "@types/react": "^19",
+    "react-native-webrtc": "^124.0.8",
     "typescript": "^5.9.3"
   },
   "publishConfig": {
     "access": "public"
   },
   "peerDependencies": {
-    "react": ">=18"
+    "react": ">=18",
+    "react-native-webrtc": ">=124"
+  },
+  "peerDependenciesMeta": {
+    "react-native-webrtc": {
+      "optional": true
+    }
   }
 }
