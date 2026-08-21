@@ -253,6 +253,43 @@ export function useSFUStreams({
     });
   }, [outputVolume, isDeafened, audioContext]);
 
+  /**
+   * Deafen where there is no audio graph to turn down.
+   *
+   * Everything above routes remote audio through a gain node, and the effect
+   * that reacts to `isDeafened` sets that gain to zero. On a phone there is no
+   * `AudioContext` to build one in — the setup effect logs "no audioContext"
+   * and returns — so `streamSources` stays empty, that effect iterates nothing,
+   * and `react-native-webrtc` goes on playing the received track itself. The
+   * button lights up and you still hear everybody.
+   *
+   * `enabled` is the lever both platforms have. On a *remote* track it is
+   * receiver-side: libwebrtc drops the decoded audio rather than asking the
+   * sender to stop, so nobody else's call changes, which is what deafen means.
+   *
+   * **Volume is not the same case.** A number between zero and one needs a
+   * graph and there is none, so `outputVolume` stays a web-only control rather
+   * than being approximated with on and off. An embedder that offers a slider
+   * on a phone is offering something nothing reads.
+   *
+   * Only where there is no context: with one, the gain node already owns this,
+   * and disabling the track as well would take a stream out of the analyser
+   * that draws who is speaking.
+   */
+  useEffect(() => {
+    if (audioContext) return;
+
+    // Depends on `streams` rather than reading the ref, so a peer who joins
+    // while you are deafened arrives silent instead of being the one person
+    // you can hear.
+    for (const streamData of Object.values(streams)) {
+      if (streamData.isLocal) continue;
+      for (const track of streamData.stream.getAudioTracks()) {
+        track.enabled = !isDeafened;
+      }
+    }
+  }, [streams, isDeafened, audioContext]);
+
   // Safety net: periodically remove streams whose tracks have all ended.
   // Handles edge cases where track.onended doesn't fire (ICE failure, etc).
   useEffect(() => {
