@@ -13,10 +13,9 @@ npm install @gryt/voice
 It was pulled out of the Gryt desktop client so the desktop app, the web app and
 the mobile app can share one implementation instead of keeping three in step.
 
-> **Published, and not yet consumed.** `0.1.1` is on npm and the package builds
-> for React Native as well as the web, but nothing depends on it yet: the
-> desktop client still runs from its own copies, and the mobile app has not
-> picked it up. GRYT-341 is that migration.
+It is on npm, and it is what the Gryt clients run: the desktop and web client
+moved onto it in GRYT-341, and the mobile app builds on it too. No version
+numbers here on purpose, since they go stale faster than this file gets read.
 
 ## What it does and does not decide
 
