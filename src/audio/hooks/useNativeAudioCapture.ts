@@ -3,7 +3,17 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getVoiceHost } from "../../host";
 import { getWorkletUrl, PCM_PLAYER_WORKLET_NAME } from "../processors/pcmPlayerProcessor";
 
-export interface NativeAudioCapture {
+/**
+ * What `useNativeAudioCapture()` returns.
+ *
+ * The `State` suffix is load bearing. `NativeAudioCapture` in `host/index.ts`
+ * is a different interface — the API the host process provides — and both used
+ * to carry the same name. The explicit re-export in `engine.ts` won at the
+ * package root, so this one could not be named from outside the package at all:
+ * anyone annotating the hook's return got the host interface, which has no
+ * member in common with it.
+ */
+export interface NativeAudioCaptureState {
   /** Whether the native binary is present on this platform. */
   available: boolean;
   /** Whether native capture is currently running. */
@@ -21,7 +31,7 @@ export interface NativeAudioCapture {
  *
  * On platforms without a native binary this hook is a no-op (available = false).
  */
-export function useNativeAudioCapture(): NativeAudioCapture {
+export function useNativeAudioCapture(): NativeAudioCaptureState {
   const [available, setAvailable] = useState(false);
   const [active, setActive] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);

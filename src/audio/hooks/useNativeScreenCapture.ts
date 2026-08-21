@@ -8,7 +8,12 @@ export type EncodedFrameCallback = (
   timestamp: number
 ) => void;
 
-export interface NativeScreenCapture {
+/**
+ * What `useNativeScreenCapture()` returns. Named for the same reason as
+ * `NativeAudioCaptureState`: `NativeScreenCapture` in `host/index.ts` is the
+ * host-provided API, not this.
+ */
+export interface NativeScreenCaptureState {
   available: boolean;
   active: boolean;
   videoStream: MediaStream | null;
@@ -60,7 +65,7 @@ function buildCodecString(
     .padStart(2, "0")}`;
 }
 
-export function useNativeScreenCapture(): NativeScreenCapture {
+export function useNativeScreenCapture(): NativeScreenCaptureState {
   const [available, setAvailable] = useState(false);
   const [active, setActive] = useState(false);
   const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
