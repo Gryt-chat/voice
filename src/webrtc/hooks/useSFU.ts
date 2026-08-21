@@ -158,11 +158,20 @@ function useSfuHook(): SFUInterface {
         pc.close();
       }
     };
-    // Browser-only: there is no page to unload on React Native, and this
-    // belongs with the web adapter once there is one. Guarded rather than
-    // removed, because on the desktop it is what stops a closing tab leaving a
-    // half-open peer connection behind.
-    if (typeof window === "undefined") return;
+    /* Browser-only: there is no page to unload on React Native, and this
+     * belongs with the web adapter once there is one. Guarded rather than
+     * removed, because on the desktop it is what stops a closing tab leaving a
+     * half-open peer connection behind.
+     *
+     * The guard asks whether there is a DOM to listen on, not whether there is
+     * a `window`. It used to ask the second and they are not the same question:
+     * React Native defines `window` as an alias for the global object, so
+     * `typeof window === "undefined"` is false there and the next line threw
+     * "undefined is not a function" the moment this hook rendered. Found by the
+     * first embedder to actually call it (GRYT-439). */
+    if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
+      return;
+    }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);

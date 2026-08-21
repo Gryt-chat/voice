@@ -89,6 +89,13 @@ function useCameraHook(): CameraInterface {
 
   // Listen for hot-plug
   useEffect(() => {
+    /* Only where there is something to listen on. `react-native-webrtc`'s
+     * `mediaDevices` has no `addEventListener`, and this hook runs at mount as
+     * one of the singletons — so an unguarded call took the whole app down on
+     * React Native rather than quietly doing nothing (GRYT-439). The same shape
+     * as `useMicrophone`'s guard, which has always had one. */
+    if (typeof navigator?.mediaDevices?.addEventListener !== "function") return;
+
     const handler = () => { getDevices(); };
     navigator.mediaDevices.addEventListener("devicechange", handler);
     return () => navigator.mediaDevices.removeEventListener("devicechange", handler);
