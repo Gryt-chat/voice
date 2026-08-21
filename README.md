@@ -82,6 +82,23 @@ an Electron global shortcut; a phone holds a button on a screen. So the app
 calls `setPushToTalkActive` and the engine decides what that means, including
 what happens when someone unmutes mid-press.
 
+## Deafen works on a phone. Volume does not
+
+Both are one field in `VoiceConfig.audio`, and only one of them survives the
+move to native, so an embedder should not offer them as a pair.
+
+On the web, remote audio goes through a gain node per stream, and deafen is that
+gain set to zero. There is no `AudioContext` on a phone, so there is no graph and
+no gain node — `react-native-webrtc` plays a received track itself. Deafen falls
+back to `enabled = false` on each remote audio track, which is receiver-side:
+libwebrtc drops the decoded audio rather than asking the sender to stop, so
+nobody else's call changes.
+
+`outputVolume` has no such fallback. A number between zero and one needs the
+graph, and approximating it with on and off would be a slider that snaps. It
+stays a web control, and an app that draws one on a phone is drawing something
+nothing reads.
+
 ## Not bundled, on purpose
 
 The build is unbundled output, one file in for one file out. Metro picks between
