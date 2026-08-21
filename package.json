@@ -1,6 +1,6 @@
 {
   "name": "@gryt/voice",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Gryt's voice engine: signalling, ICE, tracks and audio, with web and React Native adapters.",
   "license": "AGPL-3.0-only",
   "repository": {
