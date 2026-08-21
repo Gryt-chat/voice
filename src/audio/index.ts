@@ -14,9 +14,13 @@ export {
 } from "./hooks/useAudioContext";
 export { useDeviceEnumeration } from "./hooks/useDeviceEnumeration";
 export { useHandles } from "./hooks/useHandles";
-export { useNativeAudioCapture } from "./hooks/useNativeAudioCapture";
+export {
+  type NativeAudioCaptureState,
+  useNativeAudioCapture,
+} from "./hooks/useNativeAudioCapture";
 export {
   type EncodedFrameCallback,
+  type NativeScreenCaptureState,
   useNativeScreenCapture,
 } from "./hooks/useNativeScreenCapture";
 export { useMicrophone } from "./hooks/useMicrophone";

@@ -77,6 +77,14 @@ jobs:
       - name: Check the React Native entry stays free of web-only code
         run: npm run check-native-entry
 
+      # GRYT-433: two files each declared `NativeAudioCapture`, and the explicit
+      # re-export in engine.ts beat the star export silently. The hook's return
+      # type could not be named from outside the package at all, and nothing in
+      # the build had an opinion about it. This walks the built .d.ts graph and
+      # fails on a name declared twice.
+      - name: Check no exported name is declared twice
+        run: npm run check-type-names
+
       - name: Set the version
         id: version
         run: |
