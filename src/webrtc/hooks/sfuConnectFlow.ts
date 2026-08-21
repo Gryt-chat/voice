@@ -499,6 +499,41 @@ export interface ConnectParams {
   performCleanup: (skipServerUpdate?: boolean) => Promise<void>;
 }
 
+/**
+ * The same object with every null and undefined value removed.
+ *
+ * `setParameters` is spec'd to be handed back what `getParameters` just
+ * returned, so the round trip is not optional — the browser rejects a call whose
+ * `transactionId` it does not recognise. On React Native that round trip is
+ * fatal.
+ *
+ * `react-native-webrtc` returns fields the platform has no value for as `null`.
+ * Passing them back turns each one into `NSNull` on the Objective-C side, and
+ * `WebRTCModule`'s `senderSetParameters` calls `intValue` on them without
+ * checking:
+ *
+ *     *** Terminating app due to uncaught exception 'NSInvalidArgumentException',
+ *     reason: '-[NSNull intValue]: unrecognized selector sent to instance'
+ *
+ * That is `SIGABRT` on `WebRTCModule.queue`, rethrown through
+ * `ObjCTurboModule::performMethodInvocation`, which terminates the process.
+ * Nothing in JS can catch it and nothing is logged — the app simply vanishes
+ * back to the home screen the moment somebody joins a voice channel.
+ *
+ * Invisible on the web, where the same code has always been fine: Chromium
+ * takes a null back without complaint. So this was one bug in the engine that
+ * only one of its two embedders could ever hit.
+ *
+ * Dropping the keys is safe because absent and null mean the same thing to
+ * `setParameters` — "no opinion". The one value this function is here to set,
+ * `maxBitrate`, is applied after it runs.
+ */
+function withoutNulls<T extends object>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, v]) => v !== null && v !== undefined),
+  ) as T;
+}
+
 export async function sfuConnect(params: ConnectParams): Promise<void> {
   const {
     channelID,
@@ -910,11 +945,11 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
         const params = sender.getParameters();
         const enc =
           params.encodings && params.encodings.length > 0
-            ? params.encodings
+            ? params.encodings.map(withoutNulls)
             : [{} as RTCRtpEncodingParameters];
         enc[0] = { ...enc[0], maxBitrate: effectiveBitrate };
         sender
-          .setParameters({ ...params, encodings: enc })
+          .setParameters({ ...withoutNulls(params), encodings: enc })
           .catch(() => undefined);
       } catch {
         // ignore
