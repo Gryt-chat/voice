@@ -62,6 +62,10 @@ export function useDeviceEnumeration() {
   // Listen for device changes
   useEffect(() => {
     if (!isBrowserSupported) return;
+    /* Supported for enumeration does not mean supported for hot-plug events:
+     * `react-native-webrtc` can enumerate and has no `addEventListener`. Same
+     * guard as `useCamera` and `useMicrophone`, for the same reason (GRYT-439). */
+    if (typeof navigator?.mediaDevices?.addEventListener !== "function") return;
 
     const handleDeviceChange = () => {
       enumerateDevices();
