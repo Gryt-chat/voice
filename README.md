@@ -1,14 +1,22 @@
-# @gryt/voice
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Gryt-chat/client/main/public/logo.svg" width="80" alt="Gryt logo" />
+  <h1>@gryt/voice</h1>
+  <p>The voice engine from <a href="https://github.com/Gryt-chat/gryt">Gryt</a>, published on its own.<br />Signalling, ICE, track management, capture, the audio graph and the connection state machine.</p>
+</div>
 
-Gryt's voice engine on its own: signalling, ICE, track management, capture and
-the connection state machine.
+<br />
+
+```sh
+npm install @gryt/voice
+```
 
 It was pulled out of the Gryt desktop client so the desktop app, the web app and
 the mobile app can share one implementation instead of keeping three in step.
 
-> **Extracted, not published yet.** Everything has moved across and the package
-> typechecks and builds, but no version above `0.0.1` is on npm and the desktop
-> client still runs from its own copies. See GRYT-341 for the migration.
+> **Published, and not yet consumed.** `0.1.1` is on npm and the package builds
+> for React Native as well as the web, but nothing depends on it yet: the
+> desktop client still runs from its own copies, and the mobile app has not
+> picked it up. GRYT-341 is that migration.
 
 ## What it does and does not decide
 
@@ -101,8 +109,7 @@ in one place rather than ten, so it cannot fall out of step across repositories.
 
 ## License
 
-AGPL-3.0, the same as the client, server, SFU and the rest of Gryt. See
-[LICENSE](LICENSE).
+[AGPL-3.0](https://github.com/Gryt-chat/gryt/blob/main/LICENSE) — Part of [Gryt](https://github.com/Gryt-chat/gryt)
 
 [`@gryt/ui`](https://github.com/Gryt-chat/ui) is the exception in this org, and
 deliberately so: it is generic components with nothing of Gryt in them, and
