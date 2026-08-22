@@ -18,6 +18,9 @@ export type MicrophoneBufferType = {
   agcAnalyser?: AnalyserNode; // AGC input level measurement
   agcGain?: GainNode; // AGC dynamic gain adjustment
   compressor?: DynamicsCompressorNode; // Separate compressor for peak taming
+  /** Makeup gain after the compressor, so taming peaks does not just get
+   *  quieter. Absent when the compressor is off (GRYT-511). */
+  compressorMakeup?: GainNode;
 };
 
 /**

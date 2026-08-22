@@ -5,6 +5,15 @@ import { voiceLog } from "../../webrtc/hooks/voiceLogger";
 
 import { MicrophoneBufferType } from "../types/Microphone";
 
+/**
+ * Makeup gain applied after the compressor, in decibels.
+ *
+ * Deliberately conservative — see the comment at the call site for the
+ * measurements. Constant rather than derived from the amount so that the
+ * ceiling is a number somebody can read rather than the output of a formula.
+ */
+const COMPRESSOR_MAKEUP_DB = 3;
+
 export interface CreateMicrophoneBufferParams {
   audioContext: AudioContext;
   micStream: MediaStream | undefined;
@@ -101,6 +110,7 @@ export function createMicrophoneBuffer({
   }
 
   let compressor: DynamicsCompressorNode | undefined;
+  let compressorMakeup: GainNode | undefined;
 
   if (compressorEnabled) {
     compressor = audioContext.createDynamicsCompressor();
@@ -112,6 +122,15 @@ export function createMicrophoneBuffer({
 
     processingChain.connect(compressor);
     processingChain = compressor;
+
+    // Downward compression on its own makes a signal less peaky, not louder,
+    // so without this the toggle reads as doing nothing at all — which is what
+    // GRYT-119 was reported as. Every compressor anybody has used pairs the
+    // reduction with makeup; this is that half.
+    compressorMakeup = audioContext.createGain();
+    compressorMakeup.gain.value = 1;
+    processingChain.connect(compressorMakeup);
+    processingChain = compressorMakeup;
   }
 
   if (noiseGateNode) {
@@ -150,6 +169,7 @@ export function createMicrophoneBuffer({
     agcAnalyser,
     agcGain,
     compressor,
+    compressorMakeup,
   };
 }
 
@@ -559,7 +579,31 @@ export function usePipelineControls({
     microphoneBuffer.compressor.threshold.setValueAtTime(threshold, now);
     microphoneBuffer.compressor.ratio.setValueAtTime(ratio, now);
     microphoneBuffer.compressor.knee.setValueAtTime(knee, now);
-  }, [microphoneBuffer.compressor, compressorAmount, audioContext]);
+
+    if (microphoneBuffer.compressorMakeup) {
+      // A constant, not a curve off the amount. Textbook auto-makeup here is
+      // |threshold| x (1 - 1/ratio), which at the default amount is +22.6 dB;
+      // half of that is +11.3 dB. Measured through this exact chain on speech
+      // at -20 dBFS, +6 dB already clips and +11.3 dB clips badly. +3 dB is
+      // audible (+3 dB RMS over the compressor alone) and leaves the peak at
+      // -1.5 dB, so there is still headroom for somebody louder than the
+      // signal it was measured on. GRYT-511.
+      //
+      // Zero at amount 0, because there the ratio is exactly 1 and the
+      // compressor is by construction doing nothing — making that case louder
+      // would be a volume control wearing a compressor's name.
+      const makeupDb = compressorAmount > 0 ? COMPRESSOR_MAKEUP_DB : 0;
+      microphoneBuffer.compressorMakeup.gain.setValueAtTime(
+        Math.pow(10, makeupDb / 20),
+        now,
+      );
+    }
+  }, [
+    microphoneBuffer.compressor,
+    microphoneBuffer.compressorMakeup,
+    compressorAmount,
+    audioContext,
+  ]);
 
   useEffect(() => {
     voiceLog.step("LOOPBACK", 3, "Loopback effect running", {
