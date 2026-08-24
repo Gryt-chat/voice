@@ -601,6 +601,10 @@ function useSfuHook(): SFUInterface {
       state: SFUConnectionState.RECONNECTING,
     }));
 
+    // Left over from a failure that fired again before this one's turn came
+    // round, and from StrictMode running the effect twice on mount.
+    if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+
     reconnectTimerRef.current = setTimeout(() => {
       reconnectTimerRef.current = null;
       connectRef.current(channelId).catch((error) => {
@@ -608,13 +612,38 @@ function useSfuHook(): SFUInterface {
       });
     }, delayMs);
 
+    // No cleanup, deliberately, and it is the whole point of this effect.
+    //
+    // There used to be one that cleared the timer, and it meant the retry never
+    // ran even once. The effect depends on `connectionState.state` and then
+    // sets that state itself, two lines above: FAILED → RECONNECTING re-runs
+    // the effect, React runs the previous cleanup first, and the timer just
+    // scheduled is cancelled about a millisecond into its 1500ms wait. The
+    // second run then sees RECONNECTING and returns at the top, so nothing
+    // reschedules. What that looked like from outside: the log said
+    // "auto-reconnecting (attempt 1/5) in 1500ms" and no connect ever followed,
+    // voice sat in RECONNECTING for good, and the only thing that ever brought
+    // it back was the signalling socket happening to reconnect and running the
+    // separate recovery path above. Meanwhile the SFU had already dropped the
+    // peer and told the server, so the channel showed you gone to everybody
+    // else while your own client still showed you in it and refused to join
+    // anywhere new.
+    //
+    // The timer is cleared where clearing it is actually meant: connect(),
+    // disconnect(), the signalling-reconnect handler, and the unmount effect
+    // below.
+  }, [connectionState.state, connectionState.serverId]);
+
+  // Unmount only. Deps are empty on purpose — see the effect above for why this
+  // cannot be that effect's cleanup.
+  useEffect(() => {
     return () => {
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
     };
-  }, [connectionState.state, connectionState.serverId]);
+  }, []);
 
   // Monitor processedStream changes and update WebRTC tracks
   useEffect(() => {
