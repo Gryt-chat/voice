@@ -468,6 +468,17 @@ export interface ConnectParams {
       mediaStream?: MediaStream;
     }>;
     activeSfuUrlRef: MutableRefObject<string | null>;
+    /**
+     * The stream id this connection announced to the signalling server.
+     *
+     * Held rather than re-read off the microphone because the pipeline is
+     * rebuilt whenever auto gain, the compressor or noise suppression is
+     * toggled, and `replaceTrack` leaves the sender publishing under the
+     * stream id it was created with. Everyone else maps audio to a person by
+     * that id, so re-announcing the current one would point them at a stream
+     * the SFU is not forwarding.
+     */
+    announcedStreamIdRef: MutableRefObject<string | null>;
   };
   connectionState: SFUConnectionStateInternal;
   isConnected: boolean;
@@ -1047,6 +1058,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
         streamId: localStream.id,
       },
     );
+    refs.announcedStreamIdRef.current = localStream.id;
     room.setLocalStream(localStream.id);
     await new Promise((resolve) => setTimeout(resolve, 10));
     room.announceJoined(true);
