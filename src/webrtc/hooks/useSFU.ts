@@ -12,6 +12,18 @@ import { SFUConnectionStateInternal } from "./sfuTypes";
 import { useSFUStreams } from "./useSFUStreams";
 import { type Phase, voiceLog } from "./voiceLogger";
 
+/**
+ * How long to wait between re-announce attempts, and how many to make.
+ *
+ * A server that has just come back is the case this exists for, and it comes
+ * back in pieces: the socket accepts connections before its own link to the SFU
+ * is up, and a room request in that window is refused with "voice service
+ * temporarily unavailable". Answering that by hanging up would drop a call that
+ * is still working perfectly over a service that is seconds away from being
+ * ready.
+ */
+const REANNOUNCE_BACKOFF_MS = [0, 2000, 5000];
+
 function useSfuHook(): SFUInterface {
   // Core WebRTC references
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -32,6 +44,7 @@ function useSfuHook(): SFUInterface {
     error: null,
   });
   const activeSfuUrlRef = useRef<string | null>(null);
+  const announcedStreamIdRef = useRef<string | null>(null);
 
   const [streams, setStreams] = useState<Streams>({});
   const [streamSources, setStreamSources] = useState<StreamSources>({});
@@ -109,6 +122,7 @@ function useSfuHook(): SFUInterface {
     peerConnectionRef, sfuWebSocketRef, registeredTracksRef,
     reconnectAttemptRef, connectionTimeoutRef,
     isDisconnectingRef, isConnectingRef, previousRemoteStreamsRef,
+    announcedStreamIdRef,
   }), []);
 
   const performCleanup = useCallback(async (skipServerUpdate = false) => {
@@ -219,7 +233,7 @@ function useSfuHook(): SFUInterface {
       refs: {
         isConnectingRef, isDisconnectingRef, peerConnectionRef,
         sfuWebSocketRef, registeredTracksRef, connectionTimeoutRef,
-        microphoneBufferRef, activeSfuUrlRef,
+        microphoneBufferRef, activeSfuUrlRef, announcedStreamIdRef,
       },
       connectionState,
       isConnected,
@@ -458,13 +472,68 @@ function useSfuHook(): SFUInterface {
 
   // Reconnect voice after the signaling server reconnects. When only the
   // Socket.IO transport dropped (e.g. Cloudflare Tunnel reset) but the SFU
-  // WebSocket + WebRTC peer connection are still alive, we skip the full SFU
-  // teardown and let the server's grace-period restore voice state. If the SFU
-  // connection also died, we fall back to a full reconnect with a short delay.
+  // WebSocket + WebRTC peer connection are still alive, we keep the media
+  // plane and re-announce ourselves on the new socket. If the SFU connection
+  // also died, we fall back to a full reconnect with a short delay.
   const connectRef = useRef(connect);
   useEffect(() => { connectRef.current = connect; }, [connect]);
   const disconnectRef = useRef(disconnect);
   useEffect(() => { disconnectRef.current = disconnect; }, [disconnect]);
+
+  /**
+   * Tell a freshly reconnected signalling server that we are still in here.
+   *
+   * The same three calls the connect flow makes at step 8, in the same order,
+   * against a live media plane instead of one it just built. `requestAccess`
+   * is not for the SFU URLs it returns — we already have a connection to the
+   * SFU — it is because `voice:room:request` is what sets the channel id on
+   * the server's record of this socket, and `voice:channel:joined` puts nobody
+   * anywhere without it.
+   *
+   * Returns whether the server took it. A caller that gets false should fall
+   * back to a full reconnect rather than leave things as they are: at that
+   * point the media plane is up and the server still does not know we are in
+   * the channel, which is exactly the state this is here to end.
+   */
+  const reannouncePresence = useCallback(async (channelId: string): Promise<boolean> => {
+    if (!room) return false;
+
+    const streamId = announcedStreamIdRef.current;
+    if (!streamId) {
+      // Nothing was ever announced, so there is no presence to restore. The
+      // connection did not come through the connect flow, which should not
+      // happen — say so rather than announcing a stream id we guessed.
+      console.warn("[Voice Recovery] No announced stream id — cannot re-announce presence");
+      return false;
+    }
+
+    for (const delay of REANNOUNCE_BACKOFF_MS) {
+      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+      if (intentionalDisconnectRef.current) return false;
+
+      const access = await room.requestAccess(channelId);
+      if (access.granted) {
+        room.setLocalStream(streamId);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        room.announceJoined(true);
+        console.info("[Voice Recovery] Presence re-announced for channel:", channelId);
+        return true;
+      }
+
+      const reason = access.reason ?? "no reason given";
+
+      // Permission gone is a decision rather than a hiccup, and asking again
+      // will get the same answer three times.
+      if (reason === "forbidden") {
+        console.warn("[Voice Recovery] Re-announce refused — no longer permitted here");
+        return false;
+      }
+
+      console.warn("[Voice Recovery] Re-announce refused, will retry:", reason);
+    }
+
+    return false;
+  }, [room]);
 
   useEffect(() => {
     const handleServerReconnected = () => {
@@ -502,12 +571,49 @@ function useSfuHook(): SFUInterface {
         cs.state === SFUConnectionState.CONNECTED &&
         cs.serverId === host
       ) {
-        // SFU is still connected — the server's grace-period will restore
-        // voice state during session restoration, so no teardown needed.
+        // Media is still flowing, so there is nothing to rebuild. What is gone
+        // is the signalling server's record of us being in the channel: it is
+        // keyed by socket, and this is a different socket.
+        //
+        // The server restores that itself when the drop was brief — it stashes
+        // voice state for a grace period and hands it back on session restore.
+        // That covers a transport reset and nothing else. The stash is in the
+        // server process's memory, so a restart or a redeploy loses it, and a
+        // drop longer than the grace window has already expired it.
+        //
+        // Both look identical from here, and both end with somebody who can
+        // hear the channel, is still publishing to the SFU, and appears to
+        // everyone — including themselves — to have left. Nothing recovers
+        // from that on its own: the client believes it is connected, so it
+        // never reconnects, and the server never hears otherwise.
+        //
+        // So we re-announce rather than assume. Re-announcing over a state the
+        // server did restore is a no-op — `voice:stream:set` and
+        // `voice:channel:joined` both return early when the value has not
+        // changed — and it is the ordinary join announcement, so permissions,
+        // seat limits and bans are all re-checked on the way through.
         console.info(
-          "[Voice Recovery] Server reconnected — SFU still alive, skipping teardown (channel:",
+          "[Voice Recovery] Server reconnected — SFU still alive, re-announcing presence (channel:",
           channelId, ")",
         );
+        reannouncePresence(channelId).then((announced) => {
+          if (announced || intentionalDisconnectRef.current) return;
+          // The media plane is fine and the server still has no record of us.
+          // Rebuild the lot: it is the same thing the branch below does when
+          // the SFU has gone, and it ends either in a working call or in a
+          // visible failure. Silently staying is the one outcome to avoid.
+          console.warn("[Voice Recovery] Re-announce did not take — falling back to a full reconnect");
+          disconnectRef.current()
+            .then(() => {
+              intentionalDisconnectRef.current = false;
+              return connectRef.current(channelId);
+            })
+            .catch((error) => {
+              console.error("[Voice Recovery] Fallback reconnect failed:", error);
+            });
+        }).catch((error) => {
+          console.error("[Voice Recovery] Failed to re-announce presence:", error);
+        });
         return;
       }
 
@@ -543,7 +649,7 @@ function useSfuHook(): SFUInterface {
     // and a DOM event is not something React Native can raise.
     if (!room) return;
     return room.onReconnected(handleServerReconnected);
-  }, [room]);
+  }, [room, reannouncePresence]);
 
   const MAX_RECONNECT_ATTEMPTS = 5;
   const reconnectAttemptsRef = useRef(0);

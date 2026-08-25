@@ -13,6 +13,7 @@ export interface CleanupRefs {
   isDisconnectingRef: MutableRefObject<boolean>;
   isConnectingRef: MutableRefObject<boolean>;
   previousRemoteStreamsRef: MutableRefObject<Set<string>>;
+  announcedStreamIdRef: MutableRefObject<string | null>;
 }
 
 export interface CleanupDeps {
@@ -30,6 +31,7 @@ export async function performSfuCleanup(
     peerConnectionRef, sfuWebSocketRef, registeredTracksRef,
     reconnectAttemptRef, connectionTimeoutRef,
     isDisconnectingRef, isConnectingRef, previousRemoteStreamsRef,
+    announcedStreamIdRef,
   } = refs;
   const { room, setStreamSources, setStreams } = deps;
 
@@ -57,6 +59,7 @@ export async function performSfuCleanup(
   }
 
   previousRemoteStreamsRef.current.clear();
+  announcedStreamIdRef.current = null;
 
   // Step 1: Remove tracks
   const tracksToRemove = [...registeredTracksRef.current];
