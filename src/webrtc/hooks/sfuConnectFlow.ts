@@ -709,6 +709,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       roomId: channelID,
       serverId: targetId,
       error: null,
+      callAloneTimeoutSeconds: null,
     });
 
     // ---- Step 3: Wait for microphone ----
@@ -998,6 +999,11 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       sfu_url: sfuUrl,
       eSportsModeEnabled,
     });
+    // What the SFU said about itself on the way in. Held in a local because the
+    // state write below is a whole object, so setting this from inside
+    // onRoomJoined would be overwritten a few lines later.
+    let callAloneTimeoutSeconds: number | null = null;
+
     let sfuWebSocket: WebSocket;
     try {
       sfuWebSocket = await connectToSfuWebSocket(
@@ -1006,6 +1012,9 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
         sfuConnectionRefs,
         eSportsModeEnabled,
         {
+          onRoomJoined: (info) => {
+            callAloneTimeoutSeconds = info.callAloneTimeoutSeconds;
+          },
           onAbnormalClose: (info) => {
             if (isStale() || isDisconnectingRef.current) return;
 
@@ -1074,6 +1083,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       roomId: channelID,
       serverId: targetId,
       error: null,
+      callAloneTimeoutSeconds,
     });
 
     voiceLog.step(

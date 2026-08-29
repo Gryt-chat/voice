@@ -29,7 +29,8 @@
     "prepublishOnly": "npm run build && npm run check-surface && npm run check-native-entry && npm run check-type-names",
     "check-surface": "node scripts/check-public-surface.mjs",
     "check-native-entry": "node scripts/check-native-entry.mjs",
-    "check-type-names": "node scripts/check-type-names.mjs"
+    "check-type-names": "node scripts/check-type-names.mjs",
+    "check-room-joined": "node scripts/check-room-joined.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",

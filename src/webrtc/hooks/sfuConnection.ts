@@ -35,6 +35,54 @@ interface SFUConnectionOptions {
    * FAILED so the existing auto-reconnect path can run.
    */
   onAbnormalClose?: (info: SFUWebSocketCloseInfo) => void;
+
+  /**
+   * What the SFU said about itself when it let us in. Called once, before the
+   * connect promise resolves.
+   */
+  onRoomJoined?: (info: RoomJoinedInfo) => void;
+}
+
+export interface RoomJoinedInfo {
+  /**
+   * SFU_CALL_ALONE_TIMEOUT on the SFU we reached, in seconds. Zero means it
+   * never ends a call for being one person; null means it did not say.
+   */
+  callAloneTimeoutSeconds: number | null;
+}
+
+/**
+ * What room_joined carries, for SFUs that carry anything.
+ *
+ * The event used to be the sentence "Successfully joined room" and nothing
+ * else. An SFU new enough to answer GRYT-715 sends JSON in the same field, so
+ * this parses and falls back rather than switching on a version: an older SFU
+ * gives back nulls and the caller keeps whatever default it had.
+ */
+export function parseRoomJoined(data: unknown): RoomJoinedInfo {
+  const nothing: RoomJoinedInfo = { callAloneTimeoutSeconds: null };
+  if (typeof data !== "string") return nothing;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    return nothing;
+  }
+
+  if (typeof parsed !== "object" || parsed === null) return nothing;
+
+  const seconds = (parsed as Record<string, unknown>)
+    .call_alone_timeout_seconds;
+
+  // A negative number is not a shorter timeout, it is an SFU we do not
+  // understand. Same for a string, which is what a hand-rolled proxy in the
+  // middle would most likely produce.
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
+    return nothing;
+  }
+
+  return { callAloneTimeoutSeconds: Math.floor(seconds) };
 }
 
 export async function connectToSfuWebSocket(
@@ -363,7 +411,9 @@ export async function connectToSfuWebSocket(
 
         switch (message.event) {
           case "room_joined": {
-            voiceLog.ok("SFU-WS", "7c", "SFU confirmed room_joined");
+            const joined = parseRoomJoined(message.data);
+            voiceLog.ok("SFU-WS", "7c", "SFU confirmed room_joined", joined);
+            options.onRoomJoined?.(joined);
 
             if (!isResolved) {
               clearTimeout(timeout);
