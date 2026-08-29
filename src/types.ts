@@ -130,7 +130,8 @@ export type SfuOutbound =
   | { event: "answer"; data: string }
   | { event: "candidate"; data: string }
   | { event: "renegotiate"; data: string }
-  | { event: "keep_alive"; data: string };
+  | { event: "keep_alive"; data: string }
+  | { event: "still_here"; data: string };
 
 export type SfuInbound =
   | { event: "room_joined"; data: string }

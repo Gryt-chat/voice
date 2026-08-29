@@ -42,6 +42,7 @@ function useSfuHook(): SFUInterface {
     roomId: null,
     serverId: null,
     error: null,
+    callAloneTimeoutSeconds: null,
   });
   const activeSfuUrlRef = useRef<string | null>(null);
   const announcedStreamIdRef = useRef<string | null>(null);
@@ -272,6 +273,7 @@ function useSfuHook(): SFUInterface {
       roomId: null,
       serverId: null,
       error: null,
+      callAloneTimeoutSeconds: null,
     });
 
     if (onDisconnect) {
@@ -283,6 +285,27 @@ function useSfuHook(): SFUInterface {
       setStreamSources({});
     });
   }, [performCleanup]);
+
+  /**
+   * Tell the SFU somebody is still in this call, so it restarts its clock.
+   *
+   * The SFU ends a call one person has been alone in (GRYT-711), and this is
+   * what a "stay in the call" button sends. The engine only sends it; who gets
+   * offered the button, and when, is the client's decision.
+   *
+   * Silent against an SFU that does not know the event — it logs the unknown
+   * event and carries on, so there is nothing to fall back to and nothing for a
+   * caller to handle.
+   */
+  const stillHere = useCallback(() => {
+    const ws = sfuWebSocketRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    try {
+      ws.send(JSON.stringify({ event: "still_here", data: "" }));
+    } catch {
+      /* ws may have closed between check and send */
+    }
+  }, []);
 
   const sendRenegotiate = useCallback(() => {
     const ws = sfuWebSocketRef.current;
@@ -691,6 +714,7 @@ function useSfuHook(): SFUInterface {
         roomId: null,
         serverId: null,
         error: "reconnect-failed",
+        callAloneTimeoutSeconds: null,
       });
       reconnectAttemptsRef.current = 0;
       return;
@@ -822,6 +846,8 @@ function useSfuHook(): SFUInterface {
     getScreenVideoSender: () => screenVideoSenderRef.current,
     getCameraSenderTrackId: () => videoSenderRef.current?.track?.id ?? null,
     activeSfuUrl: activeSfuUrlRef.current,
+    callAloneTimeoutSeconds: connectionState.callAloneTimeoutSeconds,
+    stillHere,
   };
 }
 
@@ -846,6 +872,8 @@ const init: SFUInterface = {
   isConnecting: false,
   activeSfuUrl: null,
   getScreenVideoSender: () => null,
+  callAloneTimeoutSeconds: null,
+  stillHere: () => {},
 };
 
 const SFUHook = singletonHook(init, useSfuHook);

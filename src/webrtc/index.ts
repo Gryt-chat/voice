@@ -2,7 +2,8 @@
 // the web adapter; the call UI belongs to the embedder.
 export { performSfuCleanup, performUnmountCleanup } from "./hooks/sfuCleanup";
 export type { CleanupRefs } from "./hooks/sfuCleanup";
-export { connectToSfuWebSocket } from "./hooks/sfuConnection";
+export { connectToSfuWebSocket, parseRoomJoined } from "./hooks/sfuConnection";
+export type { RoomJoinedInfo } from "./hooks/sfuConnection";
 export { sfuConnect } from "./hooks/sfuConnectFlow";
 export {
   getCachedSfuUrl,

@@ -5,6 +5,12 @@ export interface SFUConnectionStateInternal {
   roomId: string | null;
   serverId: string | null;
   error: string | null;
+  /**
+   * How long this SFU lets one person sit alone in a call before it ends it,
+   * in seconds. Zero means it does not. Null means the SFU did not say — an
+   * older one, which sent a sentence where this number now is.
+   */
+  callAloneTimeoutSeconds: number | null;
 }
 
 export interface RoomAccessData {

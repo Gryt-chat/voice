@@ -49,3 +49,10 @@ jobs:
 
       - name: Check no exported name is declared twice
         run: npm run check-type-names
+
+      # The one piece of parsing in the package that a wrong answer is silent
+      # in: an SFU saying 0 and a client hearing "did not say" both look like a
+      # working connection, and the difference only shows up two minutes into a
+      # call somebody is alone in.
+      - name: Check what room_joined is parsed into
+        run: npm run check-room-joined
