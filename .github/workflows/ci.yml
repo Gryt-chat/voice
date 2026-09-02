@@ -56,3 +56,10 @@ jobs:
       # call somebody is alone in.
       - name: Check what room_joined is parsed into
         run: npm run check-room-joined
+
+      # Whether a run of face detections is allowed to move everybody's crop.
+      # Getting this wrong is quiet in the same way: one detection that found a
+      # face in a bookshelf used to be enough, and the person it happened to
+      # cannot see their own tile the way anybody else does.
+      - name: Check how face detections are combined
+        run: npm run check-face-framing
