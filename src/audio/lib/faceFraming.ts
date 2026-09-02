@@ -10,11 +10,50 @@ export type Framing = { x: number; y: number };
 
 export const CENTRED: Framing = { x: 0.5, y: 0.5 };
 
-/** Inference happens on a frame this wide. BlazeFace does not need more. */
-const SAMPLE_WIDTH = 192;
+/**
+ * Inference happens on a frame this wide.
+ *
+ * Was 192, which is thin for somebody at a desk: at 16:9 that is 192x108, so a
+ * face at normal sitting distance is about 30 pixels across, and BlazeFace
+ * short range is built for selfie distance where the face fills the frame.
+ * 320 costs a little more per sample and gives the model something to work
+ * with at the distance people actually sit.
+ */
+const SAMPLE_WIDTH = 320;
 
 /** Below this, the detection is not trusted enough to move anyone's crop. */
-const MIN_CONFIDENCE = 0.5;
+export const MIN_CONFIDENCE = 0.5;
+
+/**
+ * How long to keep looking, and how often.
+ *
+ * One frame was the old behaviour and the reason this feature picked the wrong
+ * spot: it sampled immediately after play(), before auto exposure and focus had
+ * settled, and nothing existed to disagree with a bad result. See GRYT-852.
+ *
+ * Two seconds is long enough to ride out a blink, a turn of the head or a
+ * camera still adjusting, and short enough that the button does not feel
+ * broken. The button disables itself while this runs.
+ */
+const SAMPLE_COUNT = 10;
+const SAMPLE_INTERVAL_MS = 180;
+
+/**
+ * Frames thrown away before sampling starts.
+ *
+ * Cameras open dark and adjust over the first few hundred milliseconds. The old
+ * code looked at exactly the frame this skips.
+ */
+const WARMUP_MS = 300;
+
+/**
+ * How many samples have to find a face before the crop is allowed to move.
+ *
+ * The point is that one detection scraping past MIN_CONFIDENCE is not enough.
+ * Three agreeing is not a strong claim, but it is a claim rather than a guess,
+ * and the cost of being wrong is everybody watching a badly cropped tile.
+ */
+export const MIN_SAMPLES = 3;
 
 type Detector = {
   detect: (source: HTMLCanvasElement) => {
@@ -66,16 +105,110 @@ async function getDetector(): Promise<Detector | null> {
   return detectorPromise;
 }
 
+/** One frame's answer: where the largest face was, and how sure the model was. */
+export type FramingSample = Framing & { score: number };
+
 /**
- * Finds the largest face in one frame of a camera stream.
+ * Turns a run of samples into one framing, or refuses to answer.
  *
- * Runs on the sender, once, when asked. Continuous tracking was the obvious
- * design and the wrong one: a tile that follows your head in real time is
- * distracting to watch, and it spends CPU on a machine already encoding video
- * to correct something that only really changes when you move your chair.
+ * Split out from the camera work on purpose. This is the part most likely to be
+ * wrong and the only part that can be checked without a webcam and a 12 MB
+ * model, so `check-face-framing.mjs` drives it directly.
  *
- * Returns null when there is no camera, no model, or no face — every caller
- * treats that as "leave the framing alone".
+ * The median rather than the mean, per axis. A mean lets one frame that found a
+ * face in a bookshelf drag the result halfway across the picture; a median
+ * ignores it entirely as long as most frames agree. That is the whole reason
+ * this samples more than once.
+ *
+ * Axes are taken independently. They could disagree in principle, but a
+ * detection wrong enough for that is already excluded by the count below.
+ */
+export function combineSamples(samples: readonly FramingSample[]): Framing | null {
+  const usable = samples.filter(
+    (s) =>
+      s.score >= MIN_CONFIDENCE &&
+      Number.isFinite(s.x) &&
+      Number.isFinite(s.y) &&
+      s.x >= 0 &&
+      s.x <= 1 &&
+      s.y >= 0 &&
+      s.y <= 1,
+  );
+
+  // Not enough to be a claim. The caller leaves the framing where it was
+  // rather than snapping to centre, so a failed detection costs nothing.
+  if (usable.length < MIN_SAMPLES) return null;
+
+  return { x: median(usable.map((s) => s.x)), y: median(usable.map((s) => s.y)) };
+}
+
+/** Even counts average the middle pair, which is the ordinary definition. */
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/** Waits, without holding a timer anybody has to clean up. */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+/**
+ * One frame, and the largest face in it.
+ *
+ * The largest face wins. With two people at one camera, following the nearer
+ * one is at least a rule rather than a coin toss.
+ */
+function sampleOnce(
+  detector: Detector,
+  video: HTMLVideoElement,
+  canvas: HTMLCanvasElement,
+  ctx: CanvasRenderingContext2D,
+): FramingSample | null {
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  let best: FramingSample | null = null;
+  let bestArea = 0;
+
+  for (const d of detector.detect(canvas).detections) {
+    const box = d.boundingBox;
+    const score = d.categories?.[0]?.score ?? 1;
+    if (!box || score < MIN_CONFIDENCE) continue;
+
+    const area = box.width * box.height;
+    if (!best || area > bestArea) {
+      bestArea = area;
+      best = {
+        score,
+        x: (box.originX + box.width / 2) / canvas.width,
+        y: (box.originY + box.height / 2) / canvas.height,
+      };
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Finds where the face is, by watching for a couple of seconds.
+ *
+ * Runs on the sender, when asked, and then stops. Continuous tracking was the
+ * obvious design and the wrong one: a tile that follows your head in real time
+ * is distracting to watch, and it spends CPU on a machine already encoding
+ * video to correct something that only really changes when you move your chair.
+ *
+ * It used to look at exactly one frame, taken the instant the element started
+ * playing. That is the frame a camera is least able to give you — still
+ * adjusting exposure, often still focusing — and there was nothing to disagree
+ * with whatever it found. A single detection scraping past MIN_CONFIDENCE moved
+ * the crop for everybody watching. That is GRYT-852, and this is the fix:
+ * discard the warm-up, take SAMPLE_COUNT looks across about two seconds, and
+ * let `combineSamples` decide whether they agree.
+ *
+ * Returns null when there is no camera, no model, or not enough agreement —
+ * every caller treats that as "leave the framing alone", which is why a failed
+ * detection costs nothing rather than snapping back to centre.
  */
 export async function detectFraming(
   stream: MediaStream | null | undefined,
@@ -111,29 +244,23 @@ export async function detectFraming(
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    let best: { framing: Framing; area: number } | null = null;
-    for (const d of detector.detect(canvas).detections) {
-      const box = d.boundingBox;
-      const score = d.categories?.[0]?.score ?? 1;
-      if (!box || score < MIN_CONFIDENCE) continue;
+    // Let the camera settle before believing anything it shows.
+    await delay(WARMUP_MS);
 
-      const area = box.width * box.height;
-      // The largest face wins. With two people at one camera, following the
-      // nearer one is at least a rule rather than a coin toss.
-      if (!best || area > best.area) {
-        best = {
-          area,
-          framing: {
-            x: (box.originX + box.width / 2) / canvas.width,
-            y: (box.originY + box.height / 2) / canvas.height,
-          },
-        };
-      }
+    const samples: FramingSample[] = [];
+    for (let i = 0; i < SAMPLE_COUNT; i += 1) {
+      if (i > 0) await delay(SAMPLE_INTERVAL_MS);
+      // The camera can be turned off while this is running, and drawing from a
+      // dead track produces a frame of nothing that the model is happy to find
+      // faces in.
+      if (track.readyState === "ended" || !video.videoWidth) break;
+
+      const sample = sampleOnce(detector, video, canvas, ctx);
+      if (sample) samples.push(sample);
     }
 
-    return best?.framing ?? null;
+    return combineSamples(samples);
   } catch {
     return null;
   } finally {
