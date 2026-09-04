@@ -1,25 +1,10 @@
-/**
- * The three things this package cannot know for itself.
- *
- * Everything else in here — signalling, ICE, track management, the connection
- * state machine — is the same wherever it runs. These are the seams where it
- * has to ask the thing embedding it.
- *
- * Without them the engine would reach for a settings store, a socket and an
- * Electron bridge directly, and be a package that only works inside Gryt's
- * desktop client.
- */
+/* The three seams where the engine has to ask whatever embeds it. Everything
+   else — signalling, ICE, tracks, connection state — is the same anywhere. */
 
 // ── 1. Config ────────────────────────────────────────────────────────────────
 
-/**
- * Capture resolutions.
- *
- * The client declares this list twice, as `CameraQuality` and
- * `ScreenShareQuality`, with identical members. They are one type here because
- * two copies that must stay equal is how they eventually stop being equal.
- * Both names are still exported from the hooks that used to own them.
- */
+/* One type, not two. The client's `CameraQuality` and `ScreenShareQuality` had
+   identical members, and two lists that must stay equal stop being equal. */
 export type CaptureQuality =
   | "native" | "4k" | "1440p" | "1080p" | "720p" | "480p" | "360p" | "240p"
   | "144p" | "96p" | "64p" | "48p" | "32p" | "24p" | "16p" | "8p" | "4p";
@@ -29,13 +14,8 @@ export type CameraFps = 5 | 10 | 15 | 24 | 30 | 60;
 /** Higher than the camera's, because a screen share of a game wants them. */
 export type ScreenShareFps = 30 | 60 | 90 | 120 | 144 | 165 | 240;
 
-/**
- * What the person has chosen. Passed in, never read from a store.
- *
- * The client holds these in `useSettings` today and will keep doing so; it
- * hands the relevant subset down rather than the package reaching up for it.
- * That is also what makes the values testable without a React tree.
- */
+/* Passed in, never read from a store. That is what makes it testable without a
+   React tree. */
 export interface VoiceConfig {
   audio: {
     /** Empty means "whatever the platform hands back". */
@@ -47,15 +27,9 @@ export interface VoiceConfig {
     serverDeafened: boolean;
     /** Playback gain for everyone else, 0–1. */
     outputVolume: number;
-    /**
-     * Underscores, matching what `microphonePipeline` compares against.
-     *
-     * Worth checking in whatever fills this in. An embedder whose own settings
-     * type this as a plain string can hand over "push-to-talk", compile on both
-     * sides, and only meet this at runtime — where `inputMode !== "push_to_talk"`
-     * is always true and push-to-talk never engages. That is how it shipped
-     * wrong once (GRYT-340).
-     */
+    /* Underscores. An embedder typing this as a plain string can pass
+       "push-to-talk", compile on both sides, and have push-to-talk silently
+       never engage. That shipped once (GRYT-340). */
     inputMode: "voice_activity" | "push_to_talk";
     /** How loud the captured signal is sent, 0–1. */
     volume: number;
@@ -92,15 +66,8 @@ export interface VoiceConfig {
   };
 
   connection: {
-    /**
-     * STUN servers to gather candidates against.
-     *
-     * The client derives these from whichever server is on screen, through
-     * `serverDetailsList[host].stun_hosts`. The engine is not told which server
-     * that is — knowing about a server list, and which of it is being looked
-     * at, is the one thing the engine is deliberately kept out of — so it gets
-     * the answer rather than the lookup.
-     */
+    /* Given, not looked up. The engine is deliberately not told which server
+       is on screen, so it cannot do the lookup itself. */
     stunHosts: string[];
     /** Lower latency, fewer niceties. */
     eSportsMode: boolean;
@@ -110,13 +77,8 @@ export interface VoiceConfig {
 
 // ── 2. Transport ─────────────────────────────────────────────────────────────
 
-/**
- * Signalling with the SFU.
- *
- * This half is generic WebRTC: offer, answer, candidate, and a keep-alive. The
- * package owns the meaning of these messages and the caller owns the socket, so
- * a different embedder can carry them over anything it likes.
- */
+/* Generic WebRTC: offer, answer, candidate, keep-alive. The package owns the
+   messages, the caller owns the socket. */
 export interface SfuTransport {
   send(message: SfuOutbound): void;
   onMessage(handler: (message: SfuInbound) => void): () => void;
@@ -139,77 +101,38 @@ export type SfuInbound =
   | { event: "answer"; data: string }
   | { event: "candidate"; data: string };
 
-/**
- * Room orchestration, which is not generic.
- *
- * Asking permission to join, and telling the server what is being published,
- * are Gryt's rules rather than WebRTC's — the server decides who may enter a
- * channel and what the capacity is. So the package asks, and something else
- * answers. An embedder that is not Gryt supplies its own.
- *
- * The Gryt client satisfies this with the `voice:*` events on its socket.
- */
+/* Gryt's rules rather than WebRTC's: who may enter a channel, and capacity.
+   The package asks; something else answers. */
 export interface RoomCoordinator {
   requestAccess(channelId: string): Promise<RoomAccess>;
   /** Mirrors `voice:room:leave`, which carries nothing. */
   leave(): void;
   /** Mirrors `voice:channel:joined`. False on the way out. */
   announceJoined(joined: boolean): void;
-  /**
-   * Mirrors `voice:stream:set`. Null clears it.
-   *
-   * A stream id, not a description of what is being published — the server
-   * matches the id against what arrives at the SFU, and does not care whether
-   * it is a camera or a screen.
-   */
+  /* A stream id, not a description of what is published. The server matches
+     the id and does not care whether it is a camera or a screen. Null clears. */
   setLocalStream(streamId: string | null): void;
-  /**
-   * Mirrors `voice:peer:connected` / `voice:peer:disconnected`.
-   *
-   * The engine is the only thing that can see a remote stream appear or go
-   * away, so it says so. What the server does about it is not its business.
-   */
+  /* Mirrors `voice:peer:connected` / `voice:peer:disconnected`. */
   peerChanged(streamId: string, present: boolean): void;
 
-  /**
-   * Whether signalling to this target is up right now.
-   *
-   * The reconnect policy needs it: retrying the SFU while the signalling
-   * connection is down burns attempts against something that cannot answer.
-   * The client reads its socket; another embedder reads whatever it has.
-   */
+  /* The reconnect policy needs this: retrying the SFU while signalling is down
+     burns attempts against something that cannot answer. */
   readonly connected: boolean;
 
-  /**
-   * Fires when signalling comes back after being down.
-   *
-   * Replaces a `server_socket_reconnected` window event with a `host` in its
-   * detail — a DOM event the package had no business listening for, and which
-   * React Native does not have.
-   */
+  /* Fires when signalling comes back. A callback rather than a window event,
+     which React Native does not have. */
   onReconnected(handler: () => void): () => void;
 }
 
 export interface RoomAccess {
   granted: boolean;
   roomId?: string;
-  /**
-   * Where the SFU is, as candidates rather than an answer.
-   *
-   * The server returns these when it grants access, and the engine probes them
-   * and picks — that is what `selectBestSfuUrl` is for, and it has been in this
-   * package since voice#3. Handing over a single chosen URL instead would
-   * either throw that away or move it into every embedder.
-   */
+  /* Candidates, not an answer. `selectBestSfuUrl` probes and picks; handing
+     over one chosen URL would move that into every embedder. */
   sfuUrls?: string[];
   /** Opaque; the engine forwards it to the SFU and does not read it. */
   joinToken?: unknown;
-  /**
-   * What to key the chosen-URL cache on, so a reconnect skips the probing.
-   *
-   * Opaque to the engine. The Gryt client passes the server's host, which is
-   * exactly the sort of thing the engine is not supposed to know it is.
-   */
+  /* Opaque to the engine. The Gryt client passes the server's host. */
   cacheKey?: string;
   /** Populated when refused, so the caller can say why rather than "failed". */
   reason?: string;
@@ -218,65 +141,33 @@ export interface RoomAccess {
 
 // ── 3. Platform ──────────────────────────────────────────────────────────────
 
-/**
- * Capture, playback and peer construction, which differ per platform.
- *
- * The web implementation is getUserMedia and the AudioContext graph. A native
- * one is `react-native-webrtc` plus `react-native-audio-api`.
- *
- * Deliberately narrow: everything that is not capture or playback is shared, so
- * anything added here should be re-examined first.
- */
+/* Capture, playback and peer construction. Deliberately narrow — everything
+   that is not one of those is shared, so additions here want a second look. */
 export interface VoicePlatform {
   /** For logs and for the one or two places behaviour genuinely differs. */
   readonly name: string;
 
   createPeerConnection(config: RTCConfiguration): RTCPeerConnection;
 
-  /**
-   * One attempt at the named device, or at whatever the platform considers
-   * default when the id is undefined.
-   *
-   * Deliberately one attempt. Falling back to the default device when the
-   * stored one has gone away is the engine's decision, not the platform's, and
-   * it makes that decision by calling this a second time with no id.
-   */
+  /* One attempt, deliberately. Falling back to the default when the stored
+     device has gone is the engine's decision, made by calling this again with
+     no id. */
   getMicrophone(deviceId?: string): Promise<MediaStream>;
   getCamera(constraints: CameraConstraints): Promise<MediaStream>;
   /** Undefined where the platform has no such concept, which is phones. */
   getScreen?(constraints: ScreenConstraints): Promise<MediaStream>;
 
-  /**
-   * Noise suppression, where the platform does it in the audio graph.
-   *
-   * Undefined on React Native, and not because a phone cannot denoise — it
-   * already has, in libwebrtc, before the engine sees the stream. It is a seam
-   * because of where the web implementation lives rather than what it does:
-   * `RNNoiseProcessor` builds its worker with `new Worker(new
-   * URL("./rnnoiseWorker.js", import.meta.url))`, and Metro treats that as a
-   * dependency and follows it into a package `@gryt/voice` does not ship.
-   *
-   * That one construct is the only bundler-visible reference to web-only code
-   * in the package — every other worklet is registered from a blob URL built
-   * at runtime, which no bundler can see. So moving this one call site behind
-   * the seam is what lets a React Native app import the engine's hooks at all.
-   */
+  /* Undefined on React Native — the phone has already denoised in libwebrtc.
+     It is a seam because `RNNoiseProcessor` builds its worker with
+     `new Worker(new URL(...))`, which Metro follows into a package this one
+     does not ship. It is the only bundler-visible web-only reference here, so
+     moving it behind the seam is what lets React Native import the hooks. */
   createNoiseSuppressor?(): NoiseSuppressor;
 
-  /**
-   * The audio graph, where the platform can build one outside React.
-   *
-   * Undefined means "use the Web Audio pipeline", which is what a browser and
-   * Electron get. It is undefined there rather than a web implementation, and
-   * that is worth explaining: the web graph is not a standalone object. It
-   * hands out the AudioNodes that the client's meters, visualiser, noise gate
-   * and microphone test read directly, and a React effect rebuilds it whenever
-   * a setting changes. Returning an `AudioPipeline` from here would either drop
-   * that surface or grow a second copy of it.
-   *
-   * Native supplies one, and it is nearly empty on purpose — see
-   * `platform/native.ts`.
-   */
+  /* Undefined means the Web Audio pipeline, which browsers and Electron get.
+     The web graph is not standalone — it hands out AudioNodes the client's
+     meters, visualiser and gate read directly — so returning an AudioPipeline
+     here would drop that surface or duplicate it. Native supplies one. */
   createAudioPipeline?(options: AudioPipelineOptions): AudioPipeline;
 }
 
@@ -311,12 +202,8 @@ export interface ScreenConstraints {
  * list should even mean on a phone, where the answer is an audio route.
  */
 
-/**
- * The subset of `RNNoiseProcessor` that `useMicrophone` actually uses.
- *
- * Written as the caller's requirement rather than as the class's shape, so a
- * platform can satisfy it with something that is not RNNoise.
- */
+/* The caller's requirement rather than the class's shape, so a platform can
+   satisfy it with something that is not RNNoise. */
 export interface NoiseSuppressor {
   initialize(audioContext: AudioContext): Promise<void>;
   setEnabled(enabled: boolean): void;
@@ -335,14 +222,8 @@ export interface AudioPipelineOptions {
 }
 
 export interface AudioPipeline {
-  /**
-   * What gets sent.
-   *
-   * A stream rather than a track because that is what every consumer of it
-   * wants: `sfuConnectFlow` reads `processedStream` off the microphone buffer
-   * and hands it to `addTrack`, and the local monitor plays it back. The track
-   * is `output.getAudioTracks()[0]` for anything that needs it.
-   */
+  /* A stream, not a track — that is what consumers want. The track is
+     `output.getAudioTracks()[0]` for anything that needs it. */
   readonly output: MediaStream;
   /** For the speaking indicator. Null where the platform cannot measure it. */
   getLevel(): number | null;
