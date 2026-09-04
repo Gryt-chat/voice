@@ -19,28 +19,12 @@ import type {
   VoicePlatform,
 } from "../types.js";
 
-/**
- * No audio processing constraints, because there is nowhere to send them.
- *
- * The web platform passes `autoGainControl: false`, `echoCancellation: false`
- * and `noiseSuppression: false`, to stop the browser processing a signal the
- * engine's own graph is about to process. The obvious native version is the
- * same three flags set to true — there is no engine graph here, so the platform
- * should do the work instead.
- *
- * It would do nothing. `react-native-webrtc` 124 does not carry those three
- * constraints anywhere: they are absent from its `MediaTrackConstraints` type
- * and from its entire source, JavaScript and native alike. Passing them
- * compiles only if you widen the type yourself, and then they are dropped.
- *
- * The processing is real, it just is not reached from here. It comes from the
- * audio path the native module already sets up — the voice-processing audio
- * unit on iOS, the `VOICE_COMMUNICATION` source on Android — which is on by
- * default and not switchable from JavaScript. So this asks for a microphone
- * and takes what the platform gives it.
- *
- * Unverified on hardware. GRYT-335 is where "does a phone echo" gets an answer.
- */
+/* Not the three `false` flags the web platform passes, and not `true` either:
+   react-native-webrtc 124 carries those constraints nowhere and drops them
+   silently. The processing is real but comes from the native audio path — the
+   voice-processing unit on iOS, VOICE_COMMUNICATION on Android — which is on
+   by default and not switchable from JavaScript. Unverified on hardware
+   (GRYT-335). */
 const MIC_CONSTRAINTS = true as const;
 
 /**
