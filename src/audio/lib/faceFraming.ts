@@ -72,12 +72,7 @@ type Detector = {
 
 let detectorPromise: Promise<Detector | null> | null = null;
 
-/**
- * Loads the model once per session, and only when something asks for it.
- *
- * The import is dynamic so the 12 MB of WASM stays out of the main bundle for
- * everyone who never turns this on.
- */
+/* Loaded lazily and once: the model is large and most sessions never crop. */
 async function getDetector(): Promise<Detector | null> {
   if (detectorPromise) return detectorPromise;
 
@@ -108,21 +103,8 @@ async function getDetector(): Promise<Detector | null> {
 /** One frame's answer: where the largest face was, and how sure the model was. */
 export type FramingSample = Framing & { score: number };
 
-/**
- * Turns a run of samples into one framing, or refuses to answer.
- *
- * Split out from the camera work on purpose. This is the part most likely to be
- * wrong and the only part that can be checked without a webcam and a 12 MB
- * model, so `check-face-framing.mjs` drives it directly.
- *
- * The median rather than the mean, per axis. A mean lets one frame that found a
- * face in a bookshelf drag the result halfway across the picture; a median
- * ignores it entirely as long as most frames agree. That is the whole reason
- * this samples more than once.
- *
- * Axes are taken independently. They could disagree in principle, but a
- * detection wrong enough for that is already excluded by the count below.
- */
+/* Refuses rather than guesses: fewer than MIN_SAMPLES hits, or a spread wider
+   than the face, means the crop is not applied. */
 export function combineSamples(samples: readonly FramingSample[]): Framing | null {
   const usable = samples.filter(
     (s) =>
@@ -190,26 +172,8 @@ function sampleOnce(
   return best;
 }
 
-/**
- * Finds where the face is, by watching for a couple of seconds.
- *
- * Runs on the sender, when asked, and then stops. Continuous tracking was the
- * obvious design and the wrong one: a tile that follows your head in real time
- * is distracting to watch, and it spends CPU on a machine already encoding
- * video to correct something that only really changes when you move your chair.
- *
- * It used to look at exactly one frame, taken the instant the element started
- * playing. That is the frame a camera is least able to give you — still
- * adjusting exposure, often still focusing — and there was nothing to disagree
- * with whatever it found. A single detection scraping past MIN_CONFIDENCE moved
- * the crop for everybody watching. That is GRYT-852, and this is the fix:
- * discard the warm-up, take SAMPLE_COUNT looks across about two seconds, and
- * let `combineSamples` decide whether they agree.
- *
- * Returns null when there is no camera, no model, or not enough agreement —
- * every caller treats that as "leave the framing alone", which is why a failed
- * detection costs nothing rather than snapping back to centre.
- */
+/* Samples over a couple of seconds rather than once — a single frame catches
+   blinks, turns and the moment before autoexposure settles. */
 export async function detectFraming(
   stream: MediaStream | null | undefined,
 ): Promise<Framing | null> {

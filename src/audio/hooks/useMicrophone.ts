@@ -23,19 +23,8 @@ import { useSharedAudioContext } from "./useAudioContext";
 import { useHandles } from "./useHandles";
 import { usePushToTalkGate } from "./usePushToTalkGate";
 
-/**
- * How long the microphone is held open after the last consumer lets go.
- *
- * This exists to survive re-render churn: a consumer can drop and retake its
- * handle within a frame, and reopening the device each time would be slow and
- * would flicker the operating system's in-use indicator.
- *
- * It was 30 seconds, which is far longer than churn needs and long enough to
- * matter: macOS shows an orange dot and a menu bar entry saying Gryt is using
- * the microphone, and it stayed there for half a minute after leaving a call or
- * closing settings. The app was not listening, and there was no way to tell that
- * from the outside.
- */
+/* Held open briefly after the last consumer, so a remount does not drop and
+   re-acquire the device — which some drivers take a visible moment over. */
 const MIC_RELEASE_GRACE_MS = 2_000;
 
 /**
@@ -53,15 +42,8 @@ function classifyMicFailure(error: unknown): MicrophoneUnavailableReason {
   return "failed";
 }
 
-/**
- * Virtual and loopback inputs, by the names they ship under.
- *
- * These are real capture devices as far as the browser is concerned, so they
- * enumerate like any other microphone and can sort first. Picking one by
- * default gives you a device that opens cleanly and carries no sound, which is
- * the failure GRYT-61 is about — on macOS with BlackHole installed it is a
- * common way to end up silent without any hint.
- */
+/* Virtual and loopback inputs by name, because nothing in the API marks them.
+   Picking one as the default captures silence or the user's own output. */
 const VIRTUAL_INPUT_PATTERNS = [
   "blackhole",
   "soundflower",
@@ -94,19 +76,7 @@ function pickDefaultDevice(
   return devices.find((d) => !isVirtualInput(d)) ?? devices[0];
 }
 
-/**
- * Handle ids, which only ever have to be distinct from each other.
- *
- * This was `self.crypto.randomUUID()`, which is two separate things React
- * Native does not have: `self` is a browser and worker global, and Web Crypto
- * is not present without a polyfill. Either one throws, and it throws inside
- * the effect that takes a microphone handle — so voice would have failed at
- * the first attempt to use it, not at import.
- *
- * A counter is also a more honest description of the requirement. Nothing
- * about these ids is secret or guessable-in-a-way-that-matters; they are map
- * keys with a lifetime of one mounted component.
- */
+/* Only ever compared for distinctness within one page. */
 let nextHandleId = 0;
 
 function createHandleId(): string {

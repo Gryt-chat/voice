@@ -1,14 +1,3 @@
-/**
- * Structured voice chat flow logger.
- *
- * Prints numbered, colour-coded steps to the browser console so you can
- * instantly see where the voice-connect / disconnect pipeline stalls or fails.
- *
- * Usage:
- *   voiceLog.step(1, "Requesting microphone access");
- *   voiceLog.ok(1, "Microphone acquired", { deviceId, trackCount });
- *   voiceLog.fail(1, "Microphone denied", error);
- */
 
 const COLORS = {
   step: "color:#6ea8fe;font-weight:bold",   // blue — starting a step

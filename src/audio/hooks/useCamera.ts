@@ -41,30 +41,12 @@ export interface CameraInterface {
   getDevices: () => Promise<void>;
 }
 
-/**
- * The requests to try, hardest first.
- *
- * `width`, `height` and `frameRate` are asked for with `max` as well as
- * `ideal`, and `max` is a *required* constraint — only `ideal` is advisory. So
- * a camera whose modes cannot land at or below the cap fails the whole request
- * with an OverconstrainedError rather than giving back its nearest mode. On a
- * camera that advertises several resolutions this depends on which mode the
- * driver offers, which is why it fails only sometimes (GRYT-16).
- *
- * Rather than dropping the cap outright — it is what makes the quality setting
- * mean anything — the cap is tried first and given up one piece at a time:
- *
- * 1. everything, which is what this always sent
- * 2. no cap, so the camera may hand back a larger mode. `applyConstraints`
- *    below then tries to bring it down, and the sender's encoding cap is the
- *    backstop if it cannot
- * 3. no size or frame rate at all, just the camera that was asked for
- * 4. no camera either, for a stored device that is not there any more
- *
- * Only OverconstrainedError walks down this. Permission denied, no device and
- * a camera held by another app all fail the same way at every rung, so
- * retrying them would just be four identical failures and a slower error.
- */
+/* `max` is a required constraint, not advisory, so a camera whose modes cannot
+   land at or below the cap fails the whole request with OverconstrainedError —
+   and only on some cameras, which is why it failed intermittently (GRYT-16).
+   So the cap is given up a piece at a time: everything, then no cap, then no
+   size or frame rate, then no camera either. Only OverconstrainedError walks
+   the ladder; the other failures fail the same way at every rung. */
 function constraintLadder(
   cameraID: string | undefined,
   quality: { width?: number; height?: number },
@@ -103,15 +85,7 @@ function isOverconstrained(err: unknown): boolean {
   return (err as { name?: string } | null)?.name === "OverconstrainedError";
 }
 
-/**
- * Bring a track down to the cap after the fact, where asking for it up front
- * was refused.
- *
- * Best effort on purpose: this runs only on a rung that already gave us a
- * working camera, so a rejection here means keeping a track that is larger
- * than asked for, which is better than no camera at all. The outbound encoding
- * cap still applies to what actually goes out.
- */
+/* Where asking for the cap up front failed. Best effort. */
 async function tryApplyCap(
   track: MediaStreamTrack,
   quality: { width?: number; height?: number },
