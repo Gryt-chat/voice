@@ -1,21 +1,7 @@
-/**
- * Noise gate as an AudioWorklet.
- *
- * The gate used to run on the main thread: an AnalyserNode polled from
- * requestAnimationFrame, driving a GainNode. requestAnimationFrame stops when
- * the window is hidden, so the old code force-opened the gate whenever
- * `document.hidden` was true — which is why minimising Gryt made recipients
- * hear ungated audio (GRYT-18 / #27).
- *
- * AudioWorkletProcessor.process runs on the real-time audio thread, which is
- * never throttled by window visibility, so the gate keeps working while the
- * app is minimised or another app is fullscreened.
- *
- * Detection is time-domain RMS rather than the old frequency-domain average.
- * The level is mapped through the same decibel range the AnalyserNode used by
- * default, so configured thresholds stay in a similar range — but they are not
- * identical, and users with a finely-tuned gate may want to re-check it.
- */
+/* On the audio thread, not the main one. requestAnimationFrame stops when the
+   window is hidden, so the old main-thread gate force-opened while minimised
+   and recipients heard ungated audio (GRYT-18). Detection is time-domain RMS,
+   mapped through the AnalyserNode's old range but not identical to it. */
 
 export const NOISE_GATE_WORKLET_NAME = "noise-gate-processor";
 

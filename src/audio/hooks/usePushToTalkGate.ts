@@ -4,22 +4,9 @@ import { useCallback, useEffect, useRef } from "react";
 import { useVoiceConfig } from "../../config";
 import type { MicrophoneBufferType } from "../types/Microphone";
 
-/**
- * The half of push-to-talk that belongs to the engine.
- *
- * The client's `usePushToTalk` did two things at once: it listened for a key,
- * and it opened and closed the transmit gain. Only the second is the engine's
- * — the first is a `keydown` handler, an Electron global shortcut and a
- * `blur` listener, none of which a phone has. React Native's push-to-talk is a
- * button held down on a screen.
- *
- * So the trigger stays with the embedder and this owns the gate. The embedder
- * decides *when*, by calling `setActive`; the package decides *what that means*,
- * which is where the mute interaction and the audio-graph timing live.
- *
- * Worth knowing: being muted does not stop the gate tracking. Releasing the key
- * still closes it, so unmuting mid-press does not leave the microphone open.
- */
+/* The embedder owns the trigger — a key, a global shortcut, a button on a
+   phone — and this owns the gate. Being muted does not stop the gate tracking,
+   so unmuting mid-press does not leave the microphone open. */
 export interface PushToTalkGate {
   /** Whether the key or button is currently held. */
   isPttActive: MutableRefObject<boolean>;

@@ -14,18 +14,8 @@ export interface VoiceConfigCallbacks {
    */
   onCameraDeviceChanged?(deviceId: string): void;
 
-  /**
-   * The microphone in use is not the one that was configured.
-   *
-   * Same situation as the camera, and it arrives the same way: the stored
-   * device would not open, so the engine fell back to the platform default and
-   * is saying which one that turned out to be.
-   *
-   * Until this existed the engine wrote `localStorage.setItem("micID", …)`
-   * itself, which was wrong twice over — the engine does not own the setting,
-   * and the key it wrote was not the one the client reads, so the fallback was
-   * never actually remembered.
-   */
+  /* The stored device would not open, so the engine fell back to the platform
+     default and is reporting which. The engine does not own the setting. */
   onAudioDeviceChanged?(deviceId: string): void;
 }
 

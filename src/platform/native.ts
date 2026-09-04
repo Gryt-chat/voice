@@ -27,20 +27,9 @@ import type {
    (GRYT-335). */
 const MIC_CONSTRAINTS = true as const;
 
-/**
- * A pipeline that does nothing to the audio, which is the honest answer here.
- *
- * The processing that the web graph would apply has already happened, inside
- * libwebrtc, before this stream existed. Building something that looked like a
- * graph and applied nothing would be worse than saying so.
- *
- * What that costs, stated plainly rather than discovered later: no noise gate,
- * so there is no push-to-talk on a phone yet and no "is this person
- * transmitting" signal; no level meter, because measuring one needs an audio
- * graph; and no software gain, so the microphone volume slider does not move
- * anything. Every one of those reads as null or a no-op rather than a wrong
- * number.
- */
+/* Genuinely nothing: libwebrtc processed the stream before it got here. So no
+   noise gate (and no push-to-talk on a phone yet), no level meter and no
+   software gain. Each reads as null or a no-op rather than a wrong number. */
 function createPassthroughPipeline({
   source,
 }: AudioPipelineOptions): AudioPipeline {

@@ -516,18 +516,9 @@ function useCreateMicrophoneHook() {
       // getMicrophone() with no argument asks for.
       if (!deviceId && !platformPipeline) {
         voiceLog.info("MIC", "No device ID — skipping initialization");
-        // Deliberately does not report "no microphone". This runs during normal
-        // startup, before enumeration has produced a device to select, and on a
-        // machine with a perfectly good microphone:
-        //
-        //   Active handles: 2 — initializing device
-        //   No device ID — skipping initialization     <- here
-        //   Step 2: Requesting getUserMedia
-        //   Step 2: getUserMedia succeeded
-        //
-        // Treating it as a failure raised "No microphone found" for the ~340ms
-        // before enumeration caught up, so joining voice in that window warned
-        // about a microphone that was about to work. getDevices and the
+        // Not "no microphone". This runs during normal startup, before enumeration
+        // has named a device, on machines that have one — reporting failure here
+        // warned about a microphone that was about to work. getDevices and the
         // acquisition failure below are the signals that actually know.
         return;
       }
@@ -557,16 +548,8 @@ function useCreateMicrophoneHook() {
         setMicStream(stream);
         setMicUnavailable(null);
 
-        // The engine does not own the setting, so it reports rather than
-        // writes — the same shape as onCameraDeviceChanged.
-        //
-        // This was `localStorage.setItem("micID", deviceId)`, which wrote a key
-        // nothing reads. The client keeps micID in its per-user store under
-        // `webKey(userId, "micID")`, so the bare key was written on every
-        // fallback and never read back by anything. Web-only as well, which is
-        // how it surfaced.
-        // Nothing to report when no device was named: that is the platform
-        // default path, and "the default is the default" is not news.
+        // Reports rather than writes: the engine does not own the setting. Nothing
+        // to report when no device was named — that is the default path.
         if (deviceId && deviceId !== micID) {
           onAudioDeviceChanged?.(deviceId);
         }
@@ -668,16 +651,9 @@ function useCreateMicrophoneHook() {
 
     if (!micStreamRef.current) return;
 
-    // A call holds a handle for as long as it lasts, so no handles means no
-    // call — including while the window is hidden.
-    //
-    // This used to special-case being hidden and keep the microphone open
-    // indefinitely, waiting for the window to come back. The intent was to
-    // protect a call running in the background, but a call is exactly the case
-    // that still holds a handle, so all it protected was an idle app: close
-    // settings, minimise, and the microphone stayed open with the indicator lit
-    // until the window was focused again. The grace period below already covers
-    // the render churn this was really guarding against.
+    // No handles means no call, including while hidden — a call still holds one.
+    // Special-casing hidden kept the microphone open on an idle minimised app
+    // with the indicator lit. The grace period below covers the render churn.
     clearPendingMicRelease();
 
     releaseMicTimerRef.current = setTimeout(() => {
