@@ -185,22 +185,6 @@ export interface ScreenConstraints {
   withAudio: boolean;
 }
 
-/*
- * There was a `listDevices(): Promise<VoiceDevice[]>` here, and a `VoiceDevice`
- * to go with it. Both are gone rather than left declared.
- *
- * Nothing called them. Device enumeration in the engine returns
- * `InputDeviceInfo[]` — the DOM type, straight from `enumerateDevices` — and
- * both `useMicrophone` and `useDeviceEnumeration` hand that to the client,
- * whose settings dropdowns read it. Routing that through a narrower type is a
- * change to the client's surface, and it is the same size of change whether it
- * happens now or later.
- *
- * Leaving the declaration in place until then is the exact thing this file was
- * being fixed for: a seam that typechecks, exports, reads as supported and is
- * wired to nothing. GRYT-387 covers doing it properly, including what a device
- * list should even mean on a phone, where the answer is an audio route.
- */
 
 /* The caller's requirement rather than the class's shape, so a platform can
    satisfy it with something that is not RNNoise. */

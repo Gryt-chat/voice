@@ -61,17 +61,9 @@ export interface SFUInterface {
   getCameraSenderTrackId?: () => string | null;
   getScreenVideoSender?: () => RTCRtpSender | null;
   activeSfuUrl?: string | null;
-  /**
-   * How long the SFU we are on lets one person sit alone in a call before it
-   * ends it, in seconds.
-   *
-   * Zero means it never does — SFU_CALL_ALONE_TIMEOUT=0. Null means we are not
-   * in a call, or the SFU is older than GRYT-715 and did not say, in which case
-   * a client that draws a countdown has to fall back to its own number.
-   *
-   * Reported rather than acted on. The engine does not leave a call on its own;
-   * what a person sees before one ends is the client's to decide.
-   */
+  /* Zero means never (SFU_CALL_ALONE_TIMEOUT=0). Null means not in a call, or
+     an SFU older than GRYT-715 that did not say. Reported, not acted on — the
+     engine never leaves a call on its own. */
   callAloneTimeoutSeconds?: number | null;
   /**
    * Tell the SFU somebody is still in this call, restarting its clock.

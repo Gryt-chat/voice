@@ -581,17 +581,11 @@ export function usePipelineControls({
     microphoneBuffer.compressor.knee.setValueAtTime(knee, now);
 
     if (microphoneBuffer.compressorMakeup) {
-      // A constant, not a curve off the amount. Textbook auto-makeup here is
-      // |threshold| x (1 - 1/ratio), which at the default amount is +22.6 dB;
-      // half of that is +11.3 dB. Measured through this exact chain on speech
-      // at -20 dBFS, +6 dB already clips and +11.3 dB clips badly. +3 dB is
-      // audible (+3 dB RMS over the compressor alone) and leaves the peak at
-      // -1.5 dB, so there is still headroom for somebody louder than the
-      // signal it was measured on. GRYT-511.
-      //
-      // Zero at amount 0, because there the ratio is exactly 1 and the
-      // compressor is by construction doing nothing — making that case louder
-      // would be a volume control wearing a compressor's name.
+      // A constant, not the textbook |threshold| x (1 - 1/ratio), which is
+      // +22.6 dB at the default and clips badly. Measured through this chain on
+      // speech at -20 dBFS: +6 already clips, +3 is audible and leaves the peak
+      // at -1.5 dB (GRYT-511). Zero at amount 0, where the ratio is 1 and the
+      // compressor is doing nothing.
       const makeupDb = compressorAmount > 0 ? COMPRESSOR_MAKEUP_DB : 0;
       microphoneBuffer.compressorMakeup.gain.setValueAtTime(
         Math.pow(10, makeupDb / 20),

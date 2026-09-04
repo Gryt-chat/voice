@@ -1,16 +1,5 @@
-/**
- * Attempt a perceptually-uniform volume curve.
- *
- * Human hearing is roughly logarithmic, so a linear slider→gain mapping
- * packs most of the perceived change into the bottom 20 %.  A cubic curve
- * (t^3) spreads the perceived loudness change more evenly across the
- * slider's range while keeping the endpoints unchanged:
- *   0 % → 0  (silence)
- *   100 % → 1.0  (unity gain)
- *
- * For sliders whose max exceeds 100 (e.g. 200 % boost) the result scales
- * proportionally (200 % → 8.0 before the /100 normalisation → 2.0 × gain).
- */
+/* Cubic, because a linear slider packs most of the perceived change into the
+   bottom fifth. 0 -> 0, 100 -> 1.0, and above 100 it scales (200 -> 2.0). */
 
 /** Convert a linear slider percentage to a perceptual gain multiplier. */
 export function sliderToGain(sliderPercent: number, max = 100): number {

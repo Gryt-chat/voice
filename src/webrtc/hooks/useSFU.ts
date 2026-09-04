@@ -83,20 +83,11 @@ function useSfuHook(): SFUInterface {
   useEffect(() => { microphoneBufferRef.current = microphoneBuffer; }, [microphoneBuffer]);
   const { audioContext, remoteBusNode } = useSpeakers();
 
-  // Stable refs bundle for cleanup helpers
-  // Keep the transmitted audio track in step with the pipeline.
-  //
-  // The audio sender is created once, at connect, from whatever processedStream
-  // existed then. Rebuilding the pipeline — which happens whenever automatic
-  // gain, the compressor or noise suppression is toggled — produces a *new*
-  // MediaStream, and without this the sender goes on transmitting the old one.
-  //
-  // The symptom is precise and misleading: toggling noise suppression seems to
-  // work while auto gain and the compressor appear dead. All three rebuild the
-  // graph, so all three change what you hear locally through the monitor and
-  // the visualiser. Only noise suppression also swaps the track, because it
-  // re-acquires the microphone on the way through. The other two change nothing
-  // anybody else can hear.
+  // Keep the transmitted track in step with the pipeline. The sender is built
+  // once at connect; rebuilding the graph makes a new MediaStream and without
+  // this the sender keeps the old one. The symptom misleads: only noise
+  // suppression also re-acquires the microphone, so it appears to work while
+  // auto gain and the compressor appear dead.
   useEffect(() => {
     const track = microphoneBuffer.processedStream?.getAudioTracks()[0];
     if (!track) return;
@@ -503,21 +494,10 @@ function useSfuHook(): SFUInterface {
   const disconnectRef = useRef(disconnect);
   useEffect(() => { disconnectRef.current = disconnect; }, [disconnect]);
 
-  /**
-   * Tell a freshly reconnected signalling server that we are still in here.
-   *
-   * The same three calls the connect flow makes at step 8, in the same order,
-   * against a live media plane instead of one it just built. `requestAccess`
-   * is not for the SFU URLs it returns — we already have a connection to the
-   * SFU — it is because `voice:room:request` is what sets the channel id on
-   * the server's record of this socket, and `voice:channel:joined` puts nobody
-   * anywhere without it.
-   *
-   * Returns whether the server took it. A caller that gets false should fall
-   * back to a full reconnect rather than leave things as they are: at that
-   * point the media plane is up and the server still does not know we are in
-   * the channel, which is exactly the state this is here to end.
-   */
+  /* `requestAccess` is not called for the SFU URLs — we already have a
+     connection — but because `voice:room:request` is what sets the channel id
+     on the server's record of this socket. A false return means the media
+     plane is up and the server still does not know we are here: reconnect. */
   const reannouncePresence = useCallback(async (channelId: string): Promise<boolean> => {
     if (!room) return false;
 
@@ -594,27 +574,12 @@ function useSfuHook(): SFUInterface {
         cs.state === SFUConnectionState.CONNECTED &&
         cs.serverId === host
       ) {
-        // Media is still flowing, so there is nothing to rebuild. What is gone
-        // is the signalling server's record of us being in the channel: it is
-        // keyed by socket, and this is a different socket.
-        //
-        // The server restores that itself when the drop was brief — it stashes
-        // voice state for a grace period and hands it back on session restore.
-        // That covers a transport reset and nothing else. The stash is in the
-        // server process's memory, so a restart or a redeploy loses it, and a
-        // drop longer than the grace window has already expired it.
-        //
-        // Both look identical from here, and both end with somebody who can
-        // hear the channel, is still publishing to the SFU, and appears to
-        // everyone — including themselves — to have left. Nothing recovers
-        // from that on its own: the client believes it is connected, so it
-        // never reconnects, and the server never hears otherwise.
-        //
-        // So we re-announce rather than assume. Re-announcing over a state the
-        // server did restore is a no-op — `voice:stream:set` and
-        // `voice:channel:joined` both return early when the value has not
-        // changed — and it is the ordinary join announcement, so permissions,
-        // seat limits and bans are all re-checked on the way through.
+        // Media still flows; what is gone is the server's record of us, which is
+        // keyed by socket. It restores that itself only for a brief drop, from an
+        // in-memory stash a restart loses. Otherwise you can hear the channel,
+        // are still publishing, and appear to everyone including yourself to have
+        // left — and nothing recovers, because the client thinks it is connected.
+        // Re-announcing over a restored state is a no-op.
         console.info(
           "[Voice Recovery] Server reconnected — SFU still alive, re-announcing presence (channel:",
           channelId, ")",
@@ -742,26 +707,12 @@ function useSfuHook(): SFUInterface {
       });
     }, delayMs);
 
-    // No cleanup, deliberately, and it is the whole point of this effect.
-    //
-    // There used to be one that cleared the timer, and it meant the retry never
-    // ran even once. The effect depends on `connectionState.state` and then
-    // sets that state itself, two lines above: FAILED → RECONNECTING re-runs
-    // the effect, React runs the previous cleanup first, and the timer just
-    // scheduled is cancelled about a millisecond into its 1500ms wait. The
-    // second run then sees RECONNECTING and returns at the top, so nothing
-    // reschedules. What that looked like from outside: the log said
-    // "auto-reconnecting (attempt 1/5) in 1500ms" and no connect ever followed,
-    // voice sat in RECONNECTING for good, and the only thing that ever brought
-    // it back was the signalling socket happening to reconnect and running the
-    // separate recovery path above. Meanwhile the SFU had already dropped the
-    // peer and told the server, so the channel showed you gone to everybody
-    // else while your own client still showed you in it and refused to join
-    // anywhere new.
-    //
-    // The timer is cleared where clearing it is actually meant: connect(),
-    // disconnect(), the signalling-reconnect handler, and the unmount effect
-    // below.
+    // No cleanup, deliberately. One here cancels the retry it just scheduled:
+    // this effect depends on connectionState and sets it two lines above, so
+    // FAILED -> RECONNECTING re-runs it, React runs the old cleanup first, and
+    // the second run returns at the top without rescheduling. Voice then sits in
+    // RECONNECTING for good. The timer is cleared in connect(), disconnect(),
+    // the signalling-reconnect handler and the unmount effect.
   }, [connectionState.state, connectionState.serverId]);
 
   // Unmount only. Deps are empty on purpose — see the effect above for why this
