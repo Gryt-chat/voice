@@ -131,6 +131,9 @@ function useCreateMicrophoneHook() {
     null,
   );
   const [isGateOpen, setIsGateOpen] = useState(false);
+  /* State, not just the ref below: the connect flow reads a ref, but anything
+     rendering "still opening…" needs a re-render when it changes. */
+  const [isAcquiring, setIsAcquiring] = useState(false);
   const [micUnavailable, setMicUnavailable] =
     useState<MicrophoneUnavailableReason | null>(null);
   const gateOpenRef = useRef(false);
@@ -138,6 +141,23 @@ function useCreateMicrophoneHook() {
 
   const releaseMicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micStreamRef = useRef<MediaStream | undefined>(undefined);
+  /**
+   * The `getMicrophone` call that has not settled yet, if there is one.
+   *
+   * Opening a microphone is slow — slow enough that a caller can give up and
+   * ask again while the first request is still in the operating system. On
+   * 2026-09-07 three ran at once and all three succeeded, each with its own
+   * track; one was used and the other two stayed live with nothing holding
+   * them. A stream nobody owns is also a stream the voice view cannot match to
+   * a person, which is what draws as a ghost participant (GRYT-964).
+   *
+   * So a second request while one is in flight waits on the first instead of
+   * starting another.
+   */
+  const micRequestRef = useRef<{
+    deviceId: string | undefined;
+    stream: Promise<MediaStream>;
+  } | null>(null);
 
   micStreamRef.current = micStream;
 
@@ -526,7 +546,34 @@ function useCreateMicrophoneHook() {
       voiceLog.step("MIC", 2, "Requesting getUserMedia", { deviceId });
 
       try {
-        const stream = await platform.getMicrophone(deviceId);
+        /* Shared rather than started again — but only for the same device.
+           Sharing across a device change would hand back the microphone the
+           caller has just stopped asking for. See `micRequestRef`. */
+        const inFlight = micRequestRef.current;
+        if (inFlight && inFlight.deviceId === deviceId) {
+          voiceLog.info(
+            "MIC",
+            "A getUserMedia for this device is already in flight — waiting on it",
+          );
+        } else {
+          micRequestRef.current = {
+            deviceId,
+            stream: platform.getMicrophone(deviceId),
+          };
+        }
+
+        const request = micRequestRef.current!;
+        let stream: MediaStream;
+        setIsAcquiring(true);
+        try {
+          stream = await request.stream;
+        } finally {
+          setIsAcquiring(false);
+          /* Only if it is still ours. A device change during the await has
+             already replaced it, and clearing that would let the next caller
+             start a third. */
+          if (micRequestRef.current === request) micRequestRef.current = null;
+        }
 
         const tracks = stream.getAudioTracks();
 
@@ -724,6 +771,7 @@ function useCreateMicrophoneHook() {
     isPttActive,
     setPushToTalkActive,
     micUnavailable,
+    isAcquiring,
   };
 }
 
@@ -757,6 +805,7 @@ const init: MicrophoneInterface = {
   isPttActive: { current: false },
   setPushToTalkActive: () => {},
   micUnavailable: null,
+  isAcquiring: false,
 };
 
 const singletonMicrophone = singletonHook(init, useCreateMicrophoneHook);

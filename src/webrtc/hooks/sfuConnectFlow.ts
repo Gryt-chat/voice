@@ -8,6 +8,35 @@ import { connectToSfuWebSocket } from "./sfuConnection";
 import { SFUConnectionStateInternal } from "./sfuTypes";
 import { voiceLog } from "./voiceLogger";
 
+/** How often the connect flow looks for the microphone while it waits. */
+const MIC_POLL_MS = 200;
+
+/**
+ * How long to wait when no request for the microphone is outstanding.
+ *
+ * Short on purpose. Nothing is on its way, so waiting is just a spinner: the
+ * mic hook is not asking for a device, and no amount of patience produces one.
+ */
+const MIC_IDLE_WAIT_MS = 6_000;
+
+/**
+ * How long to wait while a `getUserMedia` is actually in flight.
+ *
+ * Long on purpose, and it is the reason these are two numbers rather than one.
+ * Measured on 2026-09-07: the request resolved fifteen seconds after it was
+ * made, the six-second deadline threw "Microphone not available", the caller
+ * retried, and each retry opened another microphone.
+ *
+ * A request that has not come back can be sitting behind a permission dialog
+ * somebody is reading, which is not a fault and should not be called one. A
+ * single flat timeout has to be wrong in one direction or the other: six
+ * seconds cuts off a microphone that is still coming, thirty leaves a desktop
+ * with no microphone at all staring at nothing. Asking which case this is costs
+ * one boolean.
+ */
+const MIC_BUSY_WAIT_MS = 30_000;
+
+
 type IceCandidateStat = {
   address: string;
   port: number;
@@ -467,6 +496,8 @@ export interface ConnectParams {
       processedStream?: MediaStream;
       mediaStream?: MediaStream;
     }>;
+    /** True while a `getUserMedia` is out. See `MIC_BUSY_WAIT_MS`. */
+    micAcquiringRef: MutableRefObject<boolean>;
     activeSfuUrlRef: MutableRefObject<string | null>;
     /**
      * The stream id this connection announced to the signalling server.
@@ -544,6 +575,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     registeredTracksRef,
     connectionTimeoutRef,
     microphoneBufferRef,
+    micAcquiringRef,
     activeSfuUrlRef,
   } = refs;
 
@@ -707,9 +739,18 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     }
 
     if (!streamToUse) {
-      voiceLog.info("CONNECT", "No live stream yet — polling up to 6s…");
-      for (let attempt = 0; attempt < 30; attempt++) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+      /* The deadline is decided per tick, not once: a request can start while
+         this is already waiting — which is the ordinary case, since the mic
+         hook only asks once the connect has said it is connecting. */
+      let waited = 0;
+      voiceLog.info("CONNECT", "No live stream yet — waiting for the microphone…");
+      for (;;) {
+        const deadline = micAcquiringRef.current
+          ? MIC_BUSY_WAIT_MS
+          : MIC_IDLE_WAIT_MS;
+        if (waited >= deadline) break;
+        waited += MIC_POLL_MS;
+        await new Promise((resolve) => setTimeout(resolve, MIC_POLL_MS));
         if (isStale()) {
           voiceLog.info("CONNECT", "Superseded during mic poll — aborting");
           return;
@@ -726,7 +767,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
             voiceLog.ok(
               "CONNECT",
               3,
-              `Microphone ready after ${(attempt + 1) * 200}ms`,
+              `Microphone ready after ${waited}ms`,
               {
                 trackCount: audioTracks.length,
                 trackStates: audioTracks.map((t) => ({
@@ -746,10 +787,17 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
         voiceLog.fail(
           "CONNECT",
           3,
-          "Microphone not available after 6s polling",
+          `Microphone did not arrive within ${waited / 1000}s` +
+            (micAcquiringRef.current ? " (a request is still in flight)" : ""),
         );
+        /* Says what happened rather than what was assumed. The old wording was
+           "Microphone not available - please check microphone settings", which
+           sent people to a settings screen where nothing was wrong: the
+           microphone had been granted and was still opening. */
         throw new Error(
-          "Microphone not available - please check microphone settings",
+          micAcquiringRef.current
+            ? `The microphone did not become available within ${waited / 1000} seconds`
+            : "No microphone was opened for this call",
         );
       }
     } else {
