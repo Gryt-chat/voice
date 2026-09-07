@@ -12,25 +12,29 @@ import { voiceLog } from "./voiceLogger";
 const MIC_POLL_MS = 200;
 
 /**
- * How long to wait for the microphone before giving up on a connect.
+ * How long to wait when no request for the microphone is outstanding.
  *
- * Was six seconds, which is less than it takes. Measured on 2026-09-07:
- * `getUserMedia` resolved fifteen seconds after it was asked, so the connect
- * failed twice with "Microphone not available", the caller retried, and each
- * retry opened another microphone — three live tracks for one call, two of them
- * held by nobody (GRYT-966).
- *
- * Thirty seconds because the thing being waited on can include a permission
- * dialog, and a person reading one is not a fault. It is still a bound rather
- * than a wait forever: a microphone that is genuinely not coming should end the
- * connect rather than leave somebody looking at a spinner.
- *
- * **Polling is the wrong shape and this does not fix that.** The microphone
- * hook knows the moment `getUserMedia` settles; this samples a ref and guesses.
- * Waiting on that promise instead is the real fix and is a larger change
- * through `useMicrophone` and `useSFU`.
+ * Short on purpose. Nothing is on its way, so waiting is just a spinner: the
+ * mic hook is not asking for a device, and no amount of patience produces one.
  */
-const MIC_WAIT_MS = 30_000;
+const MIC_IDLE_WAIT_MS = 6_000;
+
+/**
+ * How long to wait while a `getUserMedia` is actually in flight.
+ *
+ * Long on purpose, and it is the reason these are two numbers rather than one.
+ * Measured on 2026-09-07: the request resolved fifteen seconds after it was
+ * made, the six-second deadline threw "Microphone not available", the caller
+ * retried, and each retry opened another microphone.
+ *
+ * A request that has not come back can be sitting behind a permission dialog
+ * somebody is reading, which is not a fault and should not be called one. A
+ * single flat timeout has to be wrong in one direction or the other: six
+ * seconds cuts off a microphone that is still coming, thirty leaves a desktop
+ * with no microphone at all staring at nothing. Asking which case this is costs
+ * one boolean.
+ */
+const MIC_BUSY_WAIT_MS = 30_000;
 
 
 type IceCandidateStat = {
@@ -492,6 +496,8 @@ export interface ConnectParams {
       processedStream?: MediaStream;
       mediaStream?: MediaStream;
     }>;
+    /** True while a `getUserMedia` is out. See `MIC_BUSY_WAIT_MS`. */
+    micAcquiringRef: MutableRefObject<boolean>;
     activeSfuUrlRef: MutableRefObject<string | null>;
     /**
      * The stream id this connection announced to the signalling server.
@@ -569,6 +575,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     registeredTracksRef,
     connectionTimeoutRef,
     microphoneBufferRef,
+    micAcquiringRef,
     activeSfuUrlRef,
   } = refs;
 
@@ -732,11 +739,17 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     }
 
     if (!streamToUse) {
-      voiceLog.info(
-        "CONNECT",
-        `No live stream yet — polling up to ${MIC_WAIT_MS / 1000}s…`,
-      );
-      for (let attempt = 0; attempt < MIC_WAIT_MS / MIC_POLL_MS; attempt++) {
+      /* The deadline is decided per tick, not once: a request can start while
+         this is already waiting — which is the ordinary case, since the mic
+         hook only asks once the connect has said it is connecting. */
+      let waited = 0;
+      voiceLog.info("CONNECT", "No live stream yet — waiting for the microphone…");
+      for (;;) {
+        const deadline = micAcquiringRef.current
+          ? MIC_BUSY_WAIT_MS
+          : MIC_IDLE_WAIT_MS;
+        if (waited >= deadline) break;
+        waited += MIC_POLL_MS;
         await new Promise((resolve) => setTimeout(resolve, MIC_POLL_MS));
         if (isStale()) {
           voiceLog.info("CONNECT", "Superseded during mic poll — aborting");
@@ -754,7 +767,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
             voiceLog.ok(
               "CONNECT",
               3,
-              `Microphone ready after ${(attempt + 1) * MIC_POLL_MS}ms`,
+              `Microphone ready after ${waited}ms`,
               {
                 trackCount: audioTracks.length,
                 trackStates: audioTracks.map((t) => ({
@@ -774,14 +787,17 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
         voiceLog.fail(
           "CONNECT",
           3,
-          `Microphone did not arrive within ${MIC_WAIT_MS / 1000}s`,
+          `Microphone did not arrive within ${waited / 1000}s` +
+            (micAcquiringRef.current ? " (a request is still in flight)" : ""),
         );
         /* Says what happened rather than what was assumed. The old wording was
            "Microphone not available - please check microphone settings", which
            sent people to a settings screen where nothing was wrong: the
            microphone had been granted and was still opening. */
         throw new Error(
-          `The microphone did not become available within ${MIC_WAIT_MS / 1000} seconds`,
+          micAcquiringRef.current
+            ? `The microphone did not become available within ${waited / 1000} seconds`
+            : "No microphone was opened for this call",
         );
       }
     } else {

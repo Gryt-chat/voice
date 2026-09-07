@@ -78,9 +78,13 @@ function useSfuHook(): SFUInterface {
   }, [connectionState.state]);
 
   // Access shared microphone buffer
-  const { microphoneBuffer } = useMicrophone(isConnecting || isConnected);
+  const { microphoneBuffer, isAcquiring } = useMicrophone(isConnecting || isConnected);
   const microphoneBufferRef = useRef(microphoneBuffer);
   useEffect(() => { microphoneBufferRef.current = microphoneBuffer; }, [microphoneBuffer]);
+  /* Read live by the connect flow while it waits, which is why it is a ref and
+     not the value: the wait outlives the render it started in. */
+  const micAcquiringRef = useRef(isAcquiring);
+  useEffect(() => { micAcquiringRef.current = isAcquiring; }, [isAcquiring]);
   const { audioContext, remoteBusNode } = useSpeakers();
 
   // Keep the transmitted track in step with the pipeline. The sender is built
@@ -225,7 +229,7 @@ function useSfuHook(): SFUInterface {
       refs: {
         isConnectingRef, isDisconnectingRef, peerConnectionRef,
         sfuWebSocketRef, registeredTracksRef, connectionTimeoutRef,
-        microphoneBufferRef, activeSfuUrlRef, announcedStreamIdRef,
+        microphoneBufferRef, micAcquiringRef, activeSfuUrlRef, announcedStreamIdRef,
       },
       connectionState,
       isConnected,

@@ -131,6 +131,9 @@ function useCreateMicrophoneHook() {
     null,
   );
   const [isGateOpen, setIsGateOpen] = useState(false);
+  /* State, not just the ref below: the connect flow reads a ref, but anything
+     rendering "still opening…" needs a re-render when it changes. */
+  const [isAcquiring, setIsAcquiring] = useState(false);
   const [micUnavailable, setMicUnavailable] =
     useState<MicrophoneUnavailableReason | null>(null);
   const gateOpenRef = useRef(false);
@@ -561,9 +564,11 @@ function useCreateMicrophoneHook() {
 
         const request = micRequestRef.current!;
         let stream: MediaStream;
+        setIsAcquiring(true);
         try {
           stream = await request.stream;
         } finally {
+          setIsAcquiring(false);
           /* Only if it is still ours. A device change during the await has
              already replaced it, and clearing that would let the next caller
              start a third. */
@@ -766,6 +771,7 @@ function useCreateMicrophoneHook() {
     isPttActive,
     setPushToTalkActive,
     micUnavailable,
+    isAcquiring,
   };
 }
 
@@ -799,6 +805,7 @@ const init: MicrophoneInterface = {
   isPttActive: { current: false },
   setPushToTalkActive: () => {},
   micUnavailable: null,
+  isAcquiring: false,
 };
 
 const singletonMicrophone = singletonHook(init, useCreateMicrophoneHook);

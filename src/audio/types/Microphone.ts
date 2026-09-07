@@ -42,6 +42,19 @@ export interface MicrophoneInterface {
    * of looking healthy while nobody can hear you.
    */
   micUnavailable: MicrophoneUnavailableReason | null;
+  /**
+   * True while a `getUserMedia` is out and has not come back.
+   *
+   * It exists so a caller waiting for the microphone can tell "still opening"
+   * from "not coming". Those want opposite deadlines: a request in flight
+   * deserves patience, because it can be sitting behind a permission dialog
+   * somebody is reading; no request at all deserves none, because nothing is
+   * going to arrive however long you wait. Before this the connect flow used
+   * one timeout for both and had to pick a wrong answer either way — six
+   * seconds cut off a microphone that was still coming, thirty left a desktop
+   * with no microphone staring at a spinner.
+   */
+  isAcquiring: boolean;
   microphoneBuffer: MicrophoneBufferType;
   isBrowserSupported: boolean | undefined;
   devices: InputDeviceInfo[];
