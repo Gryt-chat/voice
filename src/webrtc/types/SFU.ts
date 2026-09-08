@@ -47,12 +47,8 @@ export interface SFUInterface {
   isConnected: boolean;
   connectionState: SFUConnectionState;
   /**
-   * Why the connection ended, when the engine has something to say.
-   *
-   * "reconnect-failed" means it retried and gave up. Null covers everything
-   * else, including an ordinary hang-up — DISCONNECTED alone cannot tell those
-   * apart, which left an embedder unable to say "the call dropped" without
-   * guessing.
+   * Why the connection ended, when the engine has something to say. "reconnect-failed" means
+   * it gave up; null covers an ordinary hang-up, which DISCONNECTED alone cannot separate.
    */
   connectionError: string | null;
   isConnecting: boolean;
@@ -61,15 +57,12 @@ export interface SFUInterface {
   getCameraSenderTrackId?: () => string | null;
   getScreenVideoSender?: () => RTCRtpSender | null;
   activeSfuUrl?: string | null;
-  /* Zero means never (SFU_CALL_ALONE_TIMEOUT=0). Null means not in a call, or
-     an SFU older than GRYT-715 that did not say. Reported, not acted on — the
-     engine never leaves a call on its own. */
+  /* Zero means never (SFU_CALL_ALONE_TIMEOUT=0). Null means not in a call, or an SFU older
+     than GRYT-715. Reported, not acted on — the engine never leaves a call on its own. */
   callAloneTimeoutSeconds?: number | null;
   /**
-   * Tell the SFU somebody is still in this call, restarting its clock.
-   *
-   * Does nothing when there is no open connection, and nothing an SFU older
-   * than GRYT-715 will act on.
+   * Tell the SFU somebody is still in this call, restarting its clock. Does nothing with no
+   * open connection, and nothing an SFU older than GRYT-715 will act on.
    */
   stillHere?: () => void;
 }

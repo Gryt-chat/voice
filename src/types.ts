@@ -155,17 +155,12 @@ export interface VoicePlatform {
   /** Undefined where the platform has no such concept, which is phones. */
   getScreen?(constraints: ScreenConstraints): Promise<MediaStream>;
 
-  /* Undefined on React Native — the phone has already denoised in libwebrtc.
-     It is a seam because `RNNoiseProcessor` builds its worker with
-     `new Worker(new URL(...))`, which Metro follows into a package this one
-     does not ship. It is the only bundler-visible web-only reference here, so
-     moving it behind the seam is what lets React Native import the hooks. */
+  /* Undefined on React Native — the phone has already denoised in libwebrtc. A seam because
+     `RNNoiseProcessor` builds its worker with `new Worker(new URL(...))`, which Metro follows. */
   createNoiseSuppressor?(): NoiseSuppressor;
 
-  /* Undefined means the Web Audio pipeline, which browsers and Electron get.
-     The web graph is not standalone — it hands out AudioNodes the client's
-     meters, visualiser and gate read directly — so returning an AudioPipeline
-     here would drop that surface or duplicate it. Native supplies one. */
+  /* Undefined means the Web Audio pipeline. The web graph is not standalone — it hands out
+     AudioNodes the client's meters and gate read directly — so native supplies its own. */
   createAudioPipeline?(options: AudioPipelineOptions): AudioPipeline;
 }
 

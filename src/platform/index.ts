@@ -16,9 +16,8 @@ export function setDefaultVoicePlatform(platform: VoicePlatform): void {
 
 export function getVoicePlatform(): VoicePlatform {
   if (!current) {
-    // Reachable only by importing a deep path and skipping both entry points.
-    // Worth a sentence that says what to do rather than a TypeError about
-    // reading a property of null, several frames further in.
+    // Reachable only by importing a deep path and skipping both entry points. Worth a
+    // sentence rather than a TypeError several frames further in.
     throw new Error(
       "@gryt/voice: no platform registered. Import the package from its entry " +
         "point — '@gryt/voice' in a browser, '@gryt/voice/native' on React " +
