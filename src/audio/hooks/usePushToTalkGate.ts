@@ -4,9 +4,8 @@ import { useCallback, useEffect, useRef } from "react";
 import { useVoiceConfig } from "../../config";
 import type { MicrophoneBufferType } from "../types/Microphone";
 
-/* The embedder owns the trigger — a key, a global shortcut, a button on a
-   phone — and this owns the gate. Being muted does not stop the gate tracking,
-   so unmuting mid-press does not leave the microphone open. */
+/* The embedder owns the trigger and this owns the gate. Being muted does not stop the gate
+   tracking, so unmuting mid-press does not leave the microphone open. */
 export interface PushToTalkGate {
   /** Whether the key or button is currently held. */
   isPttActive: MutableRefObject<boolean>;
@@ -29,9 +28,9 @@ export function usePushToTalkGate(
     if (!effectiveMuted) {
       microphoneBuffer.muteGain.gain.setValueAtTime(0, audioContext.currentTime);
     }
-    // effectiveMuted is deliberately not a dependency: this is about entering
-    // the mode, and re-running it on every mute toggle would close the gate
-    // underneath a held key.
+    // effectiveMuted is deliberately not a dependency: this is about entering the mode, and
+    // re-running on every mute toggle would close the gate underneath a held key.
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputMode, microphoneBuffer.muteGain, audioContext]);
 

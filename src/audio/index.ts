@@ -1,6 +1,5 @@
-// Capture, the pipeline, device enumeration and the level helpers. Keyboard
-// handling that writes mute and deafen has no audio graph in it and belongs to
-// the embedder.
+// Capture, the pipeline, device enumeration and the level helpers. Keyboard handling that
+// writes mute and deafen has no audio graph in it and belongs to the embedder.
 export {
   CAMERA_FPS_OPTIONS,
   type CameraFps,

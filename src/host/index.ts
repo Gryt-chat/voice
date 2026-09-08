@@ -36,10 +36,8 @@ export interface VoiceHost {
   getNativeAudio(): NativeAudioCapture | null;
   getNativeScreen(): NativeScreenCapture | null;
 
-  /* Not the same question as native capture, and `isElectron()` answering both
-     is a coincidence of one runtime. What is being asked is "am I inside a
-     browser's mixed-content sandbox" — React Native has native capture and no
-     mixed-content rule; a browser has neither. */
+  /* Not the same question as native capture, and `isElectron()` answering both is a
+     coincidence: this asks whether we are inside a browser's mixed-content sandbox. */
   allowsInsecureTransport(): boolean;
 }
 

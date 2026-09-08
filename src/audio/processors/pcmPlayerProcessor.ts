@@ -1,8 +1,6 @@
 /**
- * AudioWorklet processor that receives interleaved 16-bit PCM chunks via
- * its MessagePort and plays them back into the Web Audio graph.
- *
- * Expected input format: Int16, 2 channels, 48 kHz (matching the native binary).
+ * AudioWorklet processor that takes interleaved 16-bit PCM over its MessagePort and plays
+ * it into the graph. Int16, 2 channels, 48 kHz, matching the native binary.
  */
 
 const PCM_PLAYER_WORKLET_NAME = "pcm-player-processor";

@@ -223,9 +223,8 @@ export function useVideoStats(enabled: boolean) {
           if (!seenInKeys.has(k)) inboundBytesRef.current.delete(k);
         }
 
-        // Keep an entry only if it still has data flowing. Stale RTP stat
-        // entries linger after a track stops (0 fps, 0 bitrate) and would
-        // pile up when the remote user restarts their stream.
+        // Keep an entry only while data is still flowing. Stale RTP entries linger after a
+        // track stops and would pile up when the remote user restarts their stream.
         const isActive = (s: { bitrateKbps: number | null; framesPerSecond: number | null }) =>
           s.bitrateKbps == null || s.bitrateKbps > 0 || (s.framesPerSecond != null && s.framesPerSecond > 0);
 

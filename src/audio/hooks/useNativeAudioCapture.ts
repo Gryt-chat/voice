@@ -4,14 +4,8 @@ import { getVoiceHost } from "../../host";
 import { getWorkletUrl, PCM_PLAYER_WORKLET_NAME } from "../processors/pcmPlayerProcessor";
 
 /**
- * What `useNativeAudioCapture()` returns.
- *
- * The `State` suffix is load bearing. `NativeAudioCapture` in `host/index.ts`
- * is a different interface — the API the host process provides — and both used
- * to carry the same name. The explicit re-export in `engine.ts` won at the
- * package root, so this one could not be named from outside the package at all:
- * anyone annotating the hook's return got the host interface, which has no
- * member in common with it.
+ * What `useNativeAudioCapture()` returns. The `State` suffix is load-bearing:
+ * `NativeAudioCapture` in `host/index.ts` is the host API, and both used to share a name.
  */
 export interface NativeAudioCaptureState {
   /** Whether the native binary is present on this platform. */
@@ -25,11 +19,8 @@ export interface NativeAudioCaptureState {
 }
 
 /**
- * Manages a native audio capture session.  When a window sourceId is provided,
- * captures ONLY that application's audio; otherwise captures all system audio
- * except Gryt's own process tree.  Returns a MediaStream suitable for WebRTC.
- *
- * On platforms without a native binary this hook is a no-op (available = false).
+ * Manages a native audio capture session: with a window sourceId, only that app's audio;
+ * otherwise all system audio but Gryt's own. A no-op where there is no native binary.
  */
 export function useNativeAudioCapture(): NativeAudioCaptureState {
   const [available, setAvailable] = useState(false);

@@ -1,7 +1,5 @@
-/* On the audio thread, not the main one. requestAnimationFrame stops when the
-   window is hidden, so the old main-thread gate force-opened while minimised
-   and recipients heard ungated audio (GRYT-18). Detection is time-domain RMS,
-   mapped through the AnalyserNode's old range but not identical to it. */
+/* On the audio thread, not the main one: requestAnimationFrame stops when the window is
+   hidden, so the old gate force-opened while minimised and recipients heard it (GRYT-18). */
 
 export const NOISE_GATE_WORKLET_NAME = "noise-gate-processor";
 
@@ -61,9 +59,8 @@ class NoiseGateProcessor extends AudioWorkletProcessor {
 
     if (!output || output.length === 0) return true;
 
-    // Input 1 is the pre-processing tap used for detection. The old code
-    // measured before RNNoise/AGC/compressor, so keep doing that. Fall back to
-    // the gated signal itself if the tap is not connected.
+    // Input 1 is the pre-processing tap used for detection, measured before RNNoise as the
+    // old code did. Falls back to the gated signal if the tap is not connected.
     const detectInput = inputs[1] && inputs[1].length ? inputs[1] : input;
     const detectCh = detectInput && detectInput[0];
 

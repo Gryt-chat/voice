@@ -8,13 +8,8 @@ export interface SharedAudioContextValue {
 }
 
 /**
- * Shared AudioContext singleton, shared between useMicrophone and
- * useSpeakers so both hooks process audio through the same context
- * without extra threads/resamplers.
- *
- * Important: this must not intentionally suspend just because the
- * document/window is hidden. Voice capture must continue while the user
- * alt-tabs away from Gryt.
+ * The AudioContext useMicrophone and useSpeakers share, so both process through one context
+ * without extra threads. It must not suspend on hidden: capture continues while alt-tabbed.
  */
 function useAudioContextHook(): SharedAudioContextValue {
   const [ctx, setCtx] = useState<AudioContext | undefined>(undefined);
@@ -42,9 +37,8 @@ function useAudioContextHook(): SharedAudioContextValue {
 
     resume();
 
-    // Keep trying to resume when the OS/browser returns focus to the app.
-    // Do not use { once: true } here; the context may be suspended again
-    // after focus/visibility changes.
+    // Keep trying to resume when the OS returns focus. Not `{ once: true }`: the context can
+    // be suspended again after a later focus or visibility change.
     document.addEventListener("click", resume);
     document.addEventListener("keydown", resume);
     document.addEventListener("visibilitychange", resume);

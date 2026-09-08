@@ -1,23 +1,14 @@
 /**
- * Where a face sits in the frame, as a fraction of width and height.
- *
- * 0.5, 0.5 is dead centre and is what everything falls back to. These map
- * straight onto CSS object-position on the receiving side, which is the whole
- * reason the value is normalised rather than in pixels: the receiver's tile is
- * a different size and shape from the sender's camera.
+ * Where a face sits in the frame, as a fraction of width and height; 0.5, 0.5 is centre.
+ * Normalised rather than in pixels because the receiver's tile is a different size.
  */
 export type Framing = { x: number; y: number };
 
 export const CENTRED: Framing = { x: 0.5, y: 0.5 };
 
 /**
- * Inference happens on a frame this wide.
- *
- * Was 192, which is thin for somebody at a desk: at 16:9 that is 192x108, so a
- * face at normal sitting distance is about 30 pixels across, and BlazeFace
- * short range is built for selfie distance where the face fills the frame.
- * 320 costs a little more per sample and gives the model something to work
- * with at the distance people actually sit.
+ * Inference happens on a frame this wide. 192 made a face about 30 pixels across at desk
+ * distance, and BlazeFace short range is built for selfie distance.
  */
 const SAMPLE_WIDTH = 320;
 
@@ -25,33 +16,21 @@ const SAMPLE_WIDTH = 320;
 export const MIN_CONFIDENCE = 0.5;
 
 /**
- * How long to keep looking, and how often.
- *
- * One frame was the old behaviour and the reason this feature picked the wrong
- * spot: it sampled immediately after play(), before auto exposure and focus had
- * settled, and nothing existed to disagree with a bad result. See GRYT-852.
- *
- * Two seconds is long enough to ride out a blink, a turn of the head or a
- * camera still adjusting, and short enough that the button does not feel
- * broken. The button disables itself while this runs.
+ * How long to keep looking, and how often. One frame was the old behaviour and the reason
+ * this picked the wrong spot (GRYT-852); two seconds rides out a blink.
  */
 const SAMPLE_COUNT = 10;
 const SAMPLE_INTERVAL_MS = 180;
 
 /**
- * Frames thrown away before sampling starts.
- *
- * Cameras open dark and adjust over the first few hundred milliseconds. The old
- * code looked at exactly the frame this skips.
+ * Frames thrown away before sampling starts. Cameras open dark and adjust over the first
+ * few hundred milliseconds, and the old code looked at exactly the frame this skips.
  */
 const WARMUP_MS = 300;
 
 /**
- * How many samples have to find a face before the crop is allowed to move.
- *
- * The point is that one detection scraping past MIN_CONFIDENCE is not enough.
- * Three agreeing is not a strong claim, but it is a claim rather than a guess,
- * and the cost of being wrong is everybody watching a badly cropped tile.
+ * How many samples have to find a face before the crop may move. One detection scraping
+ * past MIN_CONFIDENCE is not enough; the cost of being wrong is everybody's view.
  */
 export const MIN_SAMPLES = 3;
 
@@ -137,10 +116,8 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
- * One frame, and the largest face in it.
- *
- * The largest face wins. With two people at one camera, following the nearer
- * one is at least a rule rather than a coin toss.
+ * One frame, and the largest face in it. With two people at one camera, following the
+ * nearer one is at least a rule rather than a coin toss.
  */
 function sampleOnce(
   detector: Detector,
@@ -215,9 +192,8 @@ export async function detectFraming(
     const samples: FramingSample[] = [];
     for (let i = 0; i < SAMPLE_COUNT; i += 1) {
       if (i > 0) await delay(SAMPLE_INTERVAL_MS);
-      // The camera can be turned off while this is running, and drawing from a
-      // dead track produces a frame of nothing that the model is happy to find
-      // faces in.
+      // The camera can be turned off while this runs, and drawing from a dead track gives a
+      // frame of nothing the model is happy to find faces in.
       if (track.readyState === "ended" || !video.videoWidth) break;
 
       const sample = sampleOnce(detector, video, canvas, ctx);
