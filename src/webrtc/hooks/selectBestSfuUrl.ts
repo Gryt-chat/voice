@@ -70,9 +70,8 @@ export function normalizeSfuWsUrl(raw: string): string {
     // Downgrade private IPs to ws:// in Electron only.
     protocol = getVoiceHost().allowsInsecureTransport() && hostIsPrivate ? "ws:" : "wss:";
   } else {
-    // Raw host:port.
-    // Web HTTPS must use wss:// due mixed-content blocking.
-    // Electron and non-HTTPS contexts can use ws:// for LAN/private endpoints.
+    // Raw host:port. Web HTTPS must use wss:// because of mixed-content blocking; Electron
+    // and non-HTTPS contexts can use ws:// for LAN endpoints.
     if (hostIsPrivate && (getVoiceHost().allowsInsecureTransport() || !isHttpsPage())) {
       protocol = "ws:";
     } else {
@@ -145,10 +144,8 @@ function setCachedSfuUrl(host: string, url: string) {
 }
 
 /**
- * Pings multiple SFU health endpoints in parallel and returns the WebSocket
- * URL whose backing server responded fastest.
- *
- * Falls back to the first URL if every ping fails or times out.
+ * Pings the SFU health endpoints in parallel and returns the WebSocket URL whose server
+ * answered fastest. Falls back to the first URL if every ping fails or times out.
  */
 export async function selectBestSfuUrl(
   wsUrls: string[],
@@ -234,9 +231,8 @@ export async function selectBestSfuUrl(
 }
 
 /**
- * Fire-and-forget: run the SFU ping + cache so the result is ready when
- * the user joins a voice channel.
- * Called from the server:details handler.
+ * Fire-and-forget: run the SFU ping and cache so the result is ready when somebody joins a
+ * voice channel. Called from the server:details handler.
  */
 export function warmSfuSelection(host: string, sfuHosts: string[]) {
   if (!sfuHosts?.length) return;
