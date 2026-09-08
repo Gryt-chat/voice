@@ -46,3 +46,8 @@ jobs:
       # found a face in a bookshelf used to be enough (GRYT-852).
       - name: Check how face detections are combined
         run: npm run check-face-framing
+
+      # The sent track has to follow the pipeline when a voice setting rebuilds
+      # it, once. It was being replaced twice per rebuild, matched by position.
+      - name: Check the sent audio track is swapped once
+        run: npm run check-track-replace
