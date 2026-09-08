@@ -19,6 +19,11 @@ jobs:
 
       - run: npm ci
       - run: npm run typecheck
+
+      # No comment runs past two lines. The script carries the list of paths still
+      # to be swept, and that list only ever shrinks.
+      - run: npm run test:comment-length
+
       - run: npm run build
 
       # These three run against the built dist and used to run only from `prepublishOnly`,

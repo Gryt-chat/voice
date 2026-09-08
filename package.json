@@ -26,6 +26,7 @@
   "scripts": {
     "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:comment-length": "node scripts/check-comment-length.mjs",
     "prepublishOnly": "npm run build && npm run check-surface && npm run check-native-entry && npm run check-type-names",
     "check-surface": "node scripts/check-public-surface.mjs",
     "check-native-entry": "node scripts/check-native-entry.mjs",
