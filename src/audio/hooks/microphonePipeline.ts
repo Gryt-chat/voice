@@ -6,11 +6,8 @@ import { voiceLog } from "../../webrtc/hooks/voiceLogger";
 import { MicrophoneBufferType } from "../types/Microphone";
 
 /**
- * Makeup gain applied after the compressor, in decibels.
- *
- * Deliberately conservative — see the comment at the call site for the
- * measurements. Constant rather than derived from the amount so that the
- * ceiling is a number somebody can read rather than the output of a formula.
+ * Makeup gain applied after the compressor, in decibels. Constant rather than derived, so
+ * the ceiling is a number somebody can read; the measurements are at the call site.
  */
 const COMPRESSOR_MAKEUP_DB = 3;
 
@@ -19,9 +16,8 @@ export interface CreateMicrophoneBufferParams {
   micStream: MediaStream | undefined;
   rnnoiseNode: AudioWorkletNode | null;
   /**
-   * Gate running on the audio thread. When null (worklet registration failed)
-   * the pipeline falls back to the GainNode driven from the main thread, which
-   * cannot gate while the window is hidden — see the noise gate effect below.
+   * Gate running on the audio thread. When null the pipeline falls back to the GainNode
+   * driven from the main thread, which cannot gate while the window is hidden.
    */
   noiseGateNode: AudioWorkletNode | null;
   eSportsModeEnabled: boolean;
@@ -56,17 +52,13 @@ export function createMicrophoneBuffer({
   finalAnalyser.fftSize = fftSize;
   finalAnalyser.smoothingTimeConstant = smoothing;
 
-  // Everything the pipeline does to your voice, taken before the mute. The
-  // microphone test plays this rather than finalAnalyser, which sits after
-  // muteGain and is therefore silent whenever you are muted — including the
-  // auto-mute the test itself applies when you are in a channel.
+  // Everything the pipeline does to your voice, taken before the mute. The microphone test
+  // plays this rather than finalAnalyser, which is silent whenever you are muted.
   const monitorTap = audioContext.createGain();
   monitorTap.gain.value = 1;
 
-  // A side branch off the same tap, so the settings meter measures exactly what
-  // the microphone test plays. It used to read finalAnalyser, which sits after
-  // muteGain — so with the test running in a voice channel, where the test
-  // mutes you on purpose, you heard yourself while the meter sat at zero.
+  // A side branch off the same tap, so the settings meter measures what the test plays. It
+  // used to read finalAnalyser, so in a channel you heard yourself and the meter sat at 0.
   const monitorAnalyser = audioContext.createAnalyser();
   monitorAnalyser.fftSize = fftSize;
   monitorAnalyser.smoothingTimeConstant = smoothing;
@@ -123,10 +115,8 @@ export function createMicrophoneBuffer({
     processingChain.connect(compressor);
     processingChain = compressor;
 
-    // Downward compression on its own makes a signal less peaky, not louder,
-    // so without this the toggle reads as doing nothing at all — which is what
-    // GRYT-119 was reported as. Every compressor anybody has used pairs the
-    // reduction with makeup; this is that half.
+    // Downward compression on its own makes a signal less peaky, not louder, so without
+    // this the toggle reads as doing nothing — which is what GRYT-119 was reported as.
     compressorMakeup = audioContext.createGain();
     compressorMakeup.gain.value = 1;
     processingChain.connect(compressorMakeup);
@@ -134,10 +124,8 @@ export function createMicrophoneBuffer({
   }
 
   if (noiseGateNode) {
-    // Input 0 carries the signal being gated. Input 1 is a tap taken before
-    // RNNoise/AGC/compressor, because that is where the threshold was always
-    // measured — gating post-chain audio against a post-chain level would
-    // change what the user's threshold percentage means.
+    // Input 0 carries the signal being gated. Input 1 is a tap taken before RNNoise, because
+    // that is where the threshold was measured — post-chain would change what it means.
     processingChain.connect(noiseGateNode, 0, 0);
     volumeGain.connect(noiseGateNode, 0, 1);
     noiseGateNode.connect(monitorTap);
@@ -314,13 +302,8 @@ export function usePipelineControls({
   }, [isMuted, microphoneBuffer.muteGain, audioContext, inputMode]);
 
   /**
-   * Noise gate control — audio thread.
-   *
-   * The gate itself lives in an AudioWorklet, so it keeps running when the
-   * window is hidden. All this does is push the current settings into it.
-   *
-   * Threshold 0 disables gating, which is what push-to-talk wants: there the
-   * gating is done by muteGain instead.
+   * Noise gate control — audio thread. The gate lives in an AudioWorklet so it keeps running
+   * while hidden; threshold 0 disables gating, which is what push-to-talk wants.
    */
   useEffect(() => {
     const gate = microphoneBuffer.noiseGateWorklet;
@@ -349,15 +332,8 @@ export function usePipelineControls({
   ]);
 
   /**
-   * Noise gate control — main thread fallback.
-   *
-   * Only runs when the worklet could not be registered. requestAnimationFrame
-   * is throttled or paused when the window is hidden, so if the gate were
-   * closed at that moment the outgoing stream could stay silent even though
-   * the mic track is live. This forces the gate open while hidden, which means
-   * recipients hear ungated audio — the behaviour GRYT-18 fixed by moving the
-   * gate onto the audio thread. Kept only so a worklet failure degrades to
-   * "gate stops working" rather than "microphone stops working".
+   * Noise gate control — main thread fallback, only when the worklet failed. It forces the
+   * gate open while hidden, so a worklet failure degrades to "gate stops" not "mic stops".
    */
   useEffect(() => {
     if (microphoneBuffer.noiseGateWorklet) return;
@@ -501,10 +477,8 @@ export function usePipelineControls({
   ]);
 
   /**
-   * AGC feedback loop.
-   *
-   * This intentionally uses setInterval instead of requestAnimationFrame so
-   * gain continues to update when the renderer is hidden/unfocused.
+   * AGC feedback loop. setInterval rather than requestAnimationFrame, so gain keeps updating
+   * when the renderer is hidden or unfocused.
    */
   useEffect(() => {
     if (
@@ -581,11 +555,8 @@ export function usePipelineControls({
     microphoneBuffer.compressor.knee.setValueAtTime(knee, now);
 
     if (microphoneBuffer.compressorMakeup) {
-      // A constant, not the textbook |threshold| x (1 - 1/ratio), which is
-      // +22.6 dB at the default and clips badly. Measured through this chain on
-      // speech at -20 dBFS: +6 already clips, +3 is audible and leaves the peak
-      // at -1.5 dB (GRYT-511). Zero at amount 0, where the ratio is 1 and the
-      // compressor is doing nothing.
+      // A constant, not |threshold| x (1 - 1/ratio), which is +22.6 dB at the default and
+      // clips. Measured on speech at -20 dBFS: +6 clips, +3 leaves the peak at -1.5.
       const makeupDb = compressorAmount > 0 ? COMPRESSOR_MAKEUP_DB : 0;
       microphoneBuffer.compressorMakeup.gain.setValueAtTime(
         Math.pow(10, makeupDb / 20),
