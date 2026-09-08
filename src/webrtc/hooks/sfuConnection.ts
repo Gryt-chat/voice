@@ -30,9 +30,8 @@ export interface SFUWebSocketCloseInfo {
 
 interface SFUConnectionOptions {
   /**
-   * Called only after room_joined has already completed and the SFU WebSocket
-   * later closes abnormally. This lets the outer hook mark the voice state as
-   * FAILED so the existing auto-reconnect path can run.
+   * Called only after room_joined has completed and the SFU WebSocket later closes
+   * abnormally, so the outer hook can mark the state FAILED and let auto-reconnect run.
    */
   onAbnormalClose?: (info: SFUWebSocketCloseInfo) => void;
 
@@ -52,12 +51,8 @@ export interface RoomJoinedInfo {
 }
 
 /**
- * What room_joined carries, for SFUs that carry anything.
- *
- * The event used to be the sentence "Successfully joined room" and nothing
- * else. An SFU new enough to answer GRYT-715 sends JSON in the same field, so
- * this parses and falls back rather than switching on a version: an older SFU
- * gives back nulls and the caller keeps whatever default it had.
+ * What room_joined carries, for SFUs that carry anything. It used to be a sentence; this
+ * parses and falls back rather than switching on a version, so an older SFU gives nulls.
  */
 export function parseRoomJoined(data: unknown): RoomJoinedInfo {
   const nothing: RoomJoinedInfo = { callAloneTimeoutSeconds: null };
@@ -75,9 +70,8 @@ export function parseRoomJoined(data: unknown): RoomJoinedInfo {
   const seconds = (parsed as Record<string, unknown>)
     .call_alone_timeout_seconds;
 
-  // A negative number is not a shorter timeout, it is an SFU we do not
-  // understand. Same for a string, which is what a hand-rolled proxy in the
-  // middle would most likely produce.
+  // A negative number is not a shorter timeout, it is an SFU we do not understand. Same for
+  // a string, which is what a hand-rolled proxy in the middle would produce.
   if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
     return nothing;
   }

@@ -1,10 +1,6 @@
 /**
- * React Native, through `react-native-webrtc`.
- *
- * Only reachable from the `@gryt/voice/native` entry point. Nothing the main
- * entry imports reaches this file, which is what keeps `react-native-webrtc`
- * out of a browser bundle and keeps the AudioWorklet and Worker code — which
- * Metro cannot parse, never mind run — out of a phone bundle.
+ * React Native, through `react-native-webrtc`. Only reachable from `@gryt/voice/native`,
+ * which is what keeps the AudioWorklet and Worker code out of a phone bundle.
  */
 
 import {
@@ -19,17 +15,12 @@ import type {
   VoicePlatform,
 } from "../types.js";
 
-/* Not the three `false` flags the web platform passes, and not `true` either:
-   react-native-webrtc 124 carries those constraints nowhere and drops them
-   silently. The processing is real but comes from the native audio path — the
-   voice-processing unit on iOS, VOICE_COMMUNICATION on Android — which is on
-   by default and not switchable from JavaScript. Unverified on hardware
-   (GRYT-335). */
+/* Not the three `false` flags the web platform passes, and not `true`: react-native-webrtc
+   124 drops those constraints silently, and the processing comes from native (GRYT-335). */
 const MIC_CONSTRAINTS = true as const;
 
-/* Genuinely nothing: libwebrtc processed the stream before it got here. So no
-   noise gate (and no push-to-talk on a phone yet), no level meter and no
-   software gain. Each reads as null or a no-op rather than a wrong number. */
+/* Genuinely nothing: libwebrtc processed the stream before it got here. No noise gate, no
+   level meter and no software gain — each reads as null or a no-op, not a wrong number. */
 function createPassthroughPipeline({
   source,
 }: AudioPipelineOptions): AudioPipeline {
@@ -52,9 +43,8 @@ function createPassthroughPipeline({
     },
 
     destroy: () => {
-      // Nothing to tear down, and specifically not the source tracks: the
-      // engine opened that stream and stops it itself on release. Stopping it
-      // here too would close the microphone out from under a pipeline rebuild.
+      // Nothing to tear down, and specifically not the source tracks: the engine stops that
+      // stream itself, and stopping it here would close the microphone mid-rebuild.
     },
   };
 }
@@ -63,10 +53,8 @@ export const nativePlatform: VoicePlatform = {
   name: "react-native",
 
   createPeerConnection(config) {
-    // react-native-webrtc implements the same interface against its own class
-    // rather than the DOM's, so the structural types do not line up even
-    // though the runtime behaviour does. One cast, in one place, instead of
-    // the engine being generic over two peer connection types.
+    // react-native-webrtc implements the same interface against its own class, so the
+    // structural types do not line up. One cast rather than a generic engine.
     return new NativeRTCPeerConnection(
       config as ConstructorParameters<typeof NativeRTCPeerConnection>[0],
     ) as unknown as RTCPeerConnection;
@@ -91,12 +79,8 @@ export const nativePlatform: VoicePlatform = {
     return stream as unknown as MediaStream;
   },
 
-  // getScreen is absent, which is what the optional method is for. iOS can
-  // broadcast a screen through a ReplayKit extension and Android through
-  // MediaProjection, and neither is `getDisplayMedia` — they are a separate
-  // process and a foreground service respectively. Claiming the method and
-  // throwing would make callers handle a rejection instead of checking a
-  // property they already have to check.
+  // getScreen is absent, which is what the optional method is for: iOS broadcasts through a
+  // ReplayKit extension and Android through MediaProjection, and neither is getDisplayMedia.
 
   createAudioPipeline: createPassthroughPipeline,
 };

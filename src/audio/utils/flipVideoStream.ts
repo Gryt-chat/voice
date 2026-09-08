@@ -1,7 +1,6 @@
 /**
- * Creates a horizontally-flipped copy of a video MediaStream using a hidden
- * canvas. The returned stream can be sent via WebRTC so peers see the flipped
- * image. Call `stop()` to tear down the pipeline and release resources.
+ * A horizontally flipped copy of a video MediaStream, through a hidden canvas, so peers see
+ * the flipped image. Call `stop()` to tear the pipeline down.
  */
 export interface FlippedStream {
   stream: MediaStream;

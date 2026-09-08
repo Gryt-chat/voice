@@ -20,11 +20,8 @@ export const isSpeaking = (analyser: AnalyserNode, threshold: number) => {
 };
 
 /**
- * Loudness as dBFS, from the same RMS the speaking check uses.
- *
- * getCurrentVolume works on byte time-domain samples centred on 128, so full
- * scale is 128 and the result is 0 or below. Digital silence is -Infinity, and
- * callers are expected to clamp rather than to treat that as a number.
+ * Loudness as dBFS, from the same RMS the speaking check uses. Byte time-domain samples are
+ * centred on 128, so the result is 0 or below and silence is -Infinity — clamp it.
  */
 export function getVolumeDb(analyser: AnalyserNode): number {
   const rms = getCurrentVolume(analyser);
@@ -39,11 +36,8 @@ export const VOLUME_FLOOR_DB = -55;
 export const VOLUME_CEIL_DB = -12;
 
 /**
- * dBFS to a 0–1 ring size.
- *
- * Linear in dB rather than in amplitude, because amplitude spends almost all
- * of its range on sounds too quiet to see and then saturates — a ring driven
- * by it barely moves while someone talks normally.
+ * dBFS to a 0–1 ring size. Linear in dB rather than amplitude, which spends its range on
+ * sounds too quiet to see and then saturates.
  */
 export function volumeToLevel(db: number): number {
   if (!Number.isFinite(db)) return 0;

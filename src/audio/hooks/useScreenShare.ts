@@ -133,9 +133,8 @@ function useScreenShareHook(): ScreenShareInterface {
     const fps = screenShareFps || 30;
     const useNativeAudio = withAudio && nativeAvailable;
 
-    // Native DXGI capture with a local WebSocket server bypasses Electron IPC,
-    // so resolution/throughput is no longer a bottleneck. The binary also now
-    // properly downscales (instead of cropping) when maxWidth/maxHeight are set.
+    // Native DXGI capture over a local WebSocket bypasses Electron IPC, so throughput is no
+    // longer the bottleneck. The binary downscales rather than cropping to a max size.
     const screenMatch = sourceId?.match(/^screen:(\d+):/);
     const useNativeVideo = nativeScreenAvailable && getVoiceHost().hasNativeCapture() && !!screenMatch && fps >= 60;
 
@@ -147,10 +146,8 @@ function useScreenShareHook(): ScreenShareInterface {
       try {
         const monitorIndex = parseInt(screenMatch[1], 10);
         const targetBitrate = estimateBitrate(screenShareQuality as ScreenShareQuality, fps) ?? undefined;
-        // When insertable streams are available AND the WebRTC codec is H.264,
-        // force H.264 encoding so the pre-encoded NALs can be injected directly
-        // into the WebRTC pipeline. Otherwise, use auto (prefers HEVC for better
-        // compression, with a decode→re-encode path).
+        // With insertable streams and an H.264 WebRTC codec, force H.264 so the pre-encoded
+        // NALs inject directly. Otherwise auto, which prefers HEVC and re-encodes.
         const webrtcIsH264 = !screenShareCodec || screenShareCodec === "auto" || screenShareCodec === "h264";
         const insertableStreamsOk = typeof RTCRtpScriptTransform !== "undefined" && webrtcIsH264;
         const nativeCodec = insertableStreamsOk ? "h264" : undefined;

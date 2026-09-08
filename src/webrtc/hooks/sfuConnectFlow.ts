@@ -12,27 +12,14 @@ import { voiceLog } from "./voiceLogger";
 const MIC_POLL_MS = 200;
 
 /**
- * How long to wait when no request for the microphone is outstanding.
- *
- * Short on purpose. Nothing is on its way, so waiting is just a spinner: the
- * mic hook is not asking for a device, and no amount of patience produces one.
+ * How long to wait when no request for the microphone is outstanding. Short on purpose:
+ * nothing is on its way, so waiting is just a spinner.
  */
 const MIC_IDLE_WAIT_MS = 6_000;
 
 /**
- * How long to wait while a `getUserMedia` is actually in flight.
- *
- * Long on purpose, and it is the reason these are two numbers rather than one.
- * Measured on 2026-09-07: the request resolved fifteen seconds after it was
- * made, the six-second deadline threw "Microphone not available", the caller
- * retried, and each retry opened another microphone.
- *
- * A request that has not come back can be sitting behind a permission dialog
- * somebody is reading, which is not a fault and should not be called one. A
- * single flat timeout has to be wrong in one direction or the other: six
- * seconds cuts off a microphone that is still coming, thirty leaves a desktop
- * with no microphone at all staring at nothing. Asking which case this is costs
- * one boolean.
+ * How long to wait while a `getUserMedia` is actually in flight. Long on purpose: a request
+ * can sit behind a permission dialog, and six seconds cut one off after fifteen.
  */
 const MIC_BUSY_WAIT_MS = 30_000;
 
@@ -263,9 +250,8 @@ export function setupPeerConnection(
     );
   };
 
-  // Transceiver mid → first stream ID seen. Mids are stable across
-  // renegotiations, so this lets us keep alias entries when Chrome
-  // assigns a new MediaStream ID to an existing transceiver.
+  // Transceiver mid to the first stream id seen. Mids are stable across renegotiations, so
+  // alias entries survive Chrome assigning a new MediaStream id.
   const midToOriginalStream = new Map<string, string>();
 
   pc.ontrack = (event) => {
@@ -500,35 +486,23 @@ export interface ConnectParams {
     micAcquiringRef: MutableRefObject<boolean>;
     activeSfuUrlRef: MutableRefObject<string | null>;
     /**
-     * The stream id this connection announced to the signalling server.
-     *
-     * Held rather than re-read off the microphone because the pipeline is
-     * rebuilt whenever auto gain, the compressor or noise suppression is
-     * toggled, and `replaceTrack` leaves the sender publishing under the
-     * stream id it was created with. Everyone else maps audio to a person by
-     * that id, so re-announcing the current one would point them at a stream
-     * the SFU is not forwarding.
+     * The stream id this connection announced to the signalling server. Held rather than
+     * re-read: `replaceTrack` leaves the sender publishing under the id it was created with.
      */
     announcedStreamIdRef: MutableRefObject<string | null>;
   };
   connectionState: SFUConnectionStateInternal;
   isConnected: boolean;
   /**
-   * Opaque identity for what is being connected to.
-   *
-   * The client passes the server's host. The engine only ever compares it and
-   * reports it back on the connection state — it does not parse it, and it does
-   * not hold a list of them.
+   * Opaque identity for what is being connected to. The client passes the server's host; the
+   * engine compares it and reports it back, and does not parse it.
    */
   targetId: string;
   stunHosts: string[];
   room: RoomCoordinator;
   /**
-   * Called when this connect supersedes a live one somewhere else.
-   *
-   * Telling the *previous* server that we have gone needs that server's
-   * connection, and the engine only ever holds the one it is connecting to.
-   * The client knows which it was, so it does the release.
+   * Called when this connect supersedes a live one somewhere else. Telling the previous
+   * server needs that server's connection, and the engine holds only the one it is opening.
    */
   releasePreviousRoom?: (previousTargetId: string) => void | Promise<void>;
   sfuConnectionRefs: {
@@ -739,9 +713,8 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     }
 
     if (!streamToUse) {
-      /* The deadline is decided per tick, not once: a request can start while
-         this is already waiting — which is the ordinary case, since the mic
-         hook only asks once the connect has said it is connecting. */
+      /* The deadline is decided per tick, not once: a request can start while this is
+         already waiting, which is the ordinary case. */
       let waited = 0;
       voiceLog.info("CONNECT", "No live stream yet — waiting for the microphone…");
       for (;;) {
@@ -790,10 +763,8 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
           `Microphone did not arrive within ${waited / 1000}s` +
             (micAcquiringRef.current ? " (a request is still in flight)" : ""),
         );
-        /* Says what happened rather than what was assumed. The old wording was
-           "Microphone not available - please check microphone settings", which
-           sent people to a settings screen where nothing was wrong: the
-           microphone had been granted and was still opening. */
+        /* Says what happened rather than what was assumed. "Microphone not available -
+           please check microphone settings" sent people to a screen with nothing wrong. */
         throw new Error(
           micAcquiringRef.current
             ? `The microphone did not become available within ${waited / 1000} seconds`
@@ -859,9 +830,8 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     });
     const access = await room.requestAccess(channelID);
     if (!access.granted) {
-      // reason and retryAfterMs are the embedder's to render. Whether a refusal
-      // is worth interrupting anybody is not the engine's call to make, so it
-      // reports and stops.
+      // reason and retryAfterMs are the embedder's to render. Whether a refusal is worth
+      // interrupting anybody is not the engine's call, so it reports and stops.
       voiceLog.fail(
         "CONNECT",
         4,
@@ -1019,9 +989,8 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       sfu_url: sfuUrl,
       eSportsModeEnabled,
     });
-    // What the SFU said about itself on the way in. Held in a local because the
-    // state write below is a whole object, so setting this from inside
-    // onRoomJoined would be overwritten a few lines later.
+    // What the SFU said about itself on the way in. In a local because the state write below
+    // is a whole object, so setting it inside onRoomJoined would be overwritten.
     let callAloneTimeoutSeconds: number | null = null;
 
     let sfuWebSocket: WebSocket;
@@ -1093,11 +1062,8 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     room.announceJoined(true);
     voiceLog.ok("CONNECT", 8, "Signaling server notified");
 
-    // Stay in CONNECTING state - the pc.onconnectionstatechange handler
-    // will transition to CONNECTED once the WebRTC peer connection is
-    // actually established (ICE + DTLS complete).
-    // Keep roomId as the bare channelID (not roomData.room_id which has a
-    // server-internal prefix) so it matches client.voiceChannelId for filtering.
+    // Stays CONNECTING; `pc.onconnectionstatechange` moves to CONNECTED once ICE and DTLS
+    // finish. roomId is the bare channel id, so it matches client.voiceChannelId.
     setConnectionState({
       state: SFUConnectionState.CONNECTING,
       roomId: channelID,

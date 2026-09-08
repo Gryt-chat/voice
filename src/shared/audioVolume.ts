@@ -19,15 +19,8 @@ export function gainToSlider(gain: number, max = 100): number {
 export const MAX_VOLUME_PERCENT = 200;
 
 /**
- * Slider percentage → gain for the microphone and output volume sliders.
- *
- * Deliberately linear: the percentage means what it says, so 100 % is unity
- * and 200 % is twice the amplitude. This replaced a cubic curve (`t³ × 2`)
- * where 100 % was a 2× boost and unity landed at roughly 79 %, which made the
- * numbers meaningless — 50 % was 0.25×, not "half".
- *
- * A cubic can't produce both 100 % → 1× and 200 % → 2× (normalised at 100 it
- * gives 8× at 200), so the perceptual curve was traded for predictability.
+ * Slider percentage to gain, deliberately linear: 100% is unity and 200% is twice the
+ * amplitude. The old cubic put unity at 79% and made 50% mean 0.25x.
  */
 export function sliderToOutputGain(sliderPercent: number): number {
   const clamped = Math.max(0, Math.min(MAX_VOLUME_PERCENT, sliderPercent));

@@ -24,11 +24,8 @@ export type MicrophoneBufferType = {
 };
 
 /**
- * Why the microphone could not be acquired. The three cases want different
- * advice, so they are kept apart rather than collapsed into a boolean:
- * "denied" is fixed in the OS or browser, "no-device" means nothing is plugged
- * in, and "failed" is everything else — a device that exists, was permitted,
- * and still would not open.
+ * Why the microphone could not be acquired, kept apart because the advice differs: "denied"
+ * is fixed in the OS, "no-device" means nothing is plugged in, "failed" is everything else.
  */
 export type MicrophoneUnavailableReason = "denied" | "no-device" | "failed";
 
@@ -36,23 +33,13 @@ export interface MicrophoneInterface {
   addHandle: (id: string) => void;
   removeHandle: (id: string) => void;
   /**
-   * Set while there is no usable microphone, null once one is live. Joining a
-   * voice channel deliberately still works in this state — listening without a
-   * microphone is useful — so this is what lets the UI say so out loud instead
-   * of looking healthy while nobody can hear you.
+   * Set while there is no usable microphone, null once one is live. Joining still works —
+   * listening without a microphone is useful — so this is what lets the UI say so.
    */
   micUnavailable: MicrophoneUnavailableReason | null;
   /**
-   * True while a `getUserMedia` is out and has not come back.
-   *
-   * It exists so a caller waiting for the microphone can tell "still opening"
-   * from "not coming". Those want opposite deadlines: a request in flight
-   * deserves patience, because it can be sitting behind a permission dialog
-   * somebody is reading; no request at all deserves none, because nothing is
-   * going to arrive however long you wait. Before this the connect flow used
-   * one timeout for both and had to pick a wrong answer either way — six
-   * seconds cut off a microphone that was still coming, thirty left a desktop
-   * with no microphone staring at a spinner.
+   * True while a `getUserMedia` is out and has not come back. A request in flight deserves
+   * patience; no request at all deserves none, and one timeout for both is wrong either way.
    */
   isAcquiring: boolean;
   microphoneBuffer: MicrophoneBufferType;
@@ -68,10 +55,8 @@ export interface MicrophoneInterface {
   isTransmitting: boolean | null;
   isPttActive: MutableRefObject<boolean>;
   /**
-   * Opens and closes the transmit gate in push-to-talk mode.
-   *
-   * The embedder owns the trigger — a key on the desktop, a held button on a
-   * phone — and calls this. A no-op in voice-activity mode.
+   * Opens and closes the transmit gate in push-to-talk mode. The embedder owns the trigger
+   * and calls this; a no-op in voice-activity mode.
    */
   setPushToTalkActive: (active: boolean) => void;
 }

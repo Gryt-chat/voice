@@ -105,13 +105,8 @@ export class RNNoiseProcessor {
       channelCountMode: 'explicit',
     });
 
-    // .js, not .ts, because this string survives compilation unchanged.
-    //
-    // A .ts path here would point at a file that does not exist in dist, and
-    // the consumer's bundler would fail at build time with "Could not resolve
-    // entry module .../rnnoiseWorker.ts" — after tsc, the surface check and a
-    // successful publish have all passed, because none of them resolve worker
-    // URLs.
+    // .js, not .ts, because this string survives compilation unchanged. A .ts path points at
+    // nothing in dist, and the consumer's bundler fails after publish has already passed.
     this.worker = new Worker(
       new URL('./rnnoiseWorker.js', import.meta.url),
       { type: 'module' },

@@ -71,9 +71,8 @@ export function useSFUStreams({
   useEffect(() => {
     const removedIds = Object.keys(streamSources).filter((id) => streams[id] === undefined);
 
-    // Detect pipelines whose source MediaStream no longer matches the current
-    // stream entry — this happens when an alias updates streams[id] to a new
-    // MediaStream while the old pipeline still references the previous one.
+    // Pipelines whose source MediaStream no longer matches the current entry: an alias can
+    // point streams[id] at a new MediaStream while the pipeline holds the old one.
     const mismatchedIds = Object.keys(streamSources).filter((id) => {
       const streamData = streams[id];
       if (!streamData) return false;
@@ -132,9 +131,8 @@ export function useSFUStreams({
     const newStreamSources: StreamSources = { ...streamSources };
     let hasChanges = false;
 
-    // Build a map from MediaStream.id → streamSources key so we can detect
-    // aliases (multiple stream keys pointing at the same underlying MediaStream)
-    // and reuse a single playback pipeline instead of creating duplicates.
+    // MediaStream.id to streamSources key, so aliases — several keys on one MediaStream —
+    // reuse a single playback pipeline instead of creating duplicates.
     const mediaStreamToSourceKey = new Map<string, string>();
     // Track-level dedup: catches the case where the same audio track is
     // re-wrapped in a new MediaStream after SFU renegotiation.
@@ -240,9 +238,8 @@ export function useSFUStreams({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [streams, audioContext, streamSources, setStreamSources]);
 
-  // Update output volume for all streams when the global setting changes.
-  // Uses a ref for streamSources so this effect only fires on volume/deafen
-  // changes — not when a new peer joins — avoiding a reset of per-user gains.
+  // Output volume for every stream when the global setting changes. A ref for streamSources,
+  // so this fires on volume and deafen only and does not reset per-user gains.
   useEffect(() => {
     const outputGain = isDeafened ? 0 : sliderToOutputGain(outputVolume);
 
@@ -253,19 +250,13 @@ export function useSFUStreams({
     });
   }, [outputVolume, isDeafened, audioContext]);
 
-  /* Deafen on React Native. There is no AudioContext, so the gain node the web
-     path zeroes never exists and react-native-webrtc keeps playing the track —
-     the button lights up and you still hear everybody. `enabled` is the lever
-     both platforms have, and on a remote track it is receiver-side. Volume has
-     no equivalent, so `outputVolume` stays web-only rather than being faked as
-     on and off. Only where there is no context: with one, disabling the track
-     would also take it out of the speaking analyser. */
+  /* Deafen on React Native: there is no AudioContext, so the gain node the web path zeroes
+     never exists. `enabled` is the lever both platforms have, and only where no context. */
   useEffect(() => {
     if (audioContext) return;
 
-    // Depends on `streams` rather than reading the ref, so a peer who joins
-    // while you are deafened arrives silent instead of being the one person
-    // you can hear.
+    // Depends on `streams` rather than reading the ref, so a peer who joins while you are
+    // deafened arrives silent instead of being the one person you can hear.
     for (const streamData of Object.values(streams)) {
       if (streamData.isLocal) continue;
       for (const track of streamData.stream.getAudioTracks()) {

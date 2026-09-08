@@ -6,9 +6,8 @@ export interface SFUConnectionStateInternal {
   serverId: string | null;
   error: string | null;
   /**
-   * How long this SFU lets one person sit alone in a call before it ends it,
-   * in seconds. Zero means it does not. Null means the SFU did not say — an
-   * older one, which sent a sentence where this number now is.
+   * How long this SFU lets one person sit alone before it ends the call, in seconds. Zero
+   * means it does not; null means it did not say — an older one sent a sentence.
    */
   callAloneTimeoutSeconds: number | null;
 }

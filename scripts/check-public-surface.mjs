@@ -1,14 +1,5 @@
-// Asserts the package exports everything the Gryt client imports from it.
-//
-// Two releases in a row shipped a package that built, typechecked and published
-// while missing exports the client needed — useSpeakers, useNativeScreenCapture,
-// useNativeAudioCapture, estimateBitrate, then useSharedAudioContext. Each was
-// found by installing the package and waiting for tsc to complain, which is a
-// slow way to learn something a list can check.
-//
-// This is that list. It is deliberately the client's requirements rather than
-// "everything in src": the point is to catch a barrel that forgot a file, not to
-// force every internal into the public surface.
+// Asserts the package exports everything the Gryt client imports. Two releases shipped
+// missing exports that built, typechecked and published. This is the client's list.
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
@@ -36,20 +27,16 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-// Every singleton hook needs its body run by VoiceSingletonHooks. A hook whose
-// body never runs returns its initialValue forever, which is silent: useSFU()
-// hands back a connect() that does nothing. If singletonHook is used at all, the
-// host has to be exported.
+// Every singleton hook needs its body run by VoiceSingletonHooks. A hook whose body never
+// runs returns its initialValue forever: useSFU() hands back a connect() that does nothing.
 const usesSingletons = (await readFile(resolve(import.meta.dirname, "../dist/shared/singletonHook.js"), "utf8")).length > 0;
 if (usesSingletons && !("VoiceSingletonHooks" in mod)) {
   console.error("singletonHook is in the bundle but VoiceSingletonHooks is not exported — every hook body would be dead");
   process.exit(1);
 }
 
-// Worker and asset URLs are plain strings that tsc copies through unchanged, so
-// a path written against the source tree points at nothing once published. That
-// shipped once: `new URL('./rnnoiseWorker.ts')` survived into dist and broke the
-// client's build after tsc, this check and a publish had all passed.
+// Worker and asset URLs are plain strings tsc copies through, so a path written against
+// src points at nothing once published. `new URL('./rnnoiseWorker.ts')` shipped once.
 const sourceExtensions = [];
 for (const file of await readdir(resolve(import.meta.dirname, "../dist"), { recursive: true })) {
   if (!file.endsWith(".js")) continue;

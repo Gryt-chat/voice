@@ -10,8 +10,7 @@ export type EncodedFrameCallback = (
 
 /**
  * What `useNativeScreenCapture()` returns. Named for the same reason as
- * `NativeAudioCaptureState`: `NativeScreenCapture` in `host/index.ts` is the
- * host-provided API, not this.
+ * `NativeAudioCaptureState`: `NativeScreenCapture` in `host/index.ts` is the host API.
  */
 export interface NativeScreenCaptureState {
   available: boolean;
@@ -54,9 +53,8 @@ function buildCodecString(
   level: number
 ): string {
   if (codecType === CODEC_HEVC) {
-    // hev1.<profile>.<compat>.<tier><level>
-    // profile 1 = Main, compat flags 6 = general_profile_compatibility_flag[1..2]
-    // "L" prefix = Main tier, level_idc is the raw value (e.g., 93=3.1, 120=4.0, 150=5.0, 153=5.1)
+    // hev1.<profile>.<compat>.<tier><level>: profile 1 is Main, compat 6 is the general
+    // profile compatibility flags, and "L" marks Main tier with a raw level_idc.
     return `hev1.1.6.L${level}.B0`;
   }
   // H.264: avc3.PPCCLL (Annex B format, SPS/PPS inline)

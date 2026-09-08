@@ -1,23 +1,5 @@
-// Asserts no two files reachable from an entry point declare the same exported
-// name.
-//
-// This is the check GRYT-433 wanted. `NativeAudioCapture` was the host-provided
-// API in host/index.ts *and* the return type of useNativeAudioCapture, and
-// `NativeScreenCapture` had the same split. Both pairs reached the package root:
-// the host ones through an explicit `export { type NativeAudioCapture } from
-// "./host"` in engine.ts, the hook ones through `export * from
-// "./audio/index.js"`.
-//
-// An explicit export beats a star export, silently. So `import type {
-// NativeAudioCapture } from "@gryt/voice"` gave you the host interface, and the
-// hook's return type could not be named from outside the package at all —
-// anyone who tried got a type with no member in common with what they had and
-// an error pointing at their own code.
-//
-// Nothing catches that. It builds, it typechecks, it publishes, and it only
-// bites somebody writing an adapter, which is exactly who the seam types are
-// for. Hence a list, the same way check-public-surface.mjs and
-// check-native-entry.mjs are lists.
+// Asserts no two files reachable from an entry point declare the same exported name. An
+// explicit export beats a star export silently, which is what GRYT-433 was.
 import { readFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 

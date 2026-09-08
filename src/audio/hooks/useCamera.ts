@@ -41,12 +41,8 @@ export interface CameraInterface {
   getDevices: () => Promise<void>;
 }
 
-/* `max` is a required constraint, not advisory, so a camera whose modes cannot
-   land at or below the cap fails the whole request with OverconstrainedError —
-   and only on some cameras, which is why it failed intermittently (GRYT-16).
-   So the cap is given up a piece at a time: everything, then no cap, then no
-   size or frame rate, then no camera either. Only OverconstrainedError walks
-   the ladder; the other failures fail the same way at every rung. */
+/* `max` is a required constraint, not advisory, so a camera that cannot land under the cap
+   fails with OverconstrainedError. The cap is given up a rung at a time (GRYT-16). */
 function constraintLadder(
   cameraID: string | undefined,
   quality: { width?: number; height?: number },
@@ -77,9 +73,8 @@ function constraintLadder(
 }
 
 /**
- * By name rather than by `instanceof DOMException`, because
- * `react-native-webrtc` rejects with a plain object carrying the same `name`
- * and there is no DOMException to test against on that runtime.
+ * By name rather than by `instanceof DOMException`: `react-native-webrtc` rejects with a
+ * plain object carrying the same `name`, and that runtime has no DOMException.
  */
 function isOverconstrained(err: unknown): boolean {
   return (err as { name?: string } | null)?.name === "OverconstrainedError";
@@ -153,11 +148,8 @@ function useCameraHook(): CameraInterface {
 
   // Listen for hot-plug
   useEffect(() => {
-    /* Only where there is something to listen on. `react-native-webrtc`'s
-     * `mediaDevices` has no `addEventListener`, and this hook runs at mount as
-     * one of the singletons — so an unguarded call took the whole app down on
-     * React Native rather than quietly doing nothing (GRYT-439). The same shape
-     * as `useMicrophone`'s guard, which has always had one. */
+    /* Only where there is something to listen on: `react-native-webrtc`'s `mediaDevices` has
+     * no `addEventListener`, and an unguarded call took the whole app down (GRYT-439). */
     if (typeof navigator?.mediaDevices?.addEventListener !== "function") return;
 
     const handler = () => { getDevices(); };
@@ -224,9 +216,8 @@ function useCameraHook(): CameraInterface {
     const newTrack = stream.getVideoTracks()[0];
     if (newTrack) newTrack.contentHint = "motion";
 
-    // The cap was refused up front, so ask for it now that there is a track to
-    // ask on. Failing here leaves a camera that is bigger than requested,
-    // which is the trade this whole ladder is making.
+    // The cap was refused up front, so ask for it now there is a track to ask on. Failing
+    // leaves a camera bigger than requested, which is the trade this ladder makes.
     if (rungUsed > 0 && newTrack) {
       await tryApplyCap(newTrack, quality, fps);
     }

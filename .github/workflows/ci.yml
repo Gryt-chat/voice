@@ -19,28 +19,15 @@ jobs:
 
       - run: npm ci
       - run: npm run typecheck
+
+      # No comment runs past two lines. The script carries the list of paths still
+      # to be swept, and that list only ever shrinks.
+      - run: npm run test:comment-length
+
       - run: npm run build
 
-      # The three checks below already existed and already ran — from
-      # `prepublishOnly`, which is to say after a pull request had merged and a
-      # release was halfway through. Each one is here because something got out
-      # once:
-      #
-      #   GRYT-344 shipped a package tsc was happy with and Node could not load,
-      #   every relative import in dist extensionless.
-      #
-      #   The React Native entry exists so a phone bundle carries no AudioContext
-      #   and no RNNoise worker, and Metro follows `new Worker(new URL(...))`. One
-      #   convenient import from the wrong file becomes "Unable to resolve module
-      #   @shiguredo/rnnoise-wasm" in somebody else's app, releases later.
-      #
-      #   GRYT-433: two files declared `NativeAudioCapture`, the explicit
-      #   re-export beat the star export silently, and the hook's return type
-      #   could not be named from outside the package at all.
-      #
-      # None of those are things a reviewer catches by reading a diff, and all
-      # three run against the built dist, so they belong after `build` and
-      # before a merge rather than after one.
+      # These three run against the built dist and used to run only from `prepublishOnly`,
+      # which is after a merge. GRYT-344 and GRYT-433 are why they run before one.
       - name: Check the built package imports and is complete
         run: npm run check-surface
 
@@ -50,16 +37,12 @@ jobs:
       - name: Check no exported name is declared twice
         run: npm run check-type-names
 
-      # The one piece of parsing in the package that a wrong answer is silent
-      # in: an SFU saying 0 and a client hearing "did not say" both look like a
-      # working connection, and the difference only shows up two minutes into a
-      # call somebody is alone in.
+      # The one piece of parsing here a wrong answer is silent in: an SFU saying 0 and one
+      # that did not say both look like a working connection until two minutes in.
       - name: Check what room_joined is parsed into
         run: npm run check-room-joined
 
-      # Whether a run of face detections is allowed to move everybody's crop.
-      # Getting this wrong is quiet in the same way: one detection that found a
-      # face in a bookshelf used to be enough, and the person it happened to
-      # cannot see their own tile the way anybody else does.
+      # Whether a run of face detections may move everybody's crop. One detection that
+      # found a face in a bookshelf used to be enough (GRYT-852).
       - name: Check how face detections are combined
         run: npm run check-face-framing

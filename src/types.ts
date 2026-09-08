@@ -27,9 +27,8 @@ export interface VoiceConfig {
     serverDeafened: boolean;
     /** Playback gain for everyone else, 0–1. */
     outputVolume: number;
-    /* Underscores. An embedder typing this as a plain string can pass
-       "push-to-talk", compile on both sides, and have push-to-talk silently
-       never engage. That shipped once (GRYT-340). */
+    /* Underscores. An embedder typing this as a plain string can pass "push-to-talk",
+       compile on both sides, and have push-to-talk silently never engage (GRYT-340). */
     inputMode: "voice_activity" | "push_to_talk";
     /** How loud the captured signal is sent, 0–1. */
     volume: number;
@@ -149,25 +148,19 @@ export interface VoicePlatform {
 
   createPeerConnection(config: RTCConfiguration): RTCPeerConnection;
 
-  /* One attempt, deliberately. Falling back to the default when the stored
-     device has gone is the engine's decision, made by calling this again with
-     no id. */
+  /* One attempt, deliberately. Falling back to the default when the stored device has gone
+     is the engine's decision, made by calling this again with no id. */
   getMicrophone(deviceId?: string): Promise<MediaStream>;
   getCamera(constraints: CameraConstraints): Promise<MediaStream>;
   /** Undefined where the platform has no such concept, which is phones. */
   getScreen?(constraints: ScreenConstraints): Promise<MediaStream>;
 
-  /* Undefined on React Native — the phone has already denoised in libwebrtc.
-     It is a seam because `RNNoiseProcessor` builds its worker with
-     `new Worker(new URL(...))`, which Metro follows into a package this one
-     does not ship. It is the only bundler-visible web-only reference here, so
-     moving it behind the seam is what lets React Native import the hooks. */
+  /* Undefined on React Native — the phone has already denoised in libwebrtc. A seam because
+     `RNNoiseProcessor` builds its worker with `new Worker(new URL(...))`, which Metro follows. */
   createNoiseSuppressor?(): NoiseSuppressor;
 
-  /* Undefined means the Web Audio pipeline, which browsers and Electron get.
-     The web graph is not standalone — it hands out AudioNodes the client's
-     meters, visualiser and gate read directly — so returning an AudioPipeline
-     here would drop that surface or duplicate it. Native supplies one. */
+  /* Undefined means the Web Audio pipeline. The web graph is not standalone — it hands out
+     AudioNodes the client's meters and gate read directly — so native supplies its own. */
   createAudioPipeline?(options: AudioPipelineOptions): AudioPipeline;
 }
 

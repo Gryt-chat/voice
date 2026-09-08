@@ -6,11 +6,8 @@ import type { RoomCoordinator, VoiceConfig } from "../types";
 
 export interface VoiceConfigCallbacks {
   /**
-   * The camera in use is not the one that was configured.
-   *
-   * Fires when nothing was chosen yet and a default was picked, and when the
-   * device that opened is not the one asked for — which happens when the
-   * configured camera has been unplugged.
+   * The camera in use is not the one that was configured. Fires when a default was picked,
+   * and when the device that opened is not the one asked for — an unplugged camera.
    */
   onCameraDeviceChanged?(deviceId: string): void;
 
@@ -57,10 +54,8 @@ export function VoiceConfigProvider({
 function useVoiceConfigValue(): VoiceConfigValue {
   const value = useContext(VoiceConfigContext);
   if (!value) {
-    // Worth throwing rather than defaulting. Half these values have no sensible
-    // default — a microphone gain, a STUN list — and guessing them would
-    // surface much later as a call that connects to nothing or transmits
-    // silence.
+    // Worth throwing rather than defaulting. Half these values have no sensible default,
+    // and a guess surfaces later as a call that connects to nothing or transmits silence.
     throw new Error(
       "@gryt/voice: no <VoiceConfigProvider> above this hook. Mount one and give it the app's current voice settings.",
     );

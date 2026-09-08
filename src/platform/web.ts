@@ -1,9 +1,6 @@
 /**
- * The browser, and Electron, which is a browser.
- *
- * Nothing here is new behaviour. Each method is the call the engine used to
- * make inline, moved behind the seam with its constraints unchanged, so the
- * desktop client goes on doing exactly what it did.
+ * The browser, and Electron, which is a browser. Each method is the call the engine used to
+ * make inline, moved behind the seam with its constraints unchanged.
  */
 
 import { RNNoiseProcessor } from "../audio/processors/rnnoiseProcessor.js";
@@ -14,14 +11,8 @@ import type {
 } from "../types.js";
 
 /**
- * Capture constraints, kept in one place because they are load-bearing.
- *
- * Every browser-side processing switch is off: the engine's own pipeline does
- * noise suppression, gain and gating, and letting the browser do its own first
- * means gating a signal the browser has already levelled — which is how a
- * threshold set in the UI stops meaning what it says.
- *
- * Mono at 48 kHz because that is what Opus wants and what the SFU forwards.
+ * Capture constraints, in one place because they are load-bearing. Every browser-side
+ * switch is off: gating a signal the browser already levelled breaks the threshold.
  */
 const MIC_CONSTRAINTS: MediaTrackConstraints = {
   autoGainControl: false,

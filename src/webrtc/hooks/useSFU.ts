@@ -13,14 +13,8 @@ import { useSFUStreams } from "./useSFUStreams";
 import { type Phase, voiceLog } from "./voiceLogger";
 
 /**
- * How long to wait between re-announce attempts, and how many to make.
- *
- * A server that has just come back is the case this exists for, and it comes
- * back in pieces: the socket accepts connections before its own link to the SFU
- * is up, and a room request in that window is refused with "voice service
- * temporarily unavailable". Answering that by hanging up would drop a call that
- * is still working perfectly over a service that is seconds away from being
- * ready.
+ * How long to wait between re-announce attempts, and how many. A server that has just come
+ * back refuses a room request for a few seconds, and hanging up on that drops a live call.
  */
 const REANNOUNCE_BACKOFF_MS = [0, 2000, 5000];
 
@@ -87,11 +81,8 @@ function useSfuHook(): SFUInterface {
   useEffect(() => { micAcquiringRef.current = isAcquiring; }, [isAcquiring]);
   const { audioContext, remoteBusNode } = useSpeakers();
 
-  // Keep the transmitted track in step with the pipeline. The sender is built
-  // once at connect; rebuilding the graph makes a new MediaStream and without
-  // this the sender keeps the old one. The symptom misleads: only noise
-  // suppression also re-acquires the microphone, so it appears to work while
-  // auto gain and the compressor appear dead.
+  // Keep the transmitted track in step with the pipeline: the sender is built once at
+  // connect, and rebuilding the graph makes a new MediaStream the sender would not take.
   useEffect(() => {
     const track = microphoneBuffer.processedStream?.getAudioTracks()[0];
     if (!track) return;
@@ -144,10 +135,8 @@ function useSfuHook(): SFUInterface {
     previousRemoteStreamsRef,
   });
 
-  // Ending a call when its server is removed is the embedder's. Noticing takes
-  // the whole server map, and knowing which servers exist is the thing the
-  // engine is deliberately kept out of, so the embedder watches its own list and
-  // calls disconnect().
+  // Ending a call when its server is removed is the embedder's: noticing takes the whole
+  // server map, which is the thing the engine is deliberately kept out of.
 
   // Cleanup on unmount
   useEffect(() => {
@@ -168,17 +157,8 @@ function useSfuHook(): SFUInterface {
         pc.close();
       }
     };
-    /* Browser-only: there is no page to unload on React Native, and this
-     * belongs with the web adapter once there is one. Guarded rather than
-     * removed, because on the desktop it is what stops a closing tab leaving a
-     * half-open peer connection behind.
-     *
-     * The guard asks whether there is a DOM to listen on, not whether there is
-     * a `window`. It used to ask the second and they are not the same question:
-     * React Native defines `window` as an alias for the global object, so
-     * `typeof window === "undefined"` is false there and the next line threw
-     * "undefined is not a function" the moment this hook rendered. Found by the
-     * first embedder to actually call it (GRYT-439). */
+    /* Browser-only: there is no page to unload on React Native. The guard asks whether
+     * there is a DOM, not whether there is a `window` — React Native has one (GRYT-439). */
     if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
       return;
     }
@@ -194,9 +174,8 @@ function useSfuHook(): SFUInterface {
 
   // Track the last channel ID so we can reconnect after server restart
   const lastChannelIdRef = useRef<string>("");
-  // Tracks whether the last disconnect was user/server-initiated (true) vs
-  // a network/SFU failure (false).  Starts true so we don't auto-reconnect
-  // on initial page load.
+  // Whether the last disconnect was user or server initiated, rather than a failure. Starts
+  // true, so an initial page load does not auto-reconnect.
   const intentionalDisconnectRef = useRef(true);
 
   // Enhanced connect function — delegates to sfuConnectFlow
@@ -251,10 +230,8 @@ function useSfuHook(): SFUInterface {
     eSportsModeEnabled,
   ]);
 
-  // Enhanced disconnect — optimistic with background cleanup
-  // The old signature was disconnect(playSound?, onDisconnect?). The engine no
-  // longer plays anything, so the first argument is gone — a caller that wants a
-  // sound plays one, and a caller that does not, does not.
+  // Optimistic, with cleanup in the background. The old signature took a `playSound`; the
+  // engine no longer plays anything, so a caller that wants a sound plays one.
   const disconnect = useCallback(async (onDisconnect?: () => void): Promise<void> => {
     intentionalDisconnectRef.current = true;
     reconnectAttemptsRef.current = 0;
@@ -282,15 +259,8 @@ function useSfuHook(): SFUInterface {
   }, [performCleanup]);
 
   /**
-   * Tell the SFU somebody is still in this call, so it restarts its clock.
-   *
-   * The SFU ends a call one person has been alone in (GRYT-711), and this is
-   * what a "stay in the call" button sends. The engine only sends it; who gets
-   * offered the button, and when, is the client's decision.
-   *
-   * Silent against an SFU that does not know the event — it logs the unknown
-   * event and carries on, so there is nothing to fall back to and nothing for a
-   * caller to handle.
+   * Tell the SFU somebody is still in this call, so it restarts its clock (GRYT-711). Silent
+   * against an SFU that does not know the event, so there is nothing for a caller to handle.
    */
   const stillHere = useCallback(() => {
     const ws = sfuWebSocketRef.current;
@@ -484,32 +454,25 @@ function useSfuHook(): SFUInterface {
   const connectionStateRef = useRef(connectionState);
   useEffect(() => { connectionStateRef.current = connectionState; }, [connectionState]);
 
-  // A server hanging up on us is the embedder's too. It owns the event, it knows
-  // which server raised it, and it can call disconnect() itself — which is also
-  // the only way this works on a platform without a DOM.
+  // A server hanging up on us is the embedder's too: it owns the event, knows which server
+  // raised it, and can call disconnect() — the only way this works without a DOM.
 
-  // Reconnect voice after the signaling server reconnects. When only the
-  // Socket.IO transport dropped (e.g. Cloudflare Tunnel reset) but the SFU
-  // WebSocket + WebRTC peer connection are still alive, we keep the media
-  // plane and re-announce ourselves on the new socket. If the SFU connection
-  // also died, we fall back to a full reconnect with a short delay.
+  // Reconnect voice after the signalling server reconnects. When only the transport dropped
+  // the media plane is kept and we re-announce; if the SFU died too, a full reconnect.
   const connectRef = useRef(connect);
   useEffect(() => { connectRef.current = connect; }, [connect]);
   const disconnectRef = useRef(disconnect);
   useEffect(() => { disconnectRef.current = disconnect; }, [disconnect]);
 
-  /* `requestAccess` is not called for the SFU URLs — we already have a
-     connection — but because `voice:room:request` is what sets the channel id
-     on the server's record of this socket. A false return means the media
-     plane is up and the server still does not know we are here: reconnect. */
+  /* `requestAccess` is called not for the SFU URLs but because `voice:room:request` sets the
+     channel id on the server's record of this socket. A false return means reconnect. */
   const reannouncePresence = useCallback(async (channelId: string): Promise<boolean> => {
     if (!room) return false;
 
     const streamId = announcedStreamIdRef.current;
     if (!streamId) {
-      // Nothing was ever announced, so there is no presence to restore. The
-      // connection did not come through the connect flow, which should not
-      // happen — say so rather than announcing a stream id we guessed.
+      // Nothing was ever announced, so there is no presence to restore. The connection did
+      // not come through the connect flow — say so rather than guessing a stream id.
       console.warn("[Voice Recovery] No announced stream id — cannot re-announce presence");
       return false;
     }
@@ -544,9 +507,8 @@ function useSfuHook(): SFUInterface {
 
   useEffect(() => {
     const handleServerReconnected = () => {
-      // The coordinator is the one we are connected through, so the host it is
-      // telling us about is the target's. The old window event had to carry it
-      // because any server's socket could raise it.
+      // The coordinator is the one we are connected through, so the host it names is the
+      // target's. The old window event had to carry it, since any socket could raise it.
       const host = target?.id;
 
       const channelId = lastChannelIdRef.current;
@@ -578,22 +540,16 @@ function useSfuHook(): SFUInterface {
         cs.state === SFUConnectionState.CONNECTED &&
         cs.serverId === host
       ) {
-        // Media still flows; what is gone is the server's record of us, which is
-        // keyed by socket. It restores that itself only for a brief drop, from an
-        // in-memory stash a restart loses. Otherwise you can hear the channel,
-        // are still publishing, and appear to everyone including yourself to have
-        // left — and nothing recovers, because the client thinks it is connected.
-        // Re-announcing over a restored state is a no-op.
+        // Media still flows; what is gone is the server's record of us, which is keyed by
+        // socket. Without this you can hear the channel and appear to have left.
         console.info(
           "[Voice Recovery] Server reconnected — SFU still alive, re-announcing presence (channel:",
           channelId, ")",
         );
         reannouncePresence(channelId).then((announced) => {
           if (announced || intentionalDisconnectRef.current) return;
-          // The media plane is fine and the server still has no record of us.
-          // Rebuild the lot: it is the same thing the branch below does when
-          // the SFU has gone, and it ends either in a working call or in a
-          // visible failure. Silently staying is the one outcome to avoid.
+          // The media plane is fine and the server still has no record of us, so rebuild
+          // the lot. Silently staying is the one outcome to avoid.
           console.warn("[Voice Recovery] Re-announce did not take — falling back to a full reconnect");
           disconnectRef.current()
             .then(() => {
@@ -636,9 +592,8 @@ function useSfuHook(): SFUInterface {
       }
     };
 
-    // Was a `server_socket_reconnected` window event carrying a host. The
-    // coordinator owns the signalling connection, so it is the thing that knows,
-    // and a DOM event is not something React Native can raise.
+    // Was a `server_socket_reconnected` window event carrying a host. The coordinator owns
+    // the signalling connection, and a DOM event is not something React Native can raise.
     if (!room) return;
     return room.onReconnected(handleServerReconnected);
   }, [room, reannouncePresence]);
@@ -675,9 +630,8 @@ function useSfuHook(): SFUInterface {
       // Giving up is reported through the state, not announced. The client
       // decides whether that is worth a toast.
       console.warn("[Voice Recovery] Max reconnect attempts reached — giving up");
-      // Say why. The state alone cannot carry it: giving up and hanging up both
-      // land on DISCONNECTED, and an embedder that wants to tell somebody the
-      // call dropped has no way to tell those apart without this.
+      // Say why. Giving up and hanging up both land on DISCONNECTED, so an embedder that
+      // wants to tell somebody the call dropped cannot tell them apart without this.
       setConnectionState({
         state: SFUConnectionState.DISCONNECTED,
         roomId: null,
@@ -711,12 +665,8 @@ function useSfuHook(): SFUInterface {
       });
     }, delayMs);
 
-    // No cleanup, deliberately. One here cancels the retry it just scheduled:
-    // this effect depends on connectionState and sets it two lines above, so
-    // FAILED -> RECONNECTING re-runs it, React runs the old cleanup first, and
-    // the second run returns at the top without rescheduling. Voice then sits in
-    // RECONNECTING for good. The timer is cleared in connect(), disconnect(),
-    // the signalling-reconnect handler and the unmount effect.
+    // No cleanup, deliberately: one here cancels the retry it just scheduled, and voice sits
+    // in RECONNECTING for good. The timer is cleared in connect, disconnect and unmount.
   }, [connectionState.state, connectionState.serverId]);
 
   // Unmount only. Deps are empty on purpose — see the effect above for why this

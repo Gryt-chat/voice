@@ -50,9 +50,8 @@ export function singletonHook<T>(initialValue: T, useBody: () => T): () => T {
   function Runner() {
     const next = useBody();
 
-    // Layout effect, not effect: the value should be published before the
-    // browser paints, so a consumer does not show the initial value for a
-    // frame after the body has already produced the real one.
+    // Layout effect, not effect: the value should be published before the browser paints, so
+    // a consumer does not show the initial value for a frame.
     useLayoutEffect(() => {
       publish(next);
     });
