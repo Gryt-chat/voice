@@ -27,9 +27,8 @@ export interface VoiceConfig {
     serverDeafened: boolean;
     /** Playback gain for everyone else, 0–1. */
     outputVolume: number;
-    /* Underscores. An embedder typing this as a plain string can pass
-       "push-to-talk", compile on both sides, and have push-to-talk silently
-       never engage. That shipped once (GRYT-340). */
+    /* Underscores. An embedder typing this as a plain string can pass "push-to-talk",
+       compile on both sides, and have push-to-talk silently never engage (GRYT-340). */
     inputMode: "voice_activity" | "push_to_talk";
     /** How loud the captured signal is sent, 0–1. */
     volume: number;
@@ -149,9 +148,8 @@ export interface VoicePlatform {
 
   createPeerConnection(config: RTCConfiguration): RTCPeerConnection;
 
-  /* One attempt, deliberately. Falling back to the default when the stored
-     device has gone is the engine's decision, made by calling this again with
-     no id. */
+  /* One attempt, deliberately. Falling back to the default when the stored device has gone
+     is the engine's decision, made by calling this again with no id. */
   getMicrophone(deviceId?: string): Promise<MediaStream>;
   getCamera(constraints: CameraConstraints): Promise<MediaStream>;
   /** Undefined where the platform has no such concept, which is phones. */

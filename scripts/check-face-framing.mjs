@@ -1,15 +1,5 @@
-// Whether a run of face detections is allowed to move everybody's crop.
-//
-// This is the half of "Center my face" that decides, and the only half that can
-// be checked without a webcam and a 12 MB model. The camera work around it is
-// hard to test and easy to reason about; this is the opposite, which is why it
-// was pulled out into a pure function.
-//
-// The behaviour being pinned is why the feature was rewritten at all. It used to
-// look at one frame and believe it, so a single detection that found a face in a
-// bookshelf moved the crop for everyone watching. See GRYT-852.
-//
-// Against dist rather than src, because dist is what a client installs.
+// Whether a run of face detections is allowed to move everybody's crop — the half of
+// "Center my face" that can be checked without a webcam. Against dist, not src.
 import assert from "node:assert/strict";
 
 const { combineSamples, MIN_CONFIDENCE, MIN_SAMPLES } = await import(
@@ -37,9 +27,8 @@ assert.deepEqual(
 
 // --- the point of sampling more than once ---
 
-// Four frames agree, one found something else entirely. The median ignores it.
-// A mean would put x at 0.42, which is halfway to the wrong answer and is the
-// bug this whole change exists to remove.
+// Four frames agree, one found something else entirely. The median ignores it; a mean
+// would put x at 0.42, which is halfway to the wrong answer.
 {
   const samples = [at(0.3, 0.4), at(0.3, 0.4), at(0.32, 0.42), at(0.3, 0.4), at(0.95, 0.1)];
   const mean = samples.reduce((a, s) => a + s.x, 0) / samples.length;
@@ -91,9 +80,8 @@ for (const bad of [
 
 // --- the median itself ---
 
-// An even count averages the middle pair. Compared with a tolerance because
-// (0.2 + 0.4) / 2 is 0.30000000000000004 in binary floating point, and the
-// value ends up as a CSS percentage where that difference does not exist.
+// An even count averages the middle pair. Compared with a tolerance because (0.2 + 0.4) / 2
+// is 0.30000000000000004, and the value ends up as a CSS percentage.
 {
   const framing = combineSamples([at(0.1, 0.1), at(0.2, 0.2), at(0.4, 0.4), at(0.5, 0.5)]);
   assert.ok(Math.abs(framing.x - 0.3) < 1e-9, `x was ${framing.x}`);
