@@ -700,15 +700,16 @@ function useSfuHook(): SFUInterface {
                           currentTracks.some((track, index) => track.id !== newTracks[index]?.id);
     if (!tracksChanged || newTracks.length === 0) return;
 
-    const registeredTracks = registeredTracksRef.current;
+    // By kind, and only when it is not already there. Pairing sender[i] with
+    // newTracks[i] held one track twice per rebuild, and only while audio-only.
+    const sender = registeredTracksRef.current.find((s) => s.track?.kind === "audio");
+    const nextTrack = newTracks[0];
 
     try {
-      const updatePromises = registeredTracks.map(async (sender, index) => {
-        const newTrack = newTracks[index];
-        if (newTrack && sender.track) {
-          await sender.replaceTrack(newTrack);
-        }
-      });
+      const updatePromises =
+        sender && nextTrack && sender.track !== nextTrack
+          ? [sender.replaceTrack(nextTrack)]
+          : [];
 
       Promise.all(updatePromises).then(() => {
         setStreams(prev => {
