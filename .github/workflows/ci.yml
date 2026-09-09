@@ -51,3 +51,8 @@ jobs:
       # it, once. It was being replaced twice per rebuild, matched by position.
       - name: Check the sent audio track is swapped once
         run: npm run check-track-replace
+
+      # Whether a call reads as connected. Both writes are needed and either order
+      # happens, so one of them overwriting the other is silent (GRYT-1136).
+      - name: Check a connected call reads as connected
+        run: npm run check-connection-settles

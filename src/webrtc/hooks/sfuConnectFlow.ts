@@ -3,6 +3,10 @@ import { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { getVoicePlatform } from "../../platform";
 import type { RoomCoordinator } from "../../types";
 import { SFUConnectionState, Streams } from "../types/SFU";
+import {
+  connectingMayBeWritten,
+  peerConnectedSettles,
+} from "./connectionProgress";
 import { getCachedSfuUrl, selectBestSfuUrl } from "./selectBestSfuUrl";
 import { connectToSfuWebSocket } from "./sfuConnection";
 import { SFUConnectionStateInternal } from "./sfuTypes";
@@ -376,12 +380,11 @@ export function setupPeerConnection(
           clearTimeout(connectionTimeoutRef.current);
           connectionTimeoutRef.current = null;
         }
-        setConnectionState((prev) => {
-          if (prev.state === SFUConnectionState.CONNECTING) {
-            return { ...prev, state: SFUConnectionState.CONNECTED };
-          }
-          return prev;
-        });
+        setConnectionState((prev) =>
+          peerConnectedSettles(prev.state)
+            ? { ...prev, state: SFUConnectionState.CONNECTED }
+            : prev,
+        );
         break;
       case "disconnected":
         voiceLog.warn(
@@ -1062,15 +1065,17 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     room.announceJoined(true);
     voiceLog.ok("CONNECT", 8, "Signaling server notified");
 
-    // Stays CONNECTING; `pc.onconnectionstatechange` moves to CONNECTED once ICE and DTLS
-    // finish. roomId is the bare channel id, so it matches client.voiceChannelId.
-    setConnectionState({
-      state: SFUConnectionState.CONNECTING,
+    // Usually stays CONNECTING and `pc.onconnectionstatechange` settles it, but it can
+    // have settled already. roomId is the bare channel id, matching client.voiceChannelId.
+    setConnectionState((prev) => ({
+      state: connectingMayBeWritten(prev.state)
+        ? SFUConnectionState.CONNECTING
+        : prev.state,
       roomId: channelID,
       serverId: targetId,
       error: null,
       callAloneTimeoutSeconds,
-    });
+    }));
 
     voiceLog.step(
       "CONNECT",
