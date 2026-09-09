@@ -33,7 +33,8 @@
     "check-type-names": "node scripts/check-type-names.mjs",
     "check-room-joined": "node scripts/check-room-joined.mjs",
     "check-face-framing": "node scripts/check-face-framing.mjs",
-    "check-track-replace": "node scripts/check-track-replace.mjs"
+    "check-track-replace": "node scripts/check-track-replace.mjs",
+    "check-connection-settles": "node scripts/check-connection-settles.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",

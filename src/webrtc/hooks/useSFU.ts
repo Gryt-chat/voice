@@ -59,10 +59,10 @@ function useSfuHook(): SFUInterface {
   const target = useVoiceTarget();
   const room = target?.room ?? null;
 
+  /* State only. It used to read the socket and peer connection refs as well, which
+     no render depends on, so a null one at the wrong moment stuck this at false. */
   const isConnected = useMemo(() => {
-    return connectionState.state === SFUConnectionState.CONNECTED &&
-           !!sfuWebSocketRef.current &&
-           !!peerConnectionRef.current;
+    return connectionState.state === SFUConnectionState.CONNECTED;
   }, [connectionState.state]);
 
   const isConnecting = useMemo(() => {
