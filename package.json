@@ -34,7 +34,8 @@
     "check-room-joined": "node scripts/check-room-joined.mjs",
     "check-face-framing": "node scripts/check-face-framing.mjs",
     "check-track-replace": "node scripts/check-track-replace.mjs",
-    "check-connection-settles": "node scripts/check-connection-settles.mjs"
+    "check-connection-settles": "node scripts/check-connection-settles.mjs",
+    "check-native-audio-ends": "node scripts/check-native-audio-ends.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",

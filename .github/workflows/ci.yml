@@ -56,3 +56,8 @@ jobs:
       # happens, so one of them overwriting the other is silent (GRYT-1136).
       - name: Check a connected call reads as connected
         run: npm run check-connection-settles
+
+      # A native audio helper can exit mid-share. The shared audio stream has to
+      # go with it, or the share keeps sending a track that is silent for good.
+      - name: Check a stopped native audio capture leaves the share
+        run: npm run check-native-audio-ends
