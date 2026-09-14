@@ -337,14 +337,19 @@ function useScreenShareHook(): ScreenShareInterface {
 
   // Sync native capture stream → screenAudioStream
   useEffect(() => {
-    if (usingNativeAudioRef.current && nativeStream) {
-      const tracks = nativeStream.getAudioTracks();
-      console.log(
-        `[ScreenShare] native stream synced → screenAudioStream id=${nativeStream.id} audioTracks=${tracks.length}`,
-        tracks.map((t) => ({ id: t.id, label: t.label, enabled: t.enabled, readyState: t.readyState, muted: t.muted })),
-      );
-      setScreenAudioStream(nativeStream);
+    if (!usingNativeAudioRef.current) return;
+    // The helper exited mid-share. Its stream will never carry sound again.
+    if (!nativeStream) {
+      console.warn("[ScreenShare] native audio capture ended mid-share → screenAudioStream SET null");
+      setScreenAudioStream(null);
+      return;
     }
+    const tracks = nativeStream.getAudioTracks();
+    console.log(
+      `[ScreenShare] native stream synced → screenAudioStream id=${nativeStream.id} audioTracks=${tracks.length}`,
+      tracks.map((t) => ({ id: t.id, label: t.label, enabled: t.enabled, readyState: t.readyState, muted: t.muted })),
+    );
+    setScreenAudioStream(nativeStream);
   }, [nativeStream]);
 
   useEffect(() => {
