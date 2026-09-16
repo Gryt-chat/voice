@@ -97,6 +97,11 @@ export async function connectToSfuWebSocket(
     let connectionMonitor: ReturnType<typeof setInterval> | null = null;
     let reconnectAttempt = 0;
 
+    // Candidates the SFU sent before its offer was applied, and the peer connection they
+    // belong to. The SFU's candidate and offer race each other down this socket (GRYT-1263).
+    let heldCandidates: RTCIceCandidateInit[] = [];
+    let heldFor: RTCPeerConnection | null = null;
+
     const maxReconnectAttempts = 3;
 
     voiceLog.step("SFU-WS", "7a", "Opening WebSocket to SFU", { url: sfuUrl });
@@ -117,6 +122,8 @@ export async function connectToSfuWebSocket(
       }
 
       reconnectAttempt = maxReconnectAttempts;
+      heldCandidates = [];
+      heldFor = null;
 
       try {
         ws.onopen = null;
@@ -210,6 +217,36 @@ export async function connectToSfuWebSocket(
       }, 1000 * reconnectAttempt);
     };
 
+    const addRemoteCandidate = (
+      pc: RTCPeerConnection,
+      candidate: RTCIceCandidateInit,
+    ) => {
+      pc.addIceCandidate(new RTCIceCandidate(candidate)).catch((error) => {
+        // Closing mid-add is expected. Anything else loses an address for the SFU, and losing
+        // one quietly is how GRYT-1263 went unnoticed.
+        if (pc.signalingState === "closed") return;
+        voiceLog.fail(
+          "SFU-WS",
+          "ICE",
+          "Error adding remote ICE candidate",
+          error,
+        );
+      });
+    };
+
+    const addHeldCandidates = (pc: RTCPeerConnection) => {
+      const held = heldFor === pc ? heldCandidates : [];
+      heldCandidates = [];
+      heldFor = null;
+      if (held.length === 0) return;
+
+      voiceLog.info(
+        "SFU-WS",
+        `Adding ${held.length} remote ICE candidate(s) held until the offer was applied`,
+      );
+      for (const candidate of held) addRemoteCandidate(pc, candidate);
+    };
+
     const processOffer = (offer: RTCSessionDescriptionInit) => {
       voiceLog.step("SFU-WS", "7d", "Processing SFU offer", {
         sdpLength: offer.sdp?.length || 0,
@@ -241,15 +278,16 @@ export async function connectToSfuWebSocket(
       }
 
       offerProcessingInProgress = true;
+      const pc = peerConnectionRef.current;
 
-      peerConnectionRef.current
-        .setRemoteDescription(new RTCSessionDescription(offer))
+      pc.setRemoteDescription(new RTCSessionDescription(offer))
         .then(() => {
           voiceLog.ok(
             "SFU-WS",
             "7d",
             "Remote description set, creating answer…",
           );
+          addHeldCandidates(pc);
 
           if (
             peerConnectionRef.current &&
@@ -463,25 +501,30 @@ export async function connectToSfuWebSocket(
               `Remote ICE candidate: ${candidate.candidate?.substring(0, 60)}…`,
             );
 
+            const pc = peerConnectionRef.current;
             if (
-              peerConnectionRef.current &&
-              peerConnectionRef.current.connectionState !== "closed" &&
-              peerConnectionRef.current.connectionState !== "failed"
+              !pc ||
+              pc.connectionState === "closed" ||
+              pc.connectionState === "failed"
             ) {
-              peerConnectionRef.current
-                .addIceCandidate(new RTCIceCandidate(candidate))
-                .catch((error) => {
-                  if (error.name !== "InvalidStateError") {
-                    voiceLog.fail(
-                      "SFU-WS",
-                      "ICE",
-                      "Error adding remote ICE candidate",
-                      error,
-                    );
-                  }
-                });
+              break;
             }
 
+            // No remote description yet, so adding it now would reject it and lose it.
+            if (!pc.remoteDescription) {
+              if (heldFor !== pc) {
+                heldCandidates = [];
+                heldFor = pc;
+              }
+              heldCandidates.push(candidate);
+              voiceLog.info(
+                "SFU-WS",
+                `Holding the candidate until the SFU's offer is applied (${heldCandidates.length} held)`,
+              );
+              break;
+            }
+
+            addRemoteCandidate(pc, candidate);
             break;
           }
 
