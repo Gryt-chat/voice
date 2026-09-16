@@ -61,3 +61,8 @@ jobs:
       # go with it, or the share keeps sending a track that is silent for good.
       - name: Check a stopped native audio capture leaves the share
         run: npm run check-native-audio-ends
+
+      # The SFU's candidate can reach us before its offer. Added then, it was rejected and
+      # lost, and the join waited out its 20s timeout (GRYT-1263).
+      - name: Check candidates that beat the offer are kept
+        run: npm run check-early-candidates
