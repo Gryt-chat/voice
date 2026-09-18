@@ -49,6 +49,9 @@ function useSfuHook(): SFUInterface {
   const screenAudioSenderRef = useRef<RTCRtpSender | null>(null);
   const lastCameraCodecRef = useRef<string | undefined>(undefined);
   const lastScreenCodecRef = useRef<string | undefined>(undefined);
+  // A new camera/screen track needs another SFU offer before it can publish.
+  // Keep that request tied to its peer connection while signalling is unavailable.
+  const pendingRenegotiatePcRef = useRef<RTCPeerConnection | null>(null);
 
   // Dependencies
   const config = useVoiceConfig();
@@ -272,13 +275,65 @@ function useSfuHook(): SFUInterface {
     }
   }, []);
 
-  const sendRenegotiate = useCallback(() => {
+  const flushPendingRenegotiate = useCallback((): "idle" | "pending" | "sent" | "stale" => {
+    const pendingPc = pendingRenegotiatePcRef.current;
+    if (!pendingPc) return "idle";
+
+    const pc = peerConnectionRef.current;
+    if (!pc || pc !== pendingPc || pc.connectionState === "closed") {
+      pendingRenegotiatePcRef.current = null;
+      voiceLog.info("WEBRTC", "Discarded renegotiation queued for a stale peer connection");
+      return "stale";
+    }
+
     const ws = sfuWebSocketRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return "pending";
+
     try {
       ws.send(JSON.stringify({ event: "renegotiate", data: "" }));
-    } catch { /* ws may have closed between check and send */ }
+      pendingRenegotiatePcRef.current = null;
+      voiceLog.info("WEBRTC", "Renegotiation request sent");
+      return "sent";
+    } catch (error) {
+      // Keep it pending if the socket closed between the state check and send.
+      // Otherwise the new track can stay stranded until the call is rejoined.
+      voiceLog.warn("WEBRTC", "Renegotiation send failed — keeping request queued", error);
+      return "pending";
+    }
   }, []);
+
+  // Ref changes do not render this hook, so there is no WebSocket-ready dependency.
+  // Retry only while work is queued; a successful send clears it immediately.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (pendingRenegotiatePcRef.current) flushPendingRenegotiate();
+    }, 250);
+
+    return () => {
+      clearInterval(timer);
+      pendingRenegotiatePcRef.current = null;
+    };
+  }, [flushPendingRenegotiate]);
+
+  const sendRenegotiate = useCallback(() => {
+    const pc = peerConnectionRef.current;
+    if (!pc || pc.connectionState === "closed") {
+      voiceLog.warn("WEBRTC", "Renegotiation skipped — peer connection unavailable");
+      return;
+    }
+
+    // Coalesce camera/screen changes that race while the socket is unavailable.
+    // The SFU already defers requests that arrive while signalling is non-stable.
+    pendingRenegotiatePcRef.current = pc;
+    const result = flushPendingRenegotiate();
+
+    if (result === "pending") {
+      voiceLog.warn(
+        "WEBRTC",
+        `Renegotiation queued — SFU WebSocket state=${sfuWebSocketRef.current?.readyState ?? "null"}`,
+      );
+    }
+  }, [flushPendingRenegotiate]);
 
   const applyVideoCodecPreferences = useCallback((pc: RTCPeerConnection, sender: RTCRtpSender, preferredCodec: string | undefined, label: Phase): boolean => {
     const transceiver = pc.getTransceivers().find(t => t.sender === sender);
