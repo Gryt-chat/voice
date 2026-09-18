@@ -66,3 +66,8 @@ jobs:
       # lost, and the join waited out its 20s timeout (GRYT-1263).
       - name: Check candidates that beat the offer are kept
         run: npm run check-early-candidates
+
+
+      # Browsing another server must not move recovery away from the live call.
+      - name: Check reconnect stays on the active voice target
+        run: npm run check-reconnect-target
