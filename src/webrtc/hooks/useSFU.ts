@@ -49,9 +49,8 @@ function useSfuHook(): SFUInterface {
   const screenAudioSenderRef = useRef<RTCRtpSender | null>(null);
   const lastCameraCodecRef = useRef<string | undefined>(undefined);
   const lastScreenCodecRef = useRef<string | undefined>(undefined);
-  // A newly added camera/screen track is not publishable until the SFU offers again.
-  // Keep that request tied to the peer connection that needs it instead of dropping it
-  // when the signalling socket is briefly unavailable.
+  // A new camera/screen track needs another SFU offer before it can publish.
+  // Keep that request tied to its peer connection while signalling is unavailable.
   const pendingRenegotiatePcRef = useRef<RTCPeerConnection | null>(null);
 
   // Dependencies
@@ -296,17 +295,15 @@ function useSfuHook(): SFUInterface {
       voiceLog.info("WEBRTC", "Renegotiation request sent");
       return "sent";
     } catch (error) {
-      // Keep it pending. The retry below covers a socket that closed between the state
-      // check and send, which used to strand the newly added track until the whole call
-      // was rejoined.
+      // Keep it pending if the socket closed between the state check and send.
+      // Otherwise the new track can stay stranded until the call is rejoined.
       voiceLog.warn("WEBRTC", "Renegotiation send failed — keeping request queued", error);
       return "pending";
     }
   }, []);
 
-  // A ref changing does not render this hook, so there is no WebSocket-ready dependency to
-  // hang an effect from. Retry only while there is actual work queued; the common path is a
-  // no-op and a successful send clears the request immediately.
+  // Ref changes do not render this hook, so there is no WebSocket-ready dependency.
+  // Retry only while work is queued; a successful send clears it immediately.
   useEffect(() => {
     const timer = setInterval(() => {
       if (pendingRenegotiatePcRef.current) flushPendingRenegotiate();
@@ -325,9 +322,8 @@ function useSfuHook(): SFUInterface {
       return;
     }
 
-    // Coalesce camera/screen changes that race each other while the socket is unavailable.
-    // The SFU-side pending-renegotiation logic handles a request that arrives while its
-    // signalling state is non-stable; this covers the corresponding client-side gap.
+    // Coalesce camera/screen changes that race while the socket is unavailable.
+    // The SFU already defers requests that arrive while signalling is non-stable.
     pendingRenegotiatePcRef.current = pc;
     const result = flushPendingRenegotiate();
 
