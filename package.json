@@ -36,7 +36,8 @@
     "check-track-replace": "node scripts/check-track-replace.mjs",
     "check-connection-settles": "node scripts/check-connection-settles.mjs",
     "check-native-audio-ends": "node scripts/check-native-audio-ends.mjs",
-    "check-early-candidates": "node scripts/check-early-candidates.mjs"
+    "check-early-candidates": "node scripts/check-early-candidates.mjs",
+    "check-reconnect-target": "node scripts/check-reconnect-target.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
