@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useMicrophone } from "../../audio/hooks/useMicrophone";
 import { useSpeakers } from "../../audio/hooks/useSpeakers";
-import { useVoiceConfig, useVoiceTarget } from "../../config";
+import { type VoiceTarget, useVoiceConfig, useVoiceTarget } from "../../config";
 import { singletonHook } from "../../shared/singletonHook";
 
 import { SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams } from "../types/SFU";
@@ -60,7 +60,11 @@ function useSfuHook(): SFUInterface {
   const effectiveDeafened = deafened || serverDeafened;
 
   const target = useVoiceTarget();
-  const room = target?.room ?? null;
+  // The UI target follows whatever server is being viewed. A live call must not:
+  // browsing another server cannot move signalling or recovery away from the call.
+  const [activeTarget, setActiveTarget] = useState<VoiceTarget | null>(null);
+  const activeTargetRef = useRef<VoiceTarget | null>(null);
+  const room = activeTarget?.room ?? target?.room ?? null;
 
   /* State only. It used to read the socket and peer connection refs as well, which
      no render depends on, so a null one at the wrong moment stuck this at false. */
@@ -181,14 +185,20 @@ function useSfuHook(): SFUInterface {
   // true, so an initial page load does not auto-reconnect.
   const intentionalDisconnectRef = useRef(true);
 
-  // Enhanced connect function — delegates to sfuConnectFlow
-  const connect = useCallback(async (channelID: string, channelEsportsMode?: boolean, channelMaxBitrate?: number | null): Promise<void> => {
-    if (!target) {
-      throw new Error("No voice target: nothing to connect to");
-    }
+  // The public connect follows the server the user clicked. Recovery does not:
+  // it reuses this exact target even if the UI has since browsed somewhere else.
+  const connectToTarget = useCallback(async (
+    targetForConnection: VoiceTarget,
+    channelID: string,
+    channelEsportsMode?: boolean,
+    channelMaxBitrate?: number | null,
+  ): Promise<void> => {
     if (!stunHosts?.length) {
       throw new Error("SFU configuration not available");
     }
+
+    activeTargetRef.current = targetForConnection;
+    setActiveTarget(targetForConnection);
 
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
@@ -215,16 +225,15 @@ function useSfuHook(): SFUInterface {
       },
       connectionState,
       isConnected,
-      targetId: target.id,
+      targetId: targetForConnection.id,
       stunHosts,
-      room: target.room,
+      room: targetForConnection.room,
       sfuConnectionRefs,
       setConnectionState,
       setStreams,
       performCleanup,
     });
   }, [
-    target,
     stunHosts,
     connectionState,
     isConnected,
@@ -232,6 +241,25 @@ function useSfuHook(): SFUInterface {
     performCleanup,
     eSportsModeEnabled,
   ]);
+
+  const connect = useCallback(async (
+    channelID: string,
+    channelEsportsMode?: boolean,
+    channelMaxBitrate?: number | null,
+  ): Promise<void> => {
+    if (!target) {
+      throw new Error("No voice target: nothing to connect to");
+    }
+    await connectToTarget(target, channelID, channelEsportsMode, channelMaxBitrate);
+  }, [target, connectToTarget]);
+
+  const reconnectActiveTarget = useCallback(async (channelID: string): Promise<void> => {
+    const recoveryTarget = activeTargetRef.current;
+    if (!recoveryTarget) {
+      throw new Error("No active voice target to reconnect");
+    }
+    await connectToTarget(recoveryTarget, channelID);
+  }, [connectToTarget]);
 
   // Optimistic, with cleanup in the background. The old signature took a `playSound`; the
   // engine no longer plays anything, so a caller that wants a sound plays one.
@@ -514,8 +542,8 @@ function useSfuHook(): SFUInterface {
 
   // Reconnect voice after the signalling server reconnects. When only the transport dropped
   // the media plane is kept and we re-announce; if the SFU died too, a full reconnect.
-  const connectRef = useRef(connect);
-  useEffect(() => { connectRef.current = connect; }, [connect]);
+  const connectRef = useRef(reconnectActiveTarget);
+  useEffect(() => { connectRef.current = reconnectActiveTarget; }, [reconnectActiveTarget]);
   const disconnectRef = useRef(disconnect);
   useEffect(() => { disconnectRef.current = disconnect; }, [disconnect]);
 
@@ -564,7 +592,7 @@ function useSfuHook(): SFUInterface {
     const handleServerReconnected = () => {
       // The coordinator is the one we are connected through, so the host it names is the
       // target's. The old window event had to carry it, since any socket could raise it.
-      const host = target?.id;
+      const host = activeTargetRef.current?.id;
 
       const channelId = lastChannelIdRef.current;
       if (!channelId || intentionalDisconnectRef.current) return;
