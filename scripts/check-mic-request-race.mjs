@@ -177,6 +177,13 @@ function deferred() {
     noConsumerCancel,
     "a pending microphone request can outlive its last consumer",
   );
+
+  const falseWrites = hook.match(/setIsAcquiring\(false\)/g) ?? [];
+  assert.equal(
+    falseWrites.length,
+    2,
+    "isAcquiring is cleared somewhere outside request completion or cancellation",
+  );
 }
 
 console.log("microphone request races: stale results discarded, fallback stays owned");
