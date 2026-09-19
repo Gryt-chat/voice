@@ -69,3 +69,8 @@ jobs:
 
       - name: Check recovery stays on the active call server
         run: npm run check-active-call-target
+
+      # Device changes can leave an older getUserMedia call alive. Its eventual result must
+      # not replace the new device or clear the busy flag while the replacement is opening.
+      - name: Check microphone request races
+        run: npm run check-mic-request-race

@@ -19,6 +19,10 @@ import {
   createMicrophoneBuffer,
   usePipelineControls,
 } from "./microphonePipeline";
+import {
+  acquireMicrophoneForRequest,
+  type MicrophoneRequest,
+} from "./microphoneRequest";
 import { useSharedAudioContext } from "./useAudioContext";
 import { useHandles } from "./useHandles";
 import { usePushToTalkGate } from "./usePushToTalkGate";
@@ -133,13 +137,10 @@ function useCreateMicrophoneHook() {
   const releaseMicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micStreamRef = useRef<MediaStream | undefined>(undefined);
   /**
-   * The `getMicrophone` call that has not settled yet. Three ran at once once and all three
-   * succeeded; the two nobody owned drew as ghost participants (GRYT-964).
+   * The request for the currently selected device. An older OS request may still settle,
+   * but its result is stale and must never replace this one.
    */
-  const micRequestRef = useRef<{
-    deviceId: string | undefined;
-    stream: Promise<MediaStream>;
-  } | null>(null);
+  const micRequestRef = useRef<MicrophoneRequest | null>(null);
 
   micStreamRef.current = micStream;
 
@@ -505,46 +506,75 @@ function useCreateMicrophoneHook() {
         return;
       }
 
+      const inFlight = micRequestRef.current;
+      if (inFlight?.deviceId === deviceId) {
+        voiceLog.info(
+          "MIC",
+          "A getUserMedia for this device is already in flight — reusing it",
+        );
+        return;
+      }
+
+      const request: MicrophoneRequest = { deviceId };
+      micRequestRef.current = request;
+      setIsAcquiring(true);
       voiceLog.step("MIC", 2, "Requesting getUserMedia", { deviceId });
 
       try {
-        /* Shared rather than started again, but only for the same device: sharing across a
-           device change would hand back the microphone the caller just stopped asking for. */
-        const inFlight = micRequestRef.current;
-        if (inFlight && inFlight.deviceId === deviceId) {
+        const result = await acquireMicrophoneForRequest(
+          request,
+          () => micRequestRef.current,
+          (requestedDeviceId) => platform.getMicrophone(requestedDeviceId),
+          (error) => {
+            voiceLog.fail(
+              "MIC",
+              2,
+              `getUserMedia failed for device ${deviceId}`,
+              error,
+            );
+            voiceLog.step("MIC", "2b", "Trying fallback (default device)");
+          },
+        );
+
+        if (result.status === "stale") {
           voiceLog.info(
             "MIC",
-            "A getUserMedia for this device is already in flight — waiting on it",
+            `Ignoring microphone result for superseded device ${deviceId ?? "default"}`,
           );
-        } else {
-          micRequestRef.current = {
-            deviceId,
-            stream: platform.getMicrophone(deviceId),
-          };
+          return;
         }
 
-        const request = micRequestRef.current!;
-        let stream: MediaStream;
-        setIsAcquiring(true);
-        try {
-          stream = await request.stream;
-        } finally {
-          setIsAcquiring(false);
-          /* Only if it is still ours. A device change during the await has already replaced
-             it, and clearing that would let the next caller start a third. */
-          if (micRequestRef.current === request) micRequestRef.current = null;
+        if (result.status === "failed") {
+          voiceLog.fail(
+            "MIC",
+            "2b",
+            "Fallback getUserMedia also failed — no microphone!",
+            result.fallbackError,
+          );
+          setMicUnavailable(classifyMicFailure(result.fallbackError));
+          return;
         }
 
+        const stream = result.stream;
         const tracks = stream.getAudioTracks();
 
-        voiceLog.ok("MIC", 2, "getUserMedia succeeded", {
-          trackCount: tracks.length,
-          tracks: tracks.map((t) => ({
-            id: t.id,
-            label: t.label,
-            readyState: t.readyState,
-          })),
-        });
+        if (result.source === "fallback") {
+          voiceLog.ok("MIC", "2b", "Fallback getUserMedia succeeded", {
+            tracks: tracks.map((t) => ({
+              id: t.id,
+              label: t.label,
+            })),
+          });
+        } else {
+          voiceLog.ok("MIC", 2, "getUserMedia succeeded", {
+            trackCount: tracks.length,
+            tracks: tracks.map((t) => ({
+              id: t.id,
+              label: t.label,
+              readyState: t.readyState,
+            })),
+          });
+        }
 
         const previous = micStreamRef.current;
         if (previous && previous !== stream) {
@@ -557,46 +587,14 @@ function useCreateMicrophoneHook() {
 
         // Reports rather than writes: the engine does not own the setting. Nothing
         // to report when no device was named — that is the default path.
-        if (deviceId && deviceId !== micID) {
+        if (result.source === "selected" && deviceId && deviceId !== micID) {
           onAudioDeviceChanged?.(deviceId);
         }
-      } catch (error) {
-        voiceLog.fail(
-          "MIC",
-          2,
-          `getUserMedia failed for device ${deviceId}`,
-          error,
-        );
-        voiceLog.step("MIC", "2b", "Trying fallback (default device)");
-
-        try {
-          const fallbackStream = await platform.getMicrophone();
-
-          voiceLog.ok("MIC", "2b", "Fallback getUserMedia succeeded", {
-            tracks: fallbackStream.getAudioTracks().map((t) => ({
-              id: t.id,
-              label: t.label,
-            })),
-          });
-
-          const previous = micStreamRef.current;
-          if (previous && previous !== fallbackStream) {
-            previous.getTracks().forEach((track) => track.stop());
-          }
-
-          micStreamRef.current = fallbackStream;
-          setMicStream(fallbackStream);
-          setMicUnavailable(null);
-        } catch (fallbackError) {
-          voiceLog.fail(
-            "MIC",
-            "2b",
-            "Fallback getUserMedia also failed — no microphone!",
-            fallbackError,
-          );
-          // This used to end here, so a client with no working microphone
-          // joined voice looking entirely healthy while nobody could hear it.
-          setMicUnavailable(classifyMicFailure(fallbackError));
+      } finally {
+        // A superseded request is not allowed to clear the busy flag for its replacement.
+        if (micRequestRef.current === request) {
+          micRequestRef.current = null;
+          setIsAcquiring(false);
         }
       }
     }
@@ -651,6 +649,12 @@ function useCreateMicrophoneHook() {
       );
       initializeDevice(currentDeviceId);
       return;
+    }
+
+    if (micRequestRef.current) {
+      voiceLog.info("MIC", "No active handles — superseding pending microphone request");
+      micRequestRef.current = null;
+      setIsAcquiring(false);
     }
 
     if (!micStreamRef.current) return;
