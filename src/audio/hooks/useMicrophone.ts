@@ -21,6 +21,7 @@ import {
 } from "./microphonePipeline";
 import {
   acquireMicrophoneForRequest,
+  isSameMicrophoneRequest,
   type MicrophoneRequest,
 } from "./microphoneRequest";
 import { useSharedAudioContext } from "./useAudioContext";
@@ -507,7 +508,7 @@ function useCreateMicrophoneHook() {
       }
 
       const inFlight = micRequestRef.current;
-      if (inFlight?.deviceId === deviceId) {
+      if (isSameMicrophoneRequest(inFlight, deviceId)) {
         voiceLog.info(
           "MIC",
           "A getUserMedia for this device is already in flight — reusing it",
