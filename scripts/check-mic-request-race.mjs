@@ -199,7 +199,7 @@ function deferred() {
 
   const loopStart = flow.indexOf("for (;;) {", waitLog);
   const timeoutBlock = flow.indexOf(
-    'voiceLog.fail(\n          "CONNECT",\n          3,\n          `Microphone did not arrive',
+    "Microphone did not arrive within",
     loopStart,
   );
   assert.notEqual(loopStart, -1, "microphone wait loop is missing");
