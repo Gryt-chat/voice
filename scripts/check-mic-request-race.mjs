@@ -198,11 +198,14 @@ function deferred() {
   assert.notEqual(waitLog, -1, "microphone wait log moved; move this check with it");
 
   const loopStart = flow.indexOf("for (;;) {", waitLog);
-  const loopEnd = flow.indexOf("\n        if (!streamToUse) {", loopStart);
+  const timeoutBlock = flow.indexOf(
+    'voiceLog.fail(\n          "CONNECT",\n          3,\n          `Microphone did not arrive',
+    loopStart,
+  );
   assert.notEqual(loopStart, -1, "microphone wait loop is missing");
-  assert.notEqual(loopEnd, -1, "microphone timeout block is missing");
+  assert.notEqual(timeoutBlock, -1, "microphone timeout block is missing");
 
-  const loop = flow.slice(loopStart, loopEnd);
+  const loop = flow.slice(loopStart, timeoutBlock);
   const streamRead = loop.indexOf("microphoneBufferRef.current.processedStream");
   const deadlineRead = loop.indexOf("const deadline = micAcquiringRef.current");
   assert.ok(streamRead >= 0, "microphone wait loop no longer reads the current stream");
