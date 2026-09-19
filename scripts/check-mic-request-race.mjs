@@ -32,8 +32,8 @@ function deferred() {
 }
 
 // No request and "the platform default" are both represented with undefined.
- // They are not the same state: native must start its first default-device request.
- {
+// They are not the same state: native must start its first default-device request.
+{
   assert.equal(isSameMicrophoneRequest(null, undefined), false);
   assert.equal(isSameMicrophoneRequest({ deviceId: undefined }, undefined), true);
   assert.equal(isSameMicrophoneRequest({ deviceId: "mic-a" }, "mic-a"), true);
