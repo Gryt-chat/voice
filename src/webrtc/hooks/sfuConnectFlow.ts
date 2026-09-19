@@ -721,16 +721,8 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       let waited = 0;
       voiceLog.info("CONNECT", "No live stream yet — waiting for the microphone…");
       for (;;) {
-        const deadline = micAcquiringRef.current
-          ? MIC_BUSY_WAIT_MS
-          : MIC_IDLE_WAIT_MS;
-        if (waited >= deadline) break;
-        waited += MIC_POLL_MS;
-        await new Promise((resolve) => setTimeout(resolve, MIC_POLL_MS));
-        if (isStale()) {
-          voiceLog.info("CONNECT", "Superseded during mic poll — aborting");
-          return;
-        }
+        // Check the thing being waited for before applying the timeout. getUserMedia can
+        // settle just before isAcquiring flips false, which shortens the deadline again.
         streamToUse =
           microphoneBufferRef.current.processedStream ||
           microphoneBufferRef.current.mediaStream;
@@ -754,9 +746,21 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
               },
             );
             break;
-          } else {
-            streamToUse = undefined;
           }
+          streamToUse = undefined;
+        }
+
+        const deadline = micAcquiringRef.current
+          ? MIC_BUSY_WAIT_MS
+          : MIC_IDLE_WAIT_MS;
+        if (waited >= deadline) break;
+
+        const delay = Math.min(MIC_POLL_MS, deadline - waited);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        waited += delay;
+        if (isStale()) {
+          voiceLog.info("CONNECT", "Superseded during mic poll — aborting");
+          return;
         }
       }
       if (!streamToUse) {
