@@ -2,6 +2,13 @@ export interface MicrophoneRequest {
   deviceId: string | undefined;
 }
 
+export function isSameMicrophoneRequest(
+  request: MicrophoneRequest | null,
+  deviceId: string | undefined,
+): boolean {
+  return request !== null && request.deviceId === deviceId;
+}
+
 export type MicrophoneAcquireResult =
   | {
       status: "ready";
