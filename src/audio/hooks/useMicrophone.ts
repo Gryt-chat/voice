@@ -651,6 +651,12 @@ function useCreateMicrophoneHook() {
       return;
     }
 
+    if (micRequestRef.current) {
+      voiceLog.info("MIC", "No active handles — superseding pending microphone request");
+      micRequestRef.current = null;
+      setIsAcquiring(false);
+    }
+
     if (!micStreamRef.current) return;
 
     // No handles means no call, including while hidden — a call still holds one. Special-
