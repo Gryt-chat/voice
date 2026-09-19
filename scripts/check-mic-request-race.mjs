@@ -158,7 +158,7 @@ function deferred() {
 {
   const here = dirname(fileURLToPath(import.meta.url));
   const hook = readFileSync(
-    join(here, "..", "dist/audio/hooks/useMicrophone.js"),
+    join(here, "..", "src/audio/hooks/useMicrophone.ts"),
     "utf8",
   );
 
@@ -191,7 +191,7 @@ function deferred() {
 {
   const here = dirname(fileURLToPath(import.meta.url));
   const flow = readFileSync(
-    join(here, "..", "dist/webrtc/hooks/sfuConnectFlow.js"),
+    join(here, "..", "src/webrtc/hooks/sfuConnectFlow.ts"),
     "utf8",
   );
   const waitLog = flow.indexOf("No live stream yet");
