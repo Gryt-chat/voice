@@ -60,7 +60,11 @@ function useSfuHook(): SFUInterface {
   const effectiveDeafened = deafened || serverDeafened;
 
   const target = useVoiceTarget();
-  const room = target?.room ?? null;
+  const activeTargetRef = useRef(target);
+  const room =
+    connectionState.state === SFUConnectionState.DISCONNECTED
+      ? target?.room ?? null
+      : activeTargetRef.current?.room ?? target?.room ?? null;
 
   /* State only. It used to read the socket and peer connection refs as well, which
      no render depends on, so a null one at the wrong moment stuck this at false. */
@@ -182,8 +186,14 @@ function useSfuHook(): SFUInterface {
   const intentionalDisconnectRef = useRef(true);
 
   // Enhanced connect function — delegates to sfuConnectFlow
-  const connect = useCallback(async (channelID: string, channelEsportsMode?: boolean, channelMaxBitrate?: number | null): Promise<void> => {
-    if (!target) {
+  const connect = useCallback(async (
+    channelID: string,
+    channelEsportsMode?: boolean,
+    channelMaxBitrate?: number | null,
+    recoveryTarget = target,
+  ): Promise<void> => {
+    const targetForConnect = recoveryTarget;
+    if (!targetForConnect) {
       throw new Error("No voice target: nothing to connect to");
     }
     if (!stunHosts?.length) {
@@ -200,6 +210,7 @@ function useSfuHook(): SFUInterface {
 
     intentionalDisconnectRef.current = false;
     lastChannelIdRef.current = channelID;
+    activeTargetRef.current = targetForConnect;
     const seq = ++connectSeqRef.current;
 
     await sfuConnect({
@@ -215,9 +226,9 @@ function useSfuHook(): SFUInterface {
       },
       connectionState,
       isConnected,
-      targetId: target.id,
+      targetId: targetForConnect.id,
       stunHosts,
-      room: target.room,
+      room: targetForConnect.room,
       sfuConnectionRefs,
       setConnectionState,
       setStreams,
@@ -564,7 +575,7 @@ function useSfuHook(): SFUInterface {
     const handleServerReconnected = () => {
       // The coordinator is the one we are connected through, so the host it names is the
       // target's. The old window event had to carry it, since any socket could raise it.
-      const host = target?.id;
+      const host = activeTargetRef.current?.id;
 
       const channelId = lastChannelIdRef.current;
       if (!channelId || intentionalDisconnectRef.current) return;
@@ -609,7 +620,7 @@ function useSfuHook(): SFUInterface {
           disconnectRef.current()
             .then(() => {
               intentionalDisconnectRef.current = false;
-              return connectRef.current(channelId);
+              return connectRef.current(channelId, undefined, undefined, activeTargetRef.current);
             })
             .catch((error) => {
               console.error("[Voice Recovery] Fallback reconnect failed:", error);
@@ -626,7 +637,7 @@ function useSfuHook(): SFUInterface {
       const doReconnect = () => {
         intentionalDisconnectRef.current = false;
         console.info("[Voice Recovery] Attempting voice reconnect to channel:", channelId);
-        connectRef.current(channelId).catch((error) => {
+        connectRef.current(channelId, undefined, undefined, activeTargetRef.current).catch((error) => {
           console.error("[Voice Recovery] Failed to reconnect voice:", error);
         });
       };
@@ -715,7 +726,7 @@ function useSfuHook(): SFUInterface {
 
     reconnectTimerRef.current = setTimeout(() => {
       reconnectTimerRef.current = null;
-      connectRef.current(channelId).catch((error) => {
+      connectRef.current(channelId, undefined, undefined, activeTargetRef.current).catch((error) => {
         console.error(`[Voice Recovery] Reconnect attempt ${attempt} failed:`, error);
       });
     }, delayMs);
