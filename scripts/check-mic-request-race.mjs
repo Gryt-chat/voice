@@ -170,11 +170,12 @@ function deferred() {
     "a superseded microphone request can clear the replacement's acquiring state",
   );
 
-  const falseWrites = hook.match(/setIsAcquiring\(false\)/g) ?? [];
-  assert.equal(
-    falseWrites.length,
-    1,
-    "isAcquiring is cleared somewhere outside the current-request guard",
+  const noConsumerCancel =
+    /if \(micRequestRef\.current\) \{[\s\S]*?micRequestRef\.current = null;[\s\S]*?setIsAcquiring\(false\);[\s\S]*?\}\s*if \(!micStreamRef\.current\) return;/;
+  assert.match(
+    hook,
+    noConsumerCancel,
+    "a pending microphone request can outlive its last consumer",
   );
 }
 
