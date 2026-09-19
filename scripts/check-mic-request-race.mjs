@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const { acquireMicrophoneForRequest } = await import(
+const { acquireMicrophoneForRequest, isSameMicrophoneRequest } = await import(
   "../dist/audio/hooks/microphoneRequest.js"
 );
 
@@ -29,6 +29,15 @@ function deferred() {
     reject = rej;
   });
   return { promise, resolve, reject };
+}
+
+// No request and "the platform default" are both represented with undefined.
+ // They are not the same state: native must start its first default-device request.
+ {
+  assert.equal(isSameMicrophoneRequest(null, undefined), false);
+  assert.equal(isSameMicrophoneRequest({ deviceId: undefined }, undefined), true);
+  assert.equal(isSameMicrophoneRequest({ deviceId: "mic-a" }, "mic-a"), true);
+  assert.equal(isSameMicrophoneRequest({ deviceId: "mic-a" }, "mic-b"), false);
 }
 
 // The selected device succeeds normally.
