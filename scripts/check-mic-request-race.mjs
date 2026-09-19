@@ -186,4 +186,31 @@ function deferred() {
   );
 }
 
+// The connect loop must look for the stream before a just-finished request can
+// shorten the busy deadline back to the idle one.
+{
+  const here = dirname(fileURLToPath(import.meta.url));
+  const flow = readFileSync(
+    join(here, "..", "dist/webrtc/hooks/sfuConnectFlow.js"),
+    "utf8",
+  );
+  const waitLog = flow.indexOf("No live stream yet");
+  assert.notEqual(waitLog, -1, "microphone wait log moved; move this check with it");
+
+  const loopStart = flow.indexOf("for (;;) {", waitLog);
+  const loopEnd = flow.indexOf("\n        if (!streamToUse) {", loopStart);
+  assert.notEqual(loopStart, -1, "microphone wait loop is missing");
+  assert.notEqual(loopEnd, -1, "microphone timeout block is missing");
+
+  const loop = flow.slice(loopStart, loopEnd);
+  const streamRead = loop.indexOf("microphoneBufferRef.current.processedStream");
+  const deadlineRead = loop.indexOf("const deadline = micAcquiringRef.current");
+  assert.ok(streamRead >= 0, "microphone wait loop no longer reads the current stream");
+  assert.ok(deadlineRead >= 0, "microphone wait loop no longer reads the active deadline");
+  assert.ok(
+    streamRead < deadlineRead,
+    "microphone wait can time out before checking a stream that just arrived",
+  );
+}
+
 console.log("microphone request races: stale results discarded, fallback stays owned");
