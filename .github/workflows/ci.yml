@@ -66,3 +66,6 @@ jobs:
       # lost, and the join waited out its 20s timeout (GRYT-1263).
       - name: Check candidates that beat the offer are kept
         run: npm run check-early-candidates
+
+      - name: Check recovery stays on the active call server
+        run: npm run check-active-call-target
