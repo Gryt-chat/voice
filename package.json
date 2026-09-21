@@ -46,6 +46,7 @@
     "@types/node": "^20.19.33",
     "@types/react": "^19",
     "react-native-webrtc": "^124.0.8",
+    "react-test-renderer": "^19.2.8",
     "typescript": "^5.9.3"
   },
   "publishConfig": {
