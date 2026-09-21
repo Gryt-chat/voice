@@ -95,3 +95,7 @@ jobs:
       # effect listing useSFU's getters did that on every render (GRYT-1333).
       - name: Check the camera is only re-added for a new track
         run: npm run check-camera-resync
+
+      # The latency poll restarted on every render, about eight getStats a second (GRYT-1330).
+      - name: Check the latency poll reads once a second
+        run: npm run check-voice-latency

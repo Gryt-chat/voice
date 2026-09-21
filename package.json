@@ -42,7 +42,8 @@
     "check-video-stats": "node scripts/check-video-stats.mjs",
     "check-camera-sender": "node scripts/check-camera-sender.mjs",
     "check-mic-bitrate": "node scripts/check-mic-bitrate.mjs",
-    "check-camera-resync": "node scripts/check-camera-resync.mjs"
+    "check-camera-resync": "node scripts/check-camera-resync.mjs",
+    "check-voice-latency": "node scripts/check-voice-latency.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",

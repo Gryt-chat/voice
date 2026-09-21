@@ -64,7 +64,8 @@ export function useVoiceLatency(enabled: boolean) {
   const config = useVoiceConfig();
   const { noiseSuppression: rnnoiseEnabled, inputMode } = config.audio;
   const { eSportsMode: eSportsModeEnabled } = config.connection;
-  const { getPeerConnection, isConnected, activeSfuUrl } = useSFU();
+  const sfu = useSFU();
+  const { isConnected } = sfu;
   const { audioContext, microphoneBuffer } = useMicrophone(false);
 
   const [latency, setLatency] = useState<LatencyBreakdown>(EMPTY);
@@ -96,6 +97,12 @@ export function useVoiceLatency(enabled: boolean) {
     return { baseMs, outputMs, rnnoiseMs, totalMs: totalMs > 0 ? totalMs : null };
   }, [audioContext, rnnoiseEnabled, microphoneBuffer.rnnoiseNode]);
 
+  // Read through refs, so a render doesn't restart the poll and read the stats again.
+  const sfuRef = useRef(sfu);
+  sfuRef.current = sfu;
+  const computeLocalPipelineRef = useRef(computeLocalPipeline);
+  computeLocalPipelineRef.current = computeLocalPipeline;
+
   useEffect(() => {
     if (!enabled) {
       setLatency(EMPTY);
@@ -109,7 +116,8 @@ export function useVoiceLatency(enabled: boolean) {
     const poll = async () => {
       if (cancelled) return;
 
-      const local = computeLocalPipeline();
+      const local = computeLocalPipelineRef.current();
+      const { getPeerConnection, activeSfuUrl } = sfuRef.current;
 
       let networkRttMs: number | null = null;
       let jitterMs: number | null = null;
@@ -266,7 +274,7 @@ export function useVoiceLatency(enabled: boolean) {
       prevBytesRef.current = null;
       prevJitterBufRef.current = null;
     };
-  }, [enabled, computeLocalPipeline, getPeerConnection, isConnected, activeSfuUrl]);
+  }, [enabled, isConnected]);
 
   const modeLabel = eSportsModeEnabled
     ? "eSports"
