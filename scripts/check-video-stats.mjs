@@ -110,8 +110,8 @@ await advance(1_000);
   assert.deepEqual([row?.label, row?.trackId, row?.id], ["screen", screen.id, "OT3"]);
 }
 
-// Once a second, whatever else renders. The getters on useSFU are new on every render, and
-// depending on them restarted the poll each time: the overlay polled several times a second.
+// Once a second, whatever else renders. A poll that restarted on each render read the stats
+// several times a second.
 {
   const before = pc.statsCalls;
   for (let i = 0; i < 6; i++) {

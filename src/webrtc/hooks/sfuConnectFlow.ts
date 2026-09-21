@@ -934,19 +934,21 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       })),
     });
 
-    const OPUS_MAX_BITRATE_BPS = 510_000;
+    // With Opus's 510 kbps as the ceiling, Chrome gave the microphone 510 of a 548 kbps send
+    // estimate and the camera 30 (GRYT-1332). Voice needs tens of kbps.
+    const DEFAULT_MAX_BITRATE_BPS = 64_000;
     const ESPORTS_MAX_BITRATE_BPS = 128_000;
     const effectiveBitrate = eSportsModeEnabled
       ? ESPORTS_MAX_BITRATE_BPS
       : typeof channelMaxBitrateBps === "number" && channelMaxBitrateBps > 0
         ? channelMaxBitrateBps
-        : OPUS_MAX_BITRATE_BPS;
+        : DEFAULT_MAX_BITRATE_BPS;
 
     voiceLog.info(
       "CONNECT",
       eSportsModeEnabled
         ? `eSports mode — capping bitrate at ${ESPORTS_MAX_BITRATE_BPS / 1000}kbps (Opus studio quality)`
-        : `Applying max bitrate: ${effectiveBitrate / 1000}kbps${channelMaxBitrateBps ? " (channel)" : " (Opus ceiling)"}`,
+        : `Applying max bitrate: ${effectiveBitrate / 1000}kbps${channelMaxBitrateBps ? " (channel)" : " (default)"}`,
     );
     tracks.forEach((sender) => {
       try {

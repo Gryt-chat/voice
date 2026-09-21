@@ -85,3 +85,17 @@ jobs:
       # got a new sender each time it came back took the screen's (GRYT-1329).
       - name: Check the camera keeps its sender when it goes off
         run: npm run check-camera-sender
+
+      # The microphone's ceiling, and that a channel's own setting outlives a reconnect. At Opus's
+      # 510 kbps, a camera on a thin link was left 30 kbps (GRYT-1332).
+      - name: Check the microphone's bitrate ceiling
+        run: npm run check-mic-bitrate
+
+      # Replacing the camera's track with itself held it at 1080p on a thin link, and a client
+      # effect listing useSFU's getters did that on every render (GRYT-1333).
+      - name: Check the camera is only re-added for a new track
+        run: npm run check-camera-resync
+
+      # The latency poll restarted on every render, about eight getStats a second (GRYT-1330).
+      - name: Check the latency poll reads once a second
+        run: npm run check-voice-latency
