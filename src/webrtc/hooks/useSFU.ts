@@ -188,6 +188,8 @@ function useSfuHook(): SFUInterface {
 
   // Track the last channel ID so we can reconnect after server restart
   const lastChannelIdRef = useRef<string>("");
+  // The channel's eSports mode and bitrate, which a recovery reconnect has to pass again.
+  const lastChannelSettingsRef = useRef<{ eSportsMode?: boolean; maxBitrate?: number | null }>({});
   // Whether the call was ended on purpose, by a hang-up or by giving up, rather than lost.
   // Starts true, so an initial page load does not auto-reconnect.
   const intentionalDisconnectRef = useRef(true);
@@ -216,6 +218,7 @@ function useSfuHook(): SFUInterface {
 
     intentionalDisconnectRef.current = false;
     lastChannelIdRef.current = channelID;
+    lastChannelSettingsRef.current = { eSportsMode: channelEsportsMode, maxBitrate: channelMaxBitrate };
     activeCallRef.current = call;
     const seq = ++connectSeqRef.current;
 
@@ -606,7 +609,8 @@ function useSfuHook(): SFUInterface {
       const doReconnect = () => {
         if (intentionalDisconnectRef.current) return;
         console.info("[Voice Recovery] Attempting voice reconnect to channel:", channelId);
-        connectRef.current(channelId, undefined, undefined, activeCallRef.current).catch((error) => {
+        const { eSportsMode, maxBitrate } = lastChannelSettingsRef.current;
+        connectRef.current(channelId, eSportsMode, maxBitrate, activeCallRef.current).catch((error) => {
           console.error("[Voice Recovery] Failed to reconnect voice:", error);
         });
       };
@@ -736,7 +740,8 @@ function useSfuHook(): SFUInterface {
 
     reconnectTimerRef.current = setTimeout(() => {
       reconnectTimerRef.current = null;
-      connectRef.current(channelId, undefined, undefined, activeCallRef.current).catch((error) => {
+      const { eSportsMode, maxBitrate } = lastChannelSettingsRef.current;
+      connectRef.current(channelId, eSportsMode, maxBitrate, activeCallRef.current).catch((error) => {
         console.error(`[Voice Recovery] Reconnect attempt ${attempt} failed:`, error);
       });
     }, delayMs);

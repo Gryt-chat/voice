@@ -85,3 +85,8 @@ jobs:
       # got a new sender each time it came back took the screen's (GRYT-1329).
       - name: Check the camera keeps its sender when it goes off
         run: npm run check-camera-sender
+
+      # The microphone's ceiling, and that a channel's own setting outlives a reconnect. At Opus's
+      # 510 kbps, a camera on a thin link was left 30 kbps (GRYT-1332).
+      - name: Check the microphone's bitrate ceiling
+        run: npm run check-mic-bitrate

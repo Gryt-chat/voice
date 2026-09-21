@@ -138,11 +138,18 @@ export class FakePeerConnection {
   }
 
   addTrack(track) {
+    // Keeps what was set and counts replaces, so a check can read both back.
     const sender = {
       track,
-      getParameters: () => ({ encodings: [{}] }),
-      setParameters: () => Promise.resolve(),
+      parameters: { encodings: [{}] },
+      replaces: 0,
+      getParameters: () => structuredClone(sender.parameters),
+      setParameters: (parameters) => {
+        sender.parameters = structuredClone(parameters);
+        return Promise.resolve();
+      },
       replaceTrack: (next) => {
+        sender.replaces += 1;
         sender.track = next;
         return Promise.resolve();
       },
