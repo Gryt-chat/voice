@@ -434,20 +434,20 @@ function useSfuHook(): SFUInterface {
     sendRenegotiate();
   }, [sendRenegotiate, applyVideoCodecPreferences]);
 
+  // Paused rather than removed, like the screen's. addTrack never reuses a sender that has sent,
+  // so a new camera sender took the screen's m-line and the share had none (GRYT-1329).
   const removeVideoTrack = useCallback(() => {
     const pc = peerConnectionRef.current;
     const sender = videoSenderRef.current;
     if (!pc || !sender || pc.connectionState === "closed") return;
-    voiceLog.step("CAMERA", "remove", "Removing video track", {
+    voiceLog.step("CAMERA", "pause", "Pausing camera sender via replaceTrack(null)", {
       trackId: sender.track?.id,
       pcState: pc.connectionState,
     });
-    try {
-      pc.removeTrack(sender);
-    } catch { /* already removed */ }
-    videoSenderRef.current = null;
-    sendRenegotiate();
-  }, [sendRenegotiate]);
+    sender.replaceTrack(null)
+      .then(() => voiceLog.ok("CAMERA", "pause", "replaceTrack(null) succeeded"))
+      .catch((err: unknown) => voiceLog.fail("CAMERA", "pause", "replaceTrack(null) FAILED", err));
+  }, []);
 
   const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => {
     const pc = peerConnectionRef.current;
