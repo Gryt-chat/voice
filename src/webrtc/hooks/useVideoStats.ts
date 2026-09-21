@@ -77,8 +77,7 @@ function sentTrackId(stat: RTCStats & Record<string, unknown>, report: RTCStatsR
 export function useVideoStats(enabled: boolean) {
   const sfu = useSFU();
   const { isConnected } = sfu;
-  // Through a ref: useSFU's getters are new on every render, and as dependencies they
-  // restart the poll on each one.
+  // Through a ref, so a render doesn't restart the poll and read the stats again.
   const sfuRef = useRef(sfu);
   sfuRef.current = sfu;
 

@@ -393,29 +393,33 @@ function useSfuHook(): SFUInterface {
       return;
     }
     if (videoSenderRef.current) {
-      const oldTrackId = videoSenderRef.current.track?.id;
-      voiceLog.step("CAMERA", "replace", "replaceTrack on existing sender", {
-        oldTrackId,
-        newTrackId: track.id,
-        newTrackReadyState: track.readyState,
-        pcState: pc.connectionState,
-        senderTransport: videoSenderRef.current.transport?.state,
-      });
-      videoSenderRef.current.replaceTrack(track)
-        .then(() => {
-          voiceLog.ok("CAMERA", "replace", "replaceTrack succeeded", {
-            senderTrackId: videoSenderRef.current?.track?.id,
-            newTrackId: track.id,
-            trackReadyState: track.readyState,
-          });
-        })
-        .catch((err: unknown) => {
-          voiceLog.fail("CAMERA", "replace", "replaceTrack FAILED", {
-            error: err,
-            pcState: pc.connectionState,
-            senderTrackId: videoSenderRef.current?.track?.id,
-          });
+      // Replacing a track with itself resets the encoder's scaling, which held a camera
+      // on a thin link at full size and a few frames a second (GRYT-1333).
+      if (videoSenderRef.current.track !== track) {
+        const oldTrackId = videoSenderRef.current.track?.id;
+        voiceLog.step("CAMERA", "replace", "replaceTrack on existing sender", {
+          oldTrackId,
+          newTrackId: track.id,
+          newTrackReadyState: track.readyState,
+          pcState: pc.connectionState,
+          senderTransport: videoSenderRef.current.transport?.state,
         });
+        videoSenderRef.current.replaceTrack(track)
+          .then(() => {
+            voiceLog.ok("CAMERA", "replace", "replaceTrack succeeded", {
+              senderTrackId: videoSenderRef.current?.track?.id,
+              newTrackId: track.id,
+              trackReadyState: track.readyState,
+            });
+          })
+          .catch((err: unknown) => {
+            voiceLog.fail("CAMERA", "replace", "replaceTrack FAILED", {
+              error: err,
+              pcState: pc.connectionState,
+              senderTrackId: videoSenderRef.current?.track?.id,
+            });
+          });
+      }
 
       if (preferredCodec !== lastCameraCodecRef.current) {
         voiceLog.info("CAMERA", `Codec changed (${lastCameraCodecRef.current} → ${preferredCodec}), re-applying preferences`);
@@ -456,10 +460,13 @@ function useSfuHook(): SFUInterface {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
     if (screenVideoSenderRef.current) {
-      voiceLog.info("SCREEN", `REPLACE path – track=${track.id} stream=${stream.id} senderTrack=${screenVideoSenderRef.current.track?.id ?? "null"}`);
-      screenVideoSenderRef.current.replaceTrack(track)
-        .then(() => voiceLog.ok("SCREEN", "replace", `replaceTrack succeeded – track=${track.id}`))
-        .catch((err: unknown) => voiceLog.fail("SCREEN", "replace", `replaceTrack FAILED – track=${track.id}`, err));
+      // Not with the track it already has, for the same reason as the camera above.
+      if (screenVideoSenderRef.current.track !== track) {
+        voiceLog.info("SCREEN", `REPLACE path – track=${track.id} stream=${stream.id} senderTrack=${screenVideoSenderRef.current.track?.id ?? "null"}`);
+        screenVideoSenderRef.current.replaceTrack(track)
+          .then(() => voiceLog.ok("SCREEN", "replace", `replaceTrack succeeded – track=${track.id}`))
+          .catch((err: unknown) => voiceLog.fail("SCREEN", "replace", `replaceTrack FAILED – track=${track.id}`, err));
+      }
 
       if (preferredCodec !== lastScreenCodecRef.current) {
         voiceLog.info("SCREEN", `Codec changed (${lastScreenCodecRef.current} → ${preferredCodec}), re-applying preferences`);
@@ -809,6 +816,12 @@ function useSfuHook(): SFUInterface {
     }
   }, [microphoneBuffer.processedStream, microphoneBuffer.mediaStream, isConnected, streams]);
 
+  // The same function on every render, so an effect that lists one doesn't re-run each time.
+  const getPeerConnection = useCallback(() => peerConnectionRef.current, []);
+  const getScreenSenderTrackId = useCallback(() => screenVideoSenderRef.current?.track?.id ?? null, []);
+  const getScreenVideoSender = useCallback(() => screenVideoSenderRef.current, []);
+  const getCameraSenderTrackId = useCallback(() => videoSenderRef.current?.track?.id ?? null, []);
+
   return {
     streams,
     error: connectionState.error,
@@ -828,10 +841,10 @@ function useSfuHook(): SFUInterface {
     connectionState: connectionState.state,
     connectionError: connectionState.error,
     isConnecting,
-    getPeerConnection: () => peerConnectionRef.current,
-    getScreenSenderTrackId: () => screenVideoSenderRef.current?.track?.id ?? null,
-    getScreenVideoSender: () => screenVideoSenderRef.current,
-    getCameraSenderTrackId: () => videoSenderRef.current?.track?.id ?? null,
+    getPeerConnection,
+    getScreenSenderTrackId,
+    getScreenVideoSender,
+    getCameraSenderTrackId,
     activeSfuUrl: activeSfuUrlRef.current,
     callAloneTimeoutSeconds: connectionState.callAloneTimeoutSeconds,
     stillHere,

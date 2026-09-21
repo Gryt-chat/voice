@@ -90,3 +90,8 @@ jobs:
       # 510 kbps, a camera on a thin link was left 30 kbps (GRYT-1332).
       - name: Check the microphone's bitrate ceiling
         run: npm run check-mic-bitrate
+
+      # Replacing the camera's track with itself held it at 1080p on a thin link, and a client
+      # effect listing useSFU's getters did that on every render (GRYT-1333).
+      - name: Check the camera is only re-added for a new track
+        run: npm run check-camera-resync
