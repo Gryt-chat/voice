@@ -76,3 +76,7 @@ jobs:
       # not replace the new device or clear the busy flag while the replacement is opening.
       - name: Check microphone request races
         run: npm run check-mic-request-race
+
+      # Chromium's outbound-rtp has no trackIdentifier, so the track comes from media-source.
+      - name: Check outbound video stats find their track
+        run: npm run check-video-stats
