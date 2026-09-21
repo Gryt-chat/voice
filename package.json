@@ -38,7 +38,8 @@
     "check-native-audio-ends": "node scripts/check-native-audio-ends.mjs",
     "check-early-candidates": "node scripts/check-early-candidates.mjs",
     "check-active-call-target": "node scripts/check-active-call-target.mjs",
-    "check-mic-request-race": "node scripts/check-mic-request-race.mjs"
+    "check-mic-request-race": "node scripts/check-mic-request-race.mjs",
+    "check-video-stats": "node scripts/check-video-stats.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
@@ -46,6 +47,7 @@
     "@types/node": "^20.19.33",
     "@types/react": "^19",
     "react-native-webrtc": "^124.0.8",
+    "react-test-renderer": "^19.2.8",
     "typescript": "^5.9.3"
   },
   "publishConfig": {

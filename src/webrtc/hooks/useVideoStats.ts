@@ -3,6 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { useSFU } from "./useSFU";
 
 export interface OutboundVideoStats {
+  /** The outbound-rtp stat's id, for matching other stats about the same stream. */
+  id: string;
+  ssrc: number | null;
+  /** The sent track, read off the media-source stat. Null when the report does not say. */
+  trackId: string | null;
   label: "camera" | "screen";
   codec: string | null;
   frameWidth: number | null;
@@ -62,8 +67,20 @@ interface BytesDelta {
   ts: number;
 }
 
+// Chromium's outbound-rtp has no trackIdentifier: the media-source stat it points at does.
+function sentTrackId(stat: RTCStats & Record<string, unknown>, report: RTCStatsReport): string | null {
+  const source = typeof stat.mediaSourceId === "string" ? report.get(stat.mediaSourceId) : undefined;
+  const id = source?.trackIdentifier ?? stat.trackIdentifier;
+  return typeof id === "string" ? id : null;
+}
+
 export function useVideoStats(enabled: boolean) {
-  const { getPeerConnection, isConnected, getScreenSenderTrackId, getCameraSenderTrackId } = useSFU();
+  const sfu = useSFU();
+  const { isConnected } = sfu;
+  // Through a ref: useSFU's getters are new on every render, and as dependencies they
+  // restart the poll on each one.
+  const sfuRef = useRef(sfu);
+  sfuRef.current = sfu;
 
   const [stats, setStats] = useState<VideoStatsBreakdown>(EMPTY);
   const outboundBytesRef = useRef<Map<string, BytesDelta>>(new Map());
@@ -82,6 +99,7 @@ export function useVideoStats(enabled: boolean) {
     const poll = async () => {
       if (cancelled) return;
 
+      const { getPeerConnection, getScreenSenderTrackId, getCameraSenderTrackId } = sfuRef.current;
       const pc = getPeerConnection?.();
       if (!pc || !isConnected) {
         if (!cancelled) setStats(EMPTY);
@@ -139,13 +157,11 @@ export function useVideoStats(enabled: boolean) {
 
         report.forEach((stat) => {
           if (stat.type === "outbound-rtp" && stat.kind === "video") {
-            const trackIdentifier: string | undefined = stat.trackIdentifier;
+            const trackId = sentTrackId(stat, report);
             let label: "camera" | "screen" = "camera";
-            if (trackIdentifier) {
-              if (screenTrackId && trackIdentifier === screenTrackId) label = "screen";
-              else if (cameraTrackId && trackIdentifier === cameraTrackId) label = "camera";
-              else if (screenTrackId && !cameraTrackId) label = "screen";
-            }
+            if (trackId && trackId === screenTrackId) label = "screen";
+            else if (trackId && trackId === cameraTrackId) label = "camera";
+            else if (screenTrackId && !cameraTrackId) label = "screen";
 
             let bitrateKbps: number | null = null;
             const key = `out-${stat.ssrc}`;
@@ -162,6 +178,9 @@ export function useVideoStats(enabled: boolean) {
             }
 
             outbound.push({
+              id: stat.id,
+              ssrc: typeof stat.ssrc === "number" ? stat.ssrc : null,
+              trackId,
               label,
               codec: stat.codecId ? (codecMap.get(stat.codecId) ?? null) : null,
               frameWidth: stat.frameWidth ?? null,
@@ -247,7 +266,7 @@ export function useVideoStats(enabled: boolean) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [enabled, getPeerConnection, isConnected, getScreenSenderTrackId, getCameraSenderTrackId]);
+  }, [enabled, isConnected]);
 
   return stats;
 }

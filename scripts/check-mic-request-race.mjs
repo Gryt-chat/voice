@@ -1,13 +1,30 @@
 /* eslint-env node */
 
-import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+// Microphone requests racing device changes, consumers leaving and the connect flow's wait.
+// The hook half runs useMicrophone itself on a phone-shaped platform (0.5.6 broke there).
 
-const { acquireMicrophoneForRequest, isSameMicrophoneRequest } = await import(
-  "../dist/audio/hooks/microphoneRequest.js"
-);
+import assert from "node:assert/strict";
+
+// First, so the fake timers and sockets are in place before any engine module loads.
+import {
+  advance,
+  fakePhonePlatform,
+  fakeRoom,
+  log,
+  mountEngine,
+  settle,
+  voiceConfig,
+} from "./engine-harness.mjs";
+
+import {
+  acquireMicrophoneForRequest,
+  isSameMicrophoneRequest,
+} from "../dist/audio/hooks/microphoneRequest.js";
+import { useMicrophone } from "../dist/audio/hooks/useMicrophone.js";
+import { VoiceConfigProvider } from "../dist/config/index.js";
+import { setVoicePlatform } from "../dist/platform/index.js";
+import { VoiceSingletonHooks } from "../dist/shared/SingletonHooks.js";
+import { useSFU } from "../dist/webrtc/hooks/useSFU.js";
 
 function fakeStream() {
   let stopped = false;
@@ -162,67 +179,105 @@ function deferred() {
   );
 }
 
-// The hook keeps the busy flag owned by the current request. An older request
-// finishing is not allowed to clear it for the replacement.
-{
-  const here = dirname(fileURLToPath(import.meta.url));
-  const hook = readFileSync(
-    join(here, "..", "src/audio/hooks/useMicrophone.ts"),
-    "utf8",
-  );
+// ── The hook, on a phone-shaped platform ─────────────────────────────────────
 
-  const guardedFinish =
-    /if \(micRequestRef\.current === request\) \{\s*micRequestRef\.current = null;\s*setIsAcquiring\(false\);\s*\}/;
-  assert.match(
-    hook,
-    guardedFinish,
-    "a superseded microphone request can clear the replacement's acquiring state",
-  );
+/** useMicrophone with one consumer, switched on after mount the way a call takes it. */
+async function microphoneWith({ deviceId, manual = false } = {}) {
+  const phone = fakePhonePlatform();
+  phone.microphone.manual = manual;
+  setVoicePlatform(phone);
 
-  const noConsumerCancel =
-    /if \(micRequestRef\.current\) \{[\s\S]*?micRequestRef\.current = null;[\s\S]*?setIsAcquiring\(false\);[\s\S]*?\}\s*if \(!micStreamRef\.current\) return;/;
-  assert.match(
-    hook,
-    noConsumerCancel,
-    "a pending microphone request can outlive its last consumer",
-  );
-
-  const falseWrites = hook.match(/setIsAcquiring\(false\)/g) ?? [];
-  assert.equal(
-    falseWrites.length,
-    2,
-    "isAcquiring is cleared somewhere outside request completion or cancellation",
-  );
+  const engine = await mountEngine({
+    provider: VoiceConfigProvider,
+    runner: VoiceSingletonHooks,
+    read: (wanted) => useMicrophone(wanted),
+    config: voiceConfig({ deviceId }),
+    target: null,
+    probe: false,
+  });
+  await engine.update({ probe: true });
+  return { phone, engine, mic: () => engine.current };
 }
 
-// The connect loop must look for the stream before a just-finished request can
-// shorten the busy deadline back to the idle one.
+// No device named on a phone means the platform default. 0.5.6 read "no request in flight"
+// as "the default is already in flight" and never called getUserMedia at all.
 {
-  const here = dirname(fileURLToPath(import.meta.url));
-  const flow = readFileSync(
-    join(here, "..", "src/webrtc/hooks/sfuConnectFlow.ts"),
-    "utf8",
+  const { phone, engine, mic } = await microphoneWith();
+  assert.deepEqual(
+    phone.microphone.requests.map((request) => request.deviceId),
+    [undefined],
+    "a phone with no device named never asked for the microphone",
   );
-  const waitLog = flow.indexOf("No live stream yet");
-  assert.notEqual(waitLog, -1, "microphone wait log moved; move this check with it");
-
-  const loopStart = flow.indexOf("for (;;) {", waitLog);
-  const timeoutBlock = flow.indexOf(
-    "Microphone did not arrive within",
-    loopStart,
-  );
-  assert.notEqual(loopStart, -1, "microphone wait loop is missing");
-  assert.notEqual(timeoutBlock, -1, "microphone timeout block is missing");
-
-  const loop = flow.slice(loopStart, timeoutBlock);
-  const streamRead = loop.indexOf("microphoneBufferRef.current.processedStream");
-  const deadlineRead = loop.indexOf("const deadline = micAcquiringRef.current");
-  assert.ok(streamRead >= 0, "microphone wait loop no longer reads the current stream");
-  assert.ok(deadlineRead >= 0, "microphone wait loop no longer reads the active deadline");
-  assert.ok(
-    streamRead < deadlineRead,
-    "microphone wait can time out before checking a stream that just arrived",
-  );
+  assert.equal(mic().microphoneBuffer.processedStream, phone.microphone.requests[0].stream);
+  assert.equal(mic().isAcquiring, false);
+  await engine.unmount();
 }
 
-console.log("microphone request races: stale results discarded, fallback stays owned");
+// A device change while the old request is still open. The old one finishing is stopped,
+// and does not clear the busy flag the replacement owns.
+{
+  const { phone, engine, mic } = await microphoneWith({ deviceId: "mic-a", manual: true });
+  const [first] = phone.microphone.requests;
+  assert.equal(mic().isAcquiring, true);
+
+  await engine.update({ config: voiceConfig({ deviceId: "mic-b" }) });
+  const second = phone.microphone.requests[1];
+  assert.equal(second?.deviceId, "mic-b", "the device change did not start its own request");
+
+  await settle(() => first.resolve());
+  assert.equal(first.stream.track.readyState, "ended", "the superseded microphone was left open");
+  assert.equal(mic().isAcquiring, true, "a superseded request cleared the replacement's busy flag");
+  assert.equal(mic().microphoneBuffer.processedStream, undefined, "the superseded microphone was used");
+
+  await settle(() => second.resolve());
+  assert.equal(mic().isAcquiring, false);
+  assert.equal(mic().microphoneBuffer.processedStream, second.stream);
+  await engine.unmount();
+}
+
+// The last consumer leaves while a request is open. The busy flag goes with it, and the
+// stream that arrives later is stopped rather than kept for nobody.
+{
+  const { phone, engine, mic } = await microphoneWith({ deviceId: "mic-a", manual: true });
+  const [pending] = phone.microphone.requests;
+
+  await engine.update({ probe: false });
+  assert.equal(mic().isAcquiring, false, "a request with no consumer left kept the busy flag");
+
+  await settle(() => pending.resolve());
+  assert.equal(pending.stream.track.readyState, "ended", "a microphone nobody wanted was left open");
+  assert.equal(mic().microphoneBuffer.processedStream, undefined);
+  await engine.unmount();
+}
+
+// Joining while a permission prompt is up. The request outlasts the idle wait, so the connect
+// flow must keep waiting on the busy one and then use the microphone when it arrives.
+{
+  const phone = fakePhonePlatform();
+  phone.microphone.manual = true;
+  setVoicePlatform(phone);
+  const room = fakeRoom("server-a");
+
+  const engine = await mountEngine({
+    provider: VoiceConfigProvider,
+    runner: VoiceSingletonHooks,
+    read: () => useSFU(),
+    config: voiceConfig({ stunHosts: ["stun:a.test"] }),
+    target: { id: "server-a", room },
+  });
+  await settle(() => {
+    engine.current.connect("chan-a").catch(() => {});
+  });
+
+  await advance(10_000);
+  assert.equal(phone.microphone.requests.length, 1);
+  assert.equal(engine.current.connectionState, "connecting", "gave up while the request was still open");
+
+  await settle(() => phone.microphone.requests[0].resolve());
+  await advance(1_000);
+  assert.deepEqual(room.requests, ["chan-a"], "the join never used the microphone that arrived");
+  assert.equal(engine.current.connectionError, null);
+  await engine.unmount();
+}
+
+log("microphone request races: stale results stopped, busy flag owned, phones ask for the default");

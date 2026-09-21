@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useMicrophone } from "../../audio/hooks/useMicrophone";
 import { useSpeakers } from "../../audio/hooks/useSpeakers";
-import { useVoiceConfig, useVoiceTarget } from "../../config";
+import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
 import { singletonHook } from "../../shared/singletonHook";
 
 import { SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams } from "../types/SFU";
@@ -17,6 +17,12 @@ import { type Phase, voiceLog } from "./voiceLogger";
  * back refuses a room request for a few seconds, and hanging up on that drops a live call.
  */
 const REANNOUNCE_BACKOFF_MS = [0, 2000, 5000];
+
+/** The server a call is on and that server's STUN list, pinned together at connect. */
+interface ActiveCall {
+  target: VoiceTarget;
+  stunHosts: string[];
+}
 
 function useSfuHook(): SFUInterface {
   // Core WebRTC references
@@ -60,11 +66,12 @@ function useSfuHook(): SFUInterface {
   const effectiveDeafened = deafened || serverDeafened;
 
   const target = useVoiceTarget();
-  const activeTargetRef = useRef(target);
+  // What recovery reconnects to, whichever server is on screen by then.
+  const activeCallRef = useRef<ActiveCall | null>(null);
   const room =
     connectionState.state === SFUConnectionState.DISCONNECTED
       ? target?.room ?? null
-      : activeTargetRef.current?.room ?? target?.room ?? null;
+      : activeCallRef.current?.target.room ?? target?.room ?? null;
 
   /* State only. It used to read the socket and peer connection refs as well, which
      no render depends on, so a null one at the wrong moment stuck this at false. */
@@ -181,8 +188,8 @@ function useSfuHook(): SFUInterface {
 
   // Track the last channel ID so we can reconnect after server restart
   const lastChannelIdRef = useRef<string>("");
-  // Whether the last disconnect was user or server initiated, rather than a failure. Starts
-  // true, so an initial page load does not auto-reconnect.
+  // Whether the call was ended on purpose, by a hang-up or by giving up, rather than lost.
+  // Starts true, so an initial page load does not auto-reconnect.
   const intentionalDisconnectRef = useRef(true);
 
   // Enhanced connect function — delegates to sfuConnectFlow
@@ -190,13 +197,12 @@ function useSfuHook(): SFUInterface {
     channelID: string,
     channelEsportsMode?: boolean,
     channelMaxBitrate?: number | null,
-    recoveryTarget = target,
+    call: ActiveCall | null = target ? { target, stunHosts } : null,
   ): Promise<void> => {
-    const targetForConnect = recoveryTarget;
-    if (!targetForConnect) {
+    if (!call) {
       throw new Error("No voice target: nothing to connect to");
     }
-    if (!stunHosts?.length) {
+    if (!call.stunHosts?.length) {
       throw new Error("SFU configuration not available");
     }
 
@@ -210,7 +216,7 @@ function useSfuHook(): SFUInterface {
 
     intentionalDisconnectRef.current = false;
     lastChannelIdRef.current = channelID;
-    activeTargetRef.current = targetForConnect;
+    activeCallRef.current = call;
     const seq = ++connectSeqRef.current;
 
     await sfuConnect({
@@ -226,9 +232,9 @@ function useSfuHook(): SFUInterface {
       },
       connectionState,
       isConnected,
-      targetId: targetForConnect.id,
-      stunHosts,
-      room: targetForConnect.room,
+      targetId: call.target.id,
+      stunHosts: call.stunHosts,
+      room: call.target.room,
       sfuConnectionRefs,
       setConnectionState,
       setStreams,
@@ -575,7 +581,7 @@ function useSfuHook(): SFUInterface {
     const handleServerReconnected = () => {
       // The coordinator is the one we are connected through, so the host it names is the
       // target's. The old window event had to carry it, since any socket could raise it.
-      const host = activeTargetRef.current?.id;
+      const host = activeCallRef.current?.target.id;
 
       const channelId = lastChannelIdRef.current;
       if (!channelId || intentionalDisconnectRef.current) return;
@@ -594,6 +600,16 @@ function useSfuHook(): SFUInterface {
         clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = null;
       }
+
+      // Runs half a second after a disconnect, so connect sees it rendered. A hang-up in
+      // that half second wins.
+      const doReconnect = () => {
+        if (intentionalDisconnectRef.current) return;
+        console.info("[Voice Recovery] Attempting voice reconnect to channel:", channelId);
+        connectRef.current(channelId, undefined, undefined, activeCallRef.current).catch((error) => {
+          console.error("[Voice Recovery] Failed to reconnect voice:", error);
+        });
+      };
 
       const sfuWs = sfuWebSocketRef.current;
       const pc = peerConnectionRef.current;
@@ -620,7 +636,7 @@ function useSfuHook(): SFUInterface {
           disconnectRef.current()
             .then(() => {
               intentionalDisconnectRef.current = false;
-              return connectRef.current(channelId, undefined, undefined, activeTargetRef.current);
+              setTimeout(doReconnect, 500);
             })
             .catch((error) => {
               console.error("[Voice Recovery] Fallback reconnect failed:", error);
@@ -633,14 +649,6 @@ function useSfuHook(): SFUInterface {
 
       // SFU died or was not connected — full reconnect with short delay
       console.info("[Voice Recovery] Server reconnected — SFU not alive, full reconnect for channel:", channelId);
-
-      const doReconnect = () => {
-        intentionalDisconnectRef.current = false;
-        console.info("[Voice Recovery] Attempting voice reconnect to channel:", channelId);
-        connectRef.current(channelId, undefined, undefined, activeTargetRef.current).catch((error) => {
-          console.error("[Voice Recovery] Failed to reconnect voice:", error);
-        });
-      };
 
       const voiceStillActive =
         (cs.state === SFUConnectionState.CONNECTED || cs.state === SFUConnectionState.CONNECTING) &&
@@ -696,6 +704,8 @@ function useSfuHook(): SFUInterface {
       // Giving up is reported through the state, not announced. The client
       // decides whether that is worth a toast.
       console.warn("[Voice Recovery] Max reconnect attempts reached — giving up");
+      // Giving up is leaving. Otherwise a reconnect of the server on screen rejoins this call.
+      intentionalDisconnectRef.current = true;
       // Say why. Giving up and hanging up both land on DISCONNECTED, so an embedder that
       // wants to tell somebody the call dropped cannot tell them apart without this.
       setConnectionState({
@@ -726,7 +736,7 @@ function useSfuHook(): SFUInterface {
 
     reconnectTimerRef.current = setTimeout(() => {
       reconnectTimerRef.current = null;
-      connectRef.current(channelId, undefined, undefined, activeTargetRef.current).catch((error) => {
+      connectRef.current(channelId, undefined, undefined, activeCallRef.current).catch((error) => {
         console.error(`[Voice Recovery] Reconnect attempt ${attempt} failed:`, error);
       });
     }, delayMs);
