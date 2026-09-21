@@ -80,3 +80,8 @@ jobs:
       # Chromium's outbound-rtp has no trackIdentifier, so the track comes from media-source.
       - name: Check outbound video stats find their track
         run: npm run check-video-stats
+
+      # The SFU offers two video m-lines, and addTrack won't reuse one that has sent. A camera that
+      # got a new sender each time it came back took the screen's (GRYT-1329).
+      - name: Check the camera keeps its sender when it goes off
+        run: npm run check-camera-sender

@@ -36,6 +36,8 @@ export interface SFUInterface {
   videoStreams: VideoStreams;
   connect: (channelID: string, channelEsportsMode?: boolean, channelMaxBitrate?: number | null) => Promise<void>;
   disconnect: (onDisconnect?: () => void) => Promise<void>;
+  /* One sender per role and connection: remove pauses it and add resumes it. It keeps sending under
+     the first stream it was given, so that stream's id is the one to announce. */
   addVideoTrack: (track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => void;
   removeVideoTrack: () => void;
   addScreenVideoTrack: (track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => void;
