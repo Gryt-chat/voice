@@ -139,8 +139,9 @@ export async function connectToSfuWebSocket(
       if (isDisconnectingRef.current) return;
       if (sfuWebSocketRef.current && sfuWebSocketRef.current !== ws) return;
 
-      const isNormalClose = event.code === 1000 || event.code === 1001;
-      if (isNormalClose && event.wasClean) return;
+      // Only 1000 is the SFU ending it. 1001 is a proxy going away, Cloudflare's on a restart,
+      // and the SFU has already dropped the peer by then (GRYT-1359).
+      if (event.code === 1000 && event.wasClean) return;
 
       if (sfuWebSocketRef.current === ws) {
         sfuWebSocketRef.current = null;

@@ -99,3 +99,8 @@ jobs:
       # The latency poll restarted on every render, about eight getStats a second (GRYT-1330).
       - name: Check the latency poll reads once a second
         run: npm run check-voice-latency
+
+      # Cloudflare closes the SFU socket with 1001 when its proxy restarts. That was read as the
+      # call ending, and the server put the member out of voice a few seconds later (GRYT-1359).
+      - name: Check a proxy going away reconnects the call
+        run: npm run check-going-away
