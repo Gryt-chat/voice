@@ -253,9 +253,9 @@ function useSfuHook(): SFUInterface {
     eSportsModeEnabled,
   ]);
 
-  // Optimistic, with cleanup in the background. The old signature took a `playSound`; the
-  // engine no longer plays anything, so a caller that wants a sound plays one.
-  const disconnect = useCallback(async (onDisconnect?: () => void): Promise<void> => {
+  // Optimistic, with cleanup in the background. `recovering` tears down for a reconnect, and
+  // reports RECONNECTING so an embedder does not read it as the call ending (GRYT-1362).
+  const tearDown = useCallback(async (recovering: boolean, onDisconnect?: () => void): Promise<void> => {
     intentionalDisconnectRef.current = true;
     reconnectAttemptsRef.current = 0;
     if (reconnectTimerRef.current) {
@@ -263,13 +263,17 @@ function useSfuHook(): SFUInterface {
       reconnectTimerRef.current = null;
     }
 
-    setConnectionState({
-      state: SFUConnectionState.DISCONNECTED,
-      roomId: null,
-      serverId: null,
-      error: null,
-      callAloneTimeoutSeconds: null,
-    });
+    setConnectionState((prev) =>
+      recovering
+        ? { ...prev, state: SFUConnectionState.RECONNECTING, error: null }
+        : {
+            state: SFUConnectionState.DISCONNECTED,
+            roomId: null,
+            serverId: null,
+            error: null,
+            callAloneTimeoutSeconds: null,
+          },
+    );
 
     if (onDisconnect) {
       onDisconnect();
@@ -280,6 +284,12 @@ function useSfuHook(): SFUInterface {
       setStreamSources({});
     });
   }, [performCleanup]);
+
+  // The old signature took a `playSound`; the engine no longer plays anything.
+  const disconnect = useCallback(
+    (onDisconnect?: () => void) => tearDown(false, onDisconnect),
+    [tearDown],
+  );
 
   /**
    * Tell the SFU somebody is still in this call, so it restarts its clock (GRYT-711). Silent
@@ -543,8 +553,8 @@ function useSfuHook(): SFUInterface {
   // the media plane is kept and we re-announce; if the SFU died too, a full reconnect.
   const connectRef = useRef(connect);
   useEffect(() => { connectRef.current = connect; }, [connect]);
-  const disconnectRef = useRef(disconnect);
-  useEffect(() => { disconnectRef.current = disconnect; }, [disconnect]);
+  const tearDownRef = useRef(tearDown);
+  useEffect(() => { tearDownRef.current = tearDown; }, [tearDown]);
 
   /* `requestAccess` is called not for the SFU URLs but because `voice:room:request` sets the
      channel id on the server's record of this socket. A false return means reconnect. */
@@ -644,7 +654,7 @@ function useSfuHook(): SFUInterface {
           // The media plane is fine and the server still has no record of us, so rebuild
           // the lot. Silently staying is the one outcome to avoid.
           console.warn("[Voice Recovery] Re-announce did not take — falling back to a full reconnect");
-          disconnectRef.current()
+          tearDownRef.current(true)
             .then(() => {
               intentionalDisconnectRef.current = false;
               setTimeout(doReconnect, 500);
@@ -666,7 +676,7 @@ function useSfuHook(): SFUInterface {
         cs.serverId === host;
 
       if (voiceStillActive) {
-        disconnectRef.current().then(() => {
+        tearDownRef.current(true).then(() => {
           intentionalDisconnectRef.current = false;
           setTimeout(doReconnect, 500);
         }).catch((error) => {
