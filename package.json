@@ -44,7 +44,8 @@
     "check-mic-bitrate": "node scripts/check-mic-bitrate.mjs",
     "check-camera-resync": "node scripts/check-camera-resync.mjs",
     "check-voice-latency": "node scripts/check-voice-latency.mjs",
-    "check-going-away": "node scripts/check-going-away.mjs"
+    "check-going-away": "node scripts/check-going-away.mjs",
+    "check-recovery-disconnect": "node scripts/check-recovery-disconnect.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",

@@ -104,3 +104,8 @@ jobs:
       # call ending, and the server put the member out of voice a few seconds later (GRYT-1359).
       - name: Check a proxy going away reconnects the call
         run: npm run check-going-away
+
+      # Signalling back with the SFU dead rebuilds the call. That read as DISCONNECTED, and the
+      # client took it for leaving and switched the camera and screen share off (GRYT-1362).
+      - name: Check a rebuilt call reports reconnecting
+        run: npm run check-recovery-disconnect
