@@ -72,11 +72,12 @@ const camera = fakeTrack("video", "camera");
 await settle(() => sfu().addVideoTrack(camera, fakeStream(camera)));
 const cameraSender = pc.getSenders().find((sender) => sender.track === camera);
 assert.ok(cameraSender, "the camera never reached a sender");
+const senders = pc.getSenders().length;
 for (let i = 0; i < 4; i++) {
   await settle(() => sfu().addVideoTrack(camera, fakeStream(camera)));
 }
 assert.equal(cameraSender.replaces, 0, "the camera's track was replaced with itself");
-assert.equal(pc.getSenders().length, 2, "adding the camera again made another sender");
+assert.equal(pc.getSenders().length, senders, "adding the camera again made another sender");
 
 // A new track, which is what a quality change opens, is swapped in once.
 const reopened = fakeTrack("video", "camera");

@@ -8,6 +8,7 @@ import { singletonHook } from "../../shared/singletonHook";
 import { SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams } from "../types/SFU";
 import { CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
 import { sfuConnect } from "./sfuConnectFlow";
+import { publishOnSfuSlot } from "./sfuSlots";
 import { SFUConnectionStateInternal } from "./sfuTypes";
 import { useSFUStreams } from "./useSFUStreams";
 import { type Phase, voiceLog } from "./voiceLogger";
@@ -396,6 +397,20 @@ function useSfuHook(): SFUInterface {
     return true;
   }, []);
 
+  // Each role gets an SFU slot of its own. addTrack alone gave a camera paused before its
+  // first renegotiation to the next share, and the camera coming back replaced it (GRYT-1337).
+  const publishRole = useCallback((pc: RTCPeerConnection, track: MediaStreamTrack, stream: MediaStream, label: Phase): RTCRtpSender => {
+    const held = [videoSenderRef.current, screenVideoSenderRef.current, screenAudioSenderRef.current, ...registeredTracksRef.current];
+    const sender = publishOnSfuSlot(pc, track, stream, held) ?? pc.addTrack(track, stream);
+    const mid = pc.getTransceivers().find((t) => t.sender === sender)?.mid ?? null;
+    if (held.includes(sender)) {
+      voiceLog.fail(label, "publish", "addTrack reused a sender another role holds", { trackId: track.id, mid });
+    } else {
+      voiceLog.info(label, `Published track=${track.id} stream=${stream.id} on mid=${mid ?? "none yet"}`);
+    }
+    return sender;
+  }, []);
+
   const addVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => {
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") {
@@ -444,12 +459,12 @@ function useSfuHook(): SFUInterface {
       streamId: stream.id,
       pcState: pc.connectionState,
     });
-    const sender = pc.addTrack(track, stream);
+    const sender = publishRole(pc, track, stream, "CAMERA");
     videoSenderRef.current = sender;
     applyVideoCodecPreferences(pc, sender, preferredCodec, "CAMERA");
     lastCameraCodecRef.current = preferredCodec;
     sendRenegotiate();
-  }, [sendRenegotiate, applyVideoCodecPreferences]);
+  }, [sendRenegotiate, applyVideoCodecPreferences, publishRole]);
 
   // Paused rather than removed, like the screen's. addTrack never reuses a sender that has sent,
   // so a new camera sender took the screen's m-line and the share had none (GRYT-1329).
@@ -487,14 +502,14 @@ function useSfuHook(): SFUInterface {
       return;
     }
     voiceLog.info("SCREEN", `ADD path – track=${track.id} stream=${stream.id} pcState=${pc.signalingState}`);
-    const sender = pc.addTrack(track, stream);
+    const sender = publishRole(pc, track, stream, "SCREEN");
     screenVideoSenderRef.current = sender;
     applyVideoCodecPreferences(pc, sender, preferredCodec, "SCREEN");
     lastScreenCodecRef.current = preferredCodec;
 
     voiceLog.info("SCREEN", `addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
-  }, [sendRenegotiate, applyVideoCodecPreferences]);
+  }, [sendRenegotiate, applyVideoCodecPreferences, publishRole]);
 
   const removeScreenVideoTrack = useCallback(() => {
     const sender = screenVideoSenderRef.current;
@@ -516,11 +531,11 @@ function useSfuHook(): SFUInterface {
       return;
     }
     voiceLog.info("SCREEN", `Audio ADD path – track=${track.id} stream=${stream.id} pcState=${pc.signalingState}`);
-    const sender = pc.addTrack(track, stream);
+    const sender = publishRole(pc, track, stream, "SCREEN");
     screenAudioSenderRef.current = sender;
     voiceLog.info("SCREEN", `audio addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
-  }, [sendRenegotiate]);
+  }, [sendRenegotiate, publishRole]);
 
   const removeScreenAudioTrack = useCallback(() => {
     const sender = screenAudioSenderRef.current;
