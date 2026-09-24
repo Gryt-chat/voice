@@ -297,7 +297,8 @@ function useScreenShareHook(): ScreenShareInterface {
       }
     } catch (error) {
       console.error("[ScreenShare] getDisplayMedia failed:", error);
-      setScreenShareActive(false);
+      // A re-pick that is cancelled or fails leaves the share already running alone.
+      if (!rawStreamRef.current && !usingNativeVideoRef.current) setScreenShareActive(false);
     }
 
     function logTrackDetails(label: string, tracks: MediaStreamTrack[]) {
