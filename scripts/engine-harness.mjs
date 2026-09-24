@@ -76,7 +76,22 @@ Object.defineProperty(globalThis.navigator, "mediaDevices", {
   },
 });
 
-/** The SFU's WebSocket. It opens and answers `client_join` with `room_joined`. */
+/** The m-lines the SFU opens for every client in `peer.go`: microphone, camera, screen, screen audio. */
+export const SFU_SLOTS = ["audio", "video", "video", "audio"];
+
+/** An offer shaped like the SFU's: its receive slots, then one sendonly m-line per forwarded track. */
+export function sfuOffer(forwarded = []) {
+  const lines = ["v=0", "o=- 0 0 IN IP4 127.0.0.1", "s=-", "t=0 0"];
+  [...SFU_SLOTS.map((kind) => [kind, "recvonly"]), ...forwarded.map((kind) => [kind, "sendonly"])].forEach(
+    ([kind, direction], mid) => lines.push(`m=${kind} 9 UDP/TLS/RTP/SAVPF 96`, `a=mid:${mid}`, `a=${direction}`),
+  );
+  return { type: "offer", sdp: `${lines.join("\r\n")}\r\n` };
+}
+
+/**
+ * The SFU's WebSocket. It answers `client_join` with `room_joined` and an offer, and every
+ * `renegotiate` with a new one, unless `hold` is set, which queues them for `release`.
+ */
 export class FakeSocket {
   static CONNECTING = 0;
   static OPEN = 1;
@@ -88,6 +103,10 @@ export class FakeSocket {
     this.url = url;
     this.readyState = FakeSocket.CONNECTING;
     this.sent = [];
+    this.answers = [];
+    this.forwarded = [];
+    this.hold = false;
+    this.held = 0;
     FakeSocket.all.push(this);
 
     queueMicrotask(() => {
@@ -97,18 +116,32 @@ export class FakeSocket {
     });
   }
 
+  deliver(event, data) {
+    queueMicrotask(() => this.onmessage?.({ data: JSON.stringify({ event, data: JSON.stringify(data) }) }));
+  }
+
+  offer() {
+    this.deliver("offer", sfuOffer(this.forwarded));
+  }
+
+  /** Sends the offers `hold` kept back, as one, the way the SFU coalesces them. */
+  release() {
+    this.hold = false;
+    if (this.held > 0) this.offer();
+    this.held = 0;
+  }
+
   send(text) {
     const message = JSON.parse(text);
     this.sent.push(message);
+    if (message.event === "answer") this.answers.push(JSON.parse(message.data));
+    if (message.event === "renegotiate") {
+      if (this.hold) this.held += 1;
+      else this.offer();
+    }
     if (message.event !== "client_join") return;
-    queueMicrotask(() =>
-      this.onmessage?.({
-        data: JSON.stringify({
-          event: "room_joined",
-          data: JSON.stringify({ call_alone_timeout_seconds: 0 }),
-        }),
-      }),
-    );
+    this.deliver("room_joined", { call_alone_timeout_seconds: 0 });
+    this.offer();
   }
 
   close() {
@@ -124,6 +157,34 @@ export class FakeSocket {
 
 globalThis.WebSocket = FakeSocket;
 
+globalThis.RTCSessionDescription ??= class {
+  constructor({ type, sdp }) {
+    this.type = type;
+    this.sdp = sdp;
+  }
+};
+globalThis.RTCIceCandidate ??= class {
+  constructor(init) {
+    Object.assign(this, init);
+  }
+};
+
+function parseSections(sdp) {
+  return sdp.split(/\r?\nm=/).slice(1).map((section) => ({
+    kind: section.slice(0, section.indexOf(" ")),
+    mid: /\na=mid:(\S+)/.exec(section)?.[1] ?? null,
+    direction: /\na=(sendrecv|sendonly|recvonly|inactive)\b/.exec(section)?.[1] ?? "sendrecv",
+  }));
+}
+
+const sends = (direction) => direction === "sendrecv" || direction === "sendonly";
+const receives = (direction) => direction === "sendrecv" || direction === "recvonly";
+const directionOf = (send, receive) => (send ? (receive ? "sendrecv" : "sendonly") : receive ? "recvonly" : "inactive");
+
+/**
+ * Answers an offer the way a browser does, so a transceiver the page adds itself stays at
+ * mid null and never sends, which is how #67 passed here and failed through the SFU.
+ */
 export class FakePeerConnection {
   constructor(config) {
     this.config = config;
@@ -132,15 +193,17 @@ export class FakePeerConnection {
     this.signalingState = "stable";
     this.remoteDescription = null;
     this.localDescription = null;
-    this.senders = [];
+    this.transceivers = [];
     this.stats = new Map();
     this.statsCalls = 0;
   }
 
-  addTrack(track) {
-    // Keeps what was set and counts replaces, so a check can read both back.
+  /** Keeps what was set and counts replaces, so a check can read both back. */
+  newTransceiver(kind, { track = null, streams = [], direction = "sendrecv", mid = null, byAddTrack = false } = {}) {
     const sender = {
       track,
+      streams,
+      kind,
       parameters: { encodings: [{}] },
       replaces: 0,
       getParameters: () => structuredClone(sender.parameters),
@@ -153,21 +216,106 @@ export class FakePeerConnection {
         sender.track = next;
         return Promise.resolve();
       },
+      setStreams: (...next) => {
+        sender.streams = next;
+      },
     };
-    this.senders.push(sender);
-    return sender;
+    const transceiver = {
+      mid,
+      kind,
+      direction,
+      currentDirection: null,
+      remoteDirection: null,
+      everSent: false,
+      byAddTrack,
+      sender,
+      receiver: { track: { kind }, getParameters: () => ({ codecs: [] }) },
+    };
+    this.transceivers.push(transceiver);
+    return transceiver;
+  }
+
+  /** The spec's reuse rule: a transceiver of this kind with no track that has never sent. */
+  addTrack(track, stream) {
+    const free = this.transceivers.find(
+      (t) => t.kind === track.kind && t.direction !== "stopped" && t.sender.track === null && !t.everSent,
+    );
+    if (free) {
+      free.sender.track = track;
+      free.sender.streams = stream ? [stream] : [];
+      if (free.direction === "recvonly") free.direction = "sendrecv";
+      if (free.direction === "inactive") free.direction = "sendonly";
+      return free.sender;
+    }
+    return this.newTransceiver(track.kind, { track, streams: stream ? [stream] : [], byAddTrack: true }).sender;
+  }
+
+  addTransceiver(trackOrKind, init = {}) {
+    const track = typeof trackOrKind === "string" ? null : trackOrKind;
+    const kind = track ? track.kind : trackOrKind;
+    return this.newTransceiver(kind, { track, streams: init.streams ?? [], direction: init.direction ?? "sendrecv" });
   }
 
   removeTrack(sender) {
-    this.senders = this.senders.filter((candidate) => candidate !== sender);
+    const transceiver = this.transceivers.find((t) => t.sender === sender);
+    if (!transceiver) return;
+    sender.track = null;
+    transceiver.direction = directionOf(false, receives(transceiver.direction));
   }
 
+  /** Every sender whose transceiver is not stopped, a removed one included, as in a browser. */
   getSenders() {
-    return this.senders;
+    return this.transceivers.map((t) => t.sender);
+  }
+
+  get senders() {
+    return this.getSenders();
   }
 
   getTransceivers() {
-    return [];
+    return this.transceivers;
+  }
+
+  setRemoteDescription(description) {
+    for (const section of parseSections(description.sdp)) {
+      let transceiver = this.transceivers.find((t) => t.mid === section.mid);
+      transceiver ??= this.transceivers.find((t) => t.mid === null && t.byAddTrack && t.kind === section.kind);
+      transceiver ??= this.newTransceiver(section.kind, { direction: "recvonly" });
+      transceiver.mid = section.mid;
+      transceiver.remoteDirection = section.direction;
+    }
+    this.remoteDescription = description;
+    this.signalingState = "have-remote-offer";
+    return Promise.resolve();
+  }
+
+  createAnswer() {
+    const lines = ["v=0", "o=- 0 0 IN IP4 127.0.0.1", "s=-", "t=0 0"];
+    for (const section of parseSections(this.remoteDescription.sdp)) {
+      const t = this.transceivers.find((candidate) => candidate.mid === section.mid);
+      const direction = directionOf(
+        sends(t.direction) && receives(section.direction),
+        receives(t.direction) && sends(section.direction),
+      );
+      lines.push(`m=${section.kind} 9 UDP/TLS/RTP/SAVPF 96`, `a=mid:${section.mid}`, `a=${direction}`);
+      if (sends(direction)) lines.push(`a=msid:${t.sender.streams[0]?.id ?? "-"} ${t.sender.track?.id ?? "-"}`);
+    }
+    return Promise.resolve({ type: "answer", sdp: `${lines.join("\r\n")}\r\n` });
+  }
+
+  setLocalDescription(description) {
+    for (const section of parseSections(description.sdp)) {
+      const t = this.transceivers.find((candidate) => candidate.mid === section.mid);
+      t.currentDirection = section.direction;
+      if (sends(section.direction)) t.everSent = true;
+    }
+    this.localDescription = description;
+    this.signalingState = "stable";
+    return Promise.resolve();
+  }
+
+  addIceCandidate() {
+    return Promise.resolve();
   }
 
   createDataChannel() {
@@ -191,6 +339,19 @@ export class FakePeerConnection {
     this.connectionState = state;
     this.onconnectionstatechange?.();
   }
+}
+
+/** What the last answer says each mid carries: its direction and, when sending, its stream id. */
+export function answered(socket) {
+  const answer = socket.answers.at(-1);
+  if (!answer) return [];
+  return answer.sdp.split(/\r?\nm=/).slice(1).map((section) => ({
+    kind: section.slice(0, section.indexOf(" ")),
+    mid: /\na=mid:(\S+)/.exec(section)?.[1],
+    direction: /\na=(sendrecv|sendonly|recvonly|inactive)\b/.exec(section)?.[1],
+    stream: /\na=msid:(\S+)/.exec(section)?.[1] ?? null,
+    track: /\na=msid:\S+ (\S+)/.exec(section)?.[1] ?? null,
+  }));
 }
 
 let nextTrackId = 1;

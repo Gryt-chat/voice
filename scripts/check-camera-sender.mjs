@@ -64,7 +64,7 @@ const cameraOff = () => settle(() => engine.current.removeVideoTrack());
 
 const first = fakeTrack("video", "camera");
 await cameraOn(first);
-pc.senders.at(-1).role = "camera";
+pc.senders.find((sender) => sender.track === first).role = "camera";
 assert.deepEqual(added, [first.id], "the first camera track was not added");
 const offersAfterFirst = renegotiations();
 assert.equal(offersAfterFirst, 1, "a new camera sender has to ask the SFU for an offer");

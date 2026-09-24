@@ -86,6 +86,11 @@ jobs:
       - name: Check the camera keeps its sender when it goes off
         run: npm run check-camera-sender
 
+      # The SFU makes every offer, so a role can only send on a slot it offered. A camera paused
+      # before its renegotiation gave its slot to the share, and #67's own m-lines never sent (GRYT-1337).
+      - name: Check each role goes out on an SFU slot of its own
+        run: npm run check-sfu-slots
+
       # The microphone's ceiling, and that a channel's own setting outlives a reconnect. At Opus's
       # 510 kbps, a camera on a thin link was left 30 kbps (GRYT-1332).
       - name: Check the microphone's bitrate ceiling
