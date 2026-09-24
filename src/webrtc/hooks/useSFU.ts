@@ -18,14 +18,6 @@ import { type Phase, voiceLog } from "./voiceLogger";
  */
 const REANNOUNCE_BACKOFF_MS = [0, 2000, 5000];
 
-/**
- * A sender of this role's own. `addTrack` reuses a transceiver whose sender has never sent,
- * so a camera paused before its first offer handed its m-line to the next share (GRYT-1337).
- */
-function publish(pc: RTCPeerConnection, track: MediaStreamTrack, stream: MediaStream): RTCRtpSender {
-  return pc.addTransceiver(track, { direction: "sendrecv", streams: [stream] }).sender;
-}
-
 /** The server a call is on and that server's STUN list, pinned together at connect. */
 interface ActiveCall {
   target: VoiceTarget;
@@ -452,15 +444,15 @@ function useSfuHook(): SFUInterface {
       streamId: stream.id,
       pcState: pc.connectionState,
     });
-    const sender = publish(pc, track, stream);
+    const sender = pc.addTrack(track, stream);
     videoSenderRef.current = sender;
     applyVideoCodecPreferences(pc, sender, preferredCodec, "CAMERA");
     lastCameraCodecRef.current = preferredCodec;
     sendRenegotiate();
   }, [sendRenegotiate, applyVideoCodecPreferences]);
 
-  // Paused rather than removed, like the screen's, so the camera keeps its m-line and the
-  // stream id it was announced under when it comes back (GRYT-1329).
+  // Paused rather than removed, like the screen's. addTrack never reuses a sender that has sent,
+  // so a new camera sender took the screen's m-line and the share had none (GRYT-1329).
   const removeVideoTrack = useCallback(() => {
     const pc = peerConnectionRef.current;
     const sender = videoSenderRef.current;
@@ -495,7 +487,7 @@ function useSfuHook(): SFUInterface {
       return;
     }
     voiceLog.info("SCREEN", `ADD path – track=${track.id} stream=${stream.id} pcState=${pc.signalingState}`);
-    const sender = publish(pc, track, stream);
+    const sender = pc.addTrack(track, stream);
     screenVideoSenderRef.current = sender;
     applyVideoCodecPreferences(pc, sender, preferredCodec, "SCREEN");
     lastScreenCodecRef.current = preferredCodec;
@@ -524,7 +516,7 @@ function useSfuHook(): SFUInterface {
       return;
     }
     voiceLog.info("SCREEN", `Audio ADD path – track=${track.id} stream=${stream.id} pcState=${pc.signalingState}`);
-    const sender = publish(pc, track, stream);
+    const sender = pc.addTrack(track, stream);
     screenAudioSenderRef.current = sender;
     voiceLog.info("SCREEN", `audio addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
