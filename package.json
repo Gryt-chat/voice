@@ -41,6 +41,7 @@
     "check-mic-request-race": "node scripts/check-mic-request-race.mjs",
     "check-video-stats": "node scripts/check-video-stats.mjs",
     "check-camera-sender": "node scripts/check-camera-sender.mjs",
+    "check-transceiver-reuse": "node scripts/check-transceiver-reuse.mjs",
     "check-mic-bitrate": "node scripts/check-mic-bitrate.mjs",
     "check-camera-resync": "node scripts/check-camera-resync.mjs",
     "check-voice-latency": "node scripts/check-voice-latency.mjs",

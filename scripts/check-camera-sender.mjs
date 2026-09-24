@@ -46,10 +46,12 @@ assert.equal(engine.current.connectionState, "connected", "the call never came u
 
 const added = [];
 const removed = [];
-const addTrack = pc.addTrack.bind(pc);
-pc.addTrack = (track, stream) => {
+// Published with addTransceiver rather than addTrack, so a paused sender is never reused
+// for another role (GRYT-1337).
+const addTransceiver = pc.addTransceiver.bind(pc);
+pc.addTransceiver = (track, init) => {
   added.push(track.id);
-  return addTrack(track, stream);
+  return addTransceiver(track, init);
 };
 const removeTrack = pc.removeTrack.bind(pc);
 pc.removeTrack = (sender) => {

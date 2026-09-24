@@ -86,6 +86,11 @@ jobs:
       - name: Check the camera keeps its sender when it goes off
         run: npm run check-camera-sender
 
+      # A role paused before its first renegotiation has never sent, so addTrack handed its
+      # m-line to the next role and the far side drew the wrong video (GRYT-1337).
+      - name: Check the camera and the screen keep separate m-lines
+        run: npm run check-transceiver-reuse
+
       # The microphone's ceiling, and that a channel's own setting outlives a reconnect. At Opus's
       # 510 kbps, a camera on a thin link was left 30 kbps (GRYT-1332).
       - name: Check the microphone's bitrate ceiling
