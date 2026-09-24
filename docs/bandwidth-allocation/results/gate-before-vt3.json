@@ -1,0 +1,69 @@
+{
+ "label": "before-vt3",
+ "client": "old",
+ "sfu": "GRYT-1432-sfu-main",
+ "chrome": "Chrome/153.0.8010.53",
+ "oneFullOneHidden": {
+  "camera": {
+   "size": "1280x720",
+   "kbps": 995,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 1160,
+   "fps": 29
+  },
+  "upKbps": 2256,
+  "aRecvKbps": 2131,
+  "bRecvKbps": 2131
+ },
+ "bothHidden": {
+  "camera": {
+   "size": "1280x720",
+   "kbps": 899,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 899,
+   "fps": 30
+  },
+  "upKbps": 1892,
+  "aRecvKbps": 1798,
+  "bRecvKbps": 1798
+ },
+ "oneBack": {
+  "camera": {
+   "size": "1280x720",
+   "kbps": 969,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 1076,
+   "fps": 30
+  },
+  "upKbps": 2140,
+  "aRecvKbps": 2044,
+  "bRecvKbps": 2044
+ },
+ "resume": {
+  "camera": {
+   "firstFrameMs": 41,
+   "firstSize": "1280x720",
+   "longestGapAfterMs": 100,
+   "freezes": 0,
+   "freezeS": 0
+  },
+  "screen": {
+   "firstFrameMs": 7,
+   "firstSize": "1920x1080",
+   "longestGapAfterMs": 117,
+   "freezes": 0,
+   "freezeS": 0
+  }
+ },
+ "wanted": [],
+ "chromeArgs": ""
+}

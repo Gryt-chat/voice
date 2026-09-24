@@ -7,7 +7,7 @@
 // One guest, speaking @gryt/voice's SFU protocol. Publishes on the SFU's fixed slots the way
 // publishOnSfuSlot does: mic on m-line 0, camera on 1, screen on 2.
 const H = window.H = {
-  pc: null, ws: null, senders: {}, samples: [], frames: {}, events: [], videos: {},
+  pc: null, ws: null, senders: {}, streams: {}, streamOf: {}, samples: [], frames: {}, events: [], videos: {},
   log(...a) { const s = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' '); H.events.push([Date.now(), s]); },
 };
 
@@ -104,13 +104,25 @@ H.join = async function (o) {
     camTrack = camStream.getVideoTracks()[0]; camTrack.contentHint = 'motion';
   }
   if (o.screen) { scrTrack = screenTrack(o.screen.w, o.screen.h, o.screen.fps, o.screen.content || 'text'); scrStream = new MediaStream([scrTrack]); }
+  // o.engine: encodings go through @gryt/voice's controller, fed by video_wanted. o.demand: this
+  // guest reports what it draws with the engine's reporter. Both off is a client from before GRYT-1432.
+  if (o.engine || o.demand) {
+    const demand = await import('/dist/webrtc/hooks/videoDemand.js');
+    H.parseVideoWanted = demand.parseVideoWanted;
+    if (o.demand) H.reporter = demand.createDemandReporter(() => H.ws);
+  }
+  if (o.engine) {
+    const { createVideoSendController } = await import('/dist/webrtc/hooks/videoSender.js');
+    H.ctl = createVideoSendController(() => pc, (role) => H.senders[role] ?? null);
+    setInterval(H.ctl.tick, 1000);
+  }
   let published = false;
   // Behind the relay the SFU must only ever see this guest through it, so no local candidates:
   // it learns the relay's address as peer-reflexive from the checks that arrive through it.
   pc.onicecandidate = (e) => { if (e.candidate && !o.relayPort) ws.send(JSON.stringify({ event: 'candidate', data: JSON.stringify(e.candidate) })); };
   pc.ontrack = (e) => {
     const tr = e.track, id = tr.id;
-    H.log('ontrack', tr.kind, id, e.streams[0]?.id);
+    H.log('ontrack', tr.kind, id, e.streams[0]?.id); H.streamOf[id] = e.streams[0]?.id;
     if (tr.kind !== 'video') { const a = new Audio(); a.srcObject = new MediaStream([tr]); a.muted = true; return; }
     const v = document.createElement('video');
     v.muted = true; v.autoplay = true; v.playsInline = true; v.width = o.viewW || 640; v.height = o.viewH || 360;
@@ -132,7 +144,7 @@ H.join = async function (o) {
           if (!track) return;
           const t = tx[i]; t.direction = 'sendrecv'; t.sender.setStreams(stream); t.sender.replaceTrack(track);
           if (track.kind === 'video') preferCodec(t, o.codec || 'video/h264');
-          H.senders[name] = t.sender;
+          H.senders[name] = t.sender; H.streams[name] = stream.id;
         };
         put(0, micTrack, new MediaStream(micTrack ? [micTrack] : []), 'mic');
         put(1, camTrack, camStream, 'camera');
@@ -147,14 +159,20 @@ H.join = async function (o) {
       // the SFU re-offers after our answer, which is what @gryt/voice's sendRenegotiate is for.
       if (o.codec && o.codec !== 'video/h264' && !H.reneg) { H.reneg = true; setTimeout(() => ws.send(JSON.stringify({ event: 'renegotiate', data: '' })), 300); }
       if (H.senders.mic && !H.micCapped) { H.micCapped = true; const p = H.senders.mic.getParameters(); p.encodings[0].maxBitrate = 64000; await H.senders.mic.setParameters(p); }
-      if (H.senders.screen && !H.scrSet) {
+      if (H.ctl && !H.ctlSet) {
+        // The same settings controls.tsx hands the engine for a default share and camera.
+        H.ctlSet = true;
+        if (H.senders.screen) H.ctl.setSettings('screen', { priority: 'high', maxBitrate: 50_000_000, maxFramerate: o.screen.fps, degradationPreference: 'maintain-resolution' });
+        if (H.senders.camera) H.ctl.setSettings('camera', { priority: o.screen ? 'low' : 'medium', degradationPreference: 'maintain-framerate' });
+      }
+      if (H.senders.screen && !H.scrSet && !H.ctl) {
         // What controls.tsx applies to a default share: native size, 30 fps, 50 Mbps cap, high priority.
         H.scrSet = true; const p = H.senders.screen.getParameters();
         p.degradationPreference = 'maintain-resolution';
         p.encodings[0].priority = 'high'; p.encodings[0].maxBitrate = 50_000_000; p.encodings[0].maxFramerate = o.screen.fps;
         await H.senders.screen.setParameters(p);
       }
-      if (H.senders.camera && !H.camSet) {
+      if (H.senders.camera && !H.camSet && !H.ctl) {
         H.camSet = true; const p = H.senders.camera.getParameters();
         p.degradationPreference = 'maintain-framerate'; p.encodings[0].priority = o.screen ? 'low' : 'medium';
         await H.senders.camera.setParameters(p);
@@ -162,6 +180,10 @@ H.join = async function (o) {
     } else if (msg.event === 'candidate') {
       const c = JSON.parse(msg.data); c.candidate = rewrite(c.candidate);
       try { await pc.addIceCandidate(c); } catch (e) { H.log('cand err', String(e)); }
+    } else if (msg.event === 'video_wanted') {
+      H.log('video_wanted', msg.data);
+      const w = H.parseVideoWanted?.(msg.data);
+      if (w && H.ctl) H.ctl.onWanted(w);
     } else { H.log('ws', msg.event, (msg.data || '').slice(0, 120)); }
   };
   await opened;
@@ -169,6 +191,10 @@ H.join = async function (o) {
   H.log('joined');
   return true;
 };
+
+// By stream id, as the client does: a receiver's track id can differ from the sender's.
+H.report = function (streamId, width, height, fps) { H.reporter?.report(streamId, { width, height, fps }); };
+H.trackIds = function (streams) { const ids = {}; for (const [n, s] of Object.entries(streams)) ids[n] = Object.keys(H.streamOf).find((id) => H.streamOf[id] === s && H.videos[id]); return ids; };
 
 H.setParams = async function (name, enc, extra) {
   const s = H.senders[name]; const p = s.getParameters();

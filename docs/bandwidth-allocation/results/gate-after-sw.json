@@ -1,0 +1,126 @@
+{
+ "label": "after-sw",
+ "client": "new",
+ "sfu": "GRYT-1432-sfu-branch",
+ "chrome": "Chrome/153.0.8010.53",
+ "oneFullOneHidden": {
+  "camera": {
+   "size": "320x180",
+   "kbps": 87,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 82,
+   "fps": 30
+  },
+  "upKbps": 244,
+  "aRecvKbps": 169,
+  "bRecvKbps": 0
+ },
+ "bothHidden": {
+  "camera": {
+   "size": "paused",
+   "kbps": 0,
+   "fps": 0
+  },
+  "screen": {
+   "size": "paused",
+   "kbps": 1,
+   "fps": 0
+  },
+  "upKbps": 66,
+  "aRecvKbps": 0,
+  "bRecvKbps": 0
+ },
+ "oneBack": {
+  "camera": {
+   "size": "320x180",
+   "kbps": 87,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 91,
+   "fps": 30
+  },
+  "upKbps": 252,
+  "aRecvKbps": 178,
+  "bRecvKbps": 0
+ },
+ "resume": {
+  "camera": {
+   "firstFrameMs": 157,
+   "firstSize": "320x180",
+   "longestGapAfterMs": 833,
+   "freezes": 2,
+   "freezeS": 1.07
+  },
+  "screen": {
+   "firstFrameMs": 1724,
+   "firstSize": "1920x1080",
+   "longestGapAfterMs": 450,
+   "freezes": 2,
+   "freezeS": 0.86
+  }
+ },
+ "wanted": [
+  [
+   -4894,
+   "video_wanted {\"mid\":\"2\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":0}"
+  ],
+  [
+   -4827,
+   "video_wanted {\"mid\":\"1\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":0}"
+  ],
+  [
+   -4018,
+   "video_wanted {\"mid\":\"2\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":1}"
+  ],
+  [
+   -4018,
+   "video_wanted {\"mid\":\"1\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":1}"
+  ],
+  [
+   -3767,
+   "video_wanted {\"mid\":\"1\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":2}"
+  ],
+  [
+   -3767,
+   "video_wanted {\"mid\":\"2\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":2}"
+  ],
+  [
+   101,
+   "video_wanted {\"mid\":\"2\",\"width\":1920,\"height\":1088,\"fps\":60,\"watchers\":1,\"unknown\":1}"
+  ],
+  [
+   101,
+   "video_wanted {\"mid\":\"1\",\"width\":320,\"height\":192,\"fps\":60,\"watchers\":1,\"unknown\":1}"
+  ],
+  [
+   353,
+   "video_wanted {\"mid\":\"1\",\"width\":320,\"height\":192,\"fps\":60,\"watchers\":1,\"unknown\":0}"
+  ],
+  [
+   354,
+   "video_wanted {\"mid\":\"2\",\"width\":1920,\"height\":1088,\"fps\":60,\"watchers\":1,\"unknown\":0}"
+  ],
+  [
+   31004,
+   "video_wanted {\"mid\":\"2\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":0}"
+  ],
+  [
+   31004,
+   "video_wanted {\"mid\":\"1\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":0}"
+  ],
+  [
+   60121,
+   "video_wanted {\"mid\":\"2\",\"width\":1920,\"height\":1088,\"fps\":60,\"watchers\":1,\"unknown\":0}"
+  ],
+  [
+   60122,
+   "video_wanted {\"mid\":\"1\",\"width\":320,\"height\":192,\"fps\":60,\"watchers\":1,\"unknown\":0}"
+  ]
+ ],
+ "chromeArgs": "--disable-accelerated-video-encode"
+}

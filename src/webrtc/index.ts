@@ -18,6 +18,18 @@ export {
   type OutboundVideoStats,
   useVideoStats,
 } from "./hooks/useVideoStats";
+export {
+  cameraBitrate,
+  parseVideoWanted,
+  planVideoEncoding,
+  screenBitrate,
+  type VideoDemand,
+  type VideoEncodingPlan,
+  type VideoPlanState,
+  type VideoRole,
+  type VideoSendSettings,
+  type VideoWanted,
+} from "./hooks/videoDemand";
 export { type Phase, voiceLog } from "./hooks/voiceLogger";
 export {
   SFUConnectionState,

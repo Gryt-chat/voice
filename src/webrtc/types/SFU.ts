@@ -1,3 +1,5 @@
+import type { VideoDemand, VideoRole, VideoSendSettings } from "../hooks/videoDemand";
+
 export interface Streams {
   [id: string]: StreamData;
 }
@@ -67,4 +69,14 @@ export interface SFUInterface {
    * open connection, and nothing an SFU older than GRYT-715 will act on.
    */
   stillHere?: () => void;
+  /**
+   * The embedder's settings for the camera's or the share's encoding. The engine owns the
+   * encoding and may send less than these when viewers draw it smaller; null once it stops.
+   */
+  setVideoSendSettings?: (role: VideoRole, settings: VideoSendSettings | null) => void;
+  /**
+   * How big this viewer draws a remote stream's video, in device pixels, 0×0 when nobody can
+   * see it, or null once it's gone. Keyed by stream id: a receiver's track id can differ from the sender's.
+   */
+  reportVideoDemand?: (streamId: string, size: VideoDemand | null) => void;
 }

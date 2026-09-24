@@ -1,5 +1,6 @@
 import { MutableRefObject } from "react";
 
+import { parseVideoWanted, type VideoWanted } from "./videoDemand";
 import { voiceLog } from "./voiceLogger";
 
 /**
@@ -40,6 +41,9 @@ interface SFUConnectionOptions {
    * connect promise resolves.
    */
   onRoomJoined?: (info: RoomJoinedInfo) => void;
+
+  /** What viewers want of one of our streams, from an SFU that says (GRYT-1432). */
+  onVideoWanted?: (wanted: VideoWanted & { mid: string }) => void;
 }
 
 export interface RoomJoinedInfo {
@@ -455,6 +459,12 @@ export async function connectToSfuWebSocket(
               resolve(ws);
             }
 
+            break;
+          }
+
+          case "video_wanted": {
+            const wanted = parseVideoWanted(message.data);
+            if (wanted) options.onVideoWanted?.(wanted);
             break;
           }
 

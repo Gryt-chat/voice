@@ -1,0 +1,69 @@
+{
+ "label": "before-sw",
+ "client": "old",
+ "sfu": "GRYT-1432-sfu-main",
+ "chrome": "Chrome/153.0.8010.53",
+ "oneFullOneHidden": {
+  "camera": {
+   "size": "1280x720",
+   "kbps": 1006,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 79,
+   "fps": 30
+  },
+  "upKbps": 1169,
+  "aRecvKbps": 1085,
+  "bRecvKbps": 1085
+ },
+ "bothHidden": {
+  "camera": {
+   "size": "1280x720",
+   "kbps": 1049,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 85,
+   "fps": 30
+  },
+  "upKbps": 1218,
+  "aRecvKbps": 1134,
+  "bRecvKbps": 1134
+ },
+ "oneBack": {
+  "camera": {
+   "size": "1280x720",
+   "kbps": 1009,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 84,
+   "fps": 30
+  },
+  "upKbps": 1176,
+  "aRecvKbps": 1092,
+  "bRecvKbps": 1092
+ },
+ "resume": {
+  "camera": {
+   "firstFrameMs": 32,
+   "firstSize": "1280x720",
+   "longestGapAfterMs": 100,
+   "freezes": 0,
+   "freezeS": 0
+  },
+  "screen": {
+   "firstFrameMs": 32,
+   "firstSize": "1920x1080",
+   "longestGapAfterMs": 100,
+   "freezes": 0,
+   "freezeS": 0
+  }
+ },
+ "wanted": [],
+ "chromeArgs": "--disable-accelerated-video-encode"
+}

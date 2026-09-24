@@ -119,3 +119,8 @@ jobs:
       # its capture going (GRYT-1425).
       - name: Check a failed re-pick keeps the share
         run: npm run check-failed-repick
+
+      # The encoding follows what viewers draw, holds its way down and re-kicks a frozen resume,
+      # and an SFU that never sends video_wanted leaves it exactly as the settings ask (GRYT-1432).
+      - name: Check video follows what viewers draw
+        run: npm run check-video-demand

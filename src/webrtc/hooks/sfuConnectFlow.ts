@@ -9,6 +9,7 @@ import {
 } from "./connectionProgress";
 import { getCachedSfuUrl, selectBestSfuUrl } from "./selectBestSfuUrl";
 import { connectToSfuWebSocket } from "./sfuConnection";
+import type { VideoWanted } from "./videoDemand";
 import { SFUConnectionStateInternal } from "./sfuTypes";
 import { voiceLog } from "./voiceLogger";
 
@@ -516,6 +517,7 @@ export interface ConnectParams {
   setConnectionState: Dispatch<SetStateAction<SFUConnectionStateInternal>>;
   setStreams: Dispatch<SetStateAction<Streams>>;
   performCleanup: (skipServerUpdate?: boolean) => Promise<void>;
+  onVideoWanted?: (wanted: VideoWanted & { mid: string }) => void;
 }
 
 /* The SFU rejects explicit nulls where it accepts an absent key. */
@@ -543,6 +545,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     eSportsModeEnabled,
     connectSeq,
     connectSeqRef,
+    onVideoWanted,
   } = params;
   const {
     isConnectingRef,
@@ -1012,6 +1015,9 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
         {
           onRoomJoined: (info) => {
             callAloneTimeoutSeconds = info.callAloneTimeoutSeconds;
+          },
+          onVideoWanted: (wanted) => {
+            if (!isStale()) onVideoWanted?.(wanted);
           },
           onAbnormalClose: (info) => {
             if (isStale() || isDisconnectingRef.current) return;
