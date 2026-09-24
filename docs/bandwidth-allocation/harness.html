@@ -1,0 +1,206 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>bw harness</title>
+<style>body{margin:0;background:#111;color:#ccc;font:12px monospace} video{background:#000;display:block}</style>
+</head><body>
+<div id="log"></div>
+<script>
+// One guest, speaking @gryt/voice's SFU protocol. Publishes on the SFU's fixed slots the way
+// publishOnSfuSlot does: mic on m-line 0, camera on 1, screen on 2.
+const H = window.H = {
+  pc: null, ws: null, senders: {}, samples: [], frames: {}, events: [], videos: {},
+  log(...a) { const s = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' '); H.events.push([Date.now(), s]); },
+};
+
+function screenTrack(w, h, fps, content) {
+  // Stand-in for a shared window: a code editor that scrolls one line a second with a
+  // blinking caret ("text"), or full-frame motion ("motion").
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  const lines = [];
+  for (let i = 0; i < 400; i++) lines.push(`${String(i).padStart(4)}  const value${i} = computeSomething(input${i % 7}, { width: ${w}, height: ${h}, index: ${i} }); // ${'x'.repeat(i % 40)}`);
+  const lineH = Math.max(12, Math.round(h / 48));
+  let t0 = performance.now();
+  function draw() {
+    const t = (performance.now() - t0) / 1000;
+    if (content === 'motion') {
+      const img = g.createLinearGradient(0, 0, w, h);
+      img.addColorStop(0, `hsl(${(t * 60) % 360},70%,40%)`); img.addColorStop(1, `hsl(${(t * 60 + 180) % 360},70%,40%)`);
+      g.fillStyle = img; g.fillRect(0, 0, w, h);
+      for (let i = 0; i < 40; i++) { g.fillStyle = `hsl(${i * 9},80%,60%)`; g.beginPath(); g.arc((Math.sin(t * 1.3 + i) * 0.45 + 0.5) * w, (Math.cos(t * 0.9 + i * 1.7) * 0.45 + 0.5) * h, h / 12, 0, 7); g.fill(); }
+    } else {
+      g.fillStyle = '#1e1e1e'; g.fillRect(0, 0, w, h);
+      g.font = `${Math.round(lineH * 0.8)}px Menlo, monospace`;
+      const first = Math.floor(t);
+      for (let r = 0; r < Math.ceil(h / lineH); r++) {
+        const s = lines[(first + r) % lines.length];
+        g.fillStyle = r % 5 === 0 ? '#c586c0' : r % 3 === 0 ? '#9cdcfe' : '#d4d4d4';
+        g.fillText(s, 8, (r + 1) * lineH);
+      }
+      if (Math.floor(t * 2) % 2) { g.fillStyle = '#fff'; g.fillRect(8 + (first % 60) * lineH * 0.48, 10 * lineH + 2, 2, lineH); }
+    }
+  }
+  const tr = c.captureStream(fps).getVideoTracks()[0];
+  setInterval(draw, 1000 / fps); draw();
+  tr.contentHint = 'detail';
+  return tr;
+}
+
+function cameraTrack(w, h, fps) {
+  // Stand-in webcam: a moving scene plus per-frame sensor noise. Chrome's fake device tops
+  // out at 1280x720 and 20 fps.
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  const tiles = [];
+  for (let k = 0; k < 6; k++) {
+    const n = document.createElement('canvas'); n.width = 256; n.height = 256; const ng = n.getContext('2d');
+    const id = ng.createImageData(256, 256);
+    for (let i = 0; i < id.data.length; i += 4) { const v = Math.random() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; }
+    ng.putImageData(id, 0, 0); tiles.push(n);
+  }
+  const t0 = performance.now();
+  function draw() {
+    const t = (performance.now() - t0) / 1000;
+    const grd = g.createRadialGradient(w * 0.5, h * 0.4, h * 0.05, w * 0.5, h * 0.5, h * 0.9);
+    grd.addColorStop(0, '#c8a58a'); grd.addColorStop(0.5, '#6b5a4e'); grd.addColorStop(1, '#2a2622');
+    g.fillStyle = grd; g.fillRect(0, 0, w, h);
+    // a head that sways and nods
+    g.fillStyle = '#d9a982'; g.beginPath(); g.ellipse(w * 0.5 + Math.sin(t * 0.8) * w * 0.03, h * 0.45 + Math.sin(t * 1.7) * h * 0.02, h * 0.18, h * 0.24, Math.sin(t * 0.5) * 0.1, 0, 7); g.fill();
+    g.fillStyle = '#3b2b22'; g.fillRect(w * 0.5 - h * 0.2 + Math.sin(t * 0.8) * w * 0.03, h * 0.72, h * 0.4, h * 0.3);
+    g.globalAlpha = 0.10; g.globalCompositeOperation = 'overlay';
+    const tile = tiles[Math.floor(Math.random() * tiles.length)];
+    const ox = Math.floor(Math.random() * 256), oy = Math.floor(Math.random() * 256);
+    for (let y = -oy; y < h; y += 256) for (let x = -ox; x < w; x += 256) g.drawImage(tile, x, y);
+    g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+  }
+  const tr = c.captureStream(fps).getVideoTracks()[0];
+  setInterval(draw, 1000 / fps); draw();
+  tr.contentHint = 'motion';
+  return tr;
+}
+
+function preferCodec(tr, mime) {
+  const caps = RTCRtpSender.getCapabilities('video');
+  const pref = caps.codecs.filter(c => c.mimeType.toLowerCase() === mime);
+  const rest = caps.codecs.filter(c => c.mimeType.toLowerCase() !== mime);
+  if (pref.length && tr.setCodecPreferences) tr.setCodecPreferences([...pref, ...rest]);
+}
+
+H.join = async function (o) {
+  // o: { sfu, room, server, password, user, relayHost, relayPort, camera:{w,h,fps}, screen:{w,h,fps,content}, codec, viewW, viewH }
+  H.opts = o;
+  const pc = H.pc = new RTCPeerConnection({ iceServers: [] });
+  const ws = H.ws = new WebSocket(o.sfu);
+  const opened = new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+  const rewrite = (cand) => {
+    // Send this guest's media through the shaping relay: every SFU candidate becomes the relay.
+    if (!o.relayPort || !cand) return cand;
+    return cand.replace(/ (\d+\.\d+\.\d+\.\d+) (\d+) typ host/, ` ${o.relayHost} ${o.relayPort} typ host`);
+  };
+  let micTrack = null, camTrack = null, scrTrack = null, camStream = null, scrStream = null;
+  if (o.mic) { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); micTrack = s.getAudioTracks()[0]; }
+  if (o.camera && o.camera.synthetic) { camTrack = cameraTrack(o.camera.w, o.camera.h, o.camera.fps); camStream = new MediaStream([camTrack]); }
+  else if (o.camera) {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { width: { exact: o.camera.w }, height: { exact: o.camera.h }, frameRate: { ideal: o.camera.fps, max: o.camera.fps } } });
+    camTrack = camStream.getVideoTracks()[0]; camTrack.contentHint = 'motion';
+  }
+  if (o.screen) { scrTrack = screenTrack(o.screen.w, o.screen.h, o.screen.fps, o.screen.content || 'text'); scrStream = new MediaStream([scrTrack]); }
+  let published = false;
+  // Behind the relay the SFU must only ever see this guest through it, so no local candidates:
+  // it learns the relay's address as peer-reflexive from the checks that arrive through it.
+  pc.onicecandidate = (e) => { if (e.candidate && !o.relayPort) ws.send(JSON.stringify({ event: 'candidate', data: JSON.stringify(e.candidate) })); };
+  pc.ontrack = (e) => {
+    const tr = e.track, id = tr.id;
+    H.log('ontrack', tr.kind, id, e.streams[0]?.id);
+    if (tr.kind !== 'video') { const a = new Audio(); a.srcObject = new MediaStream([tr]); a.muted = true; return; }
+    const v = document.createElement('video');
+    v.muted = true; v.autoplay = true; v.playsInline = true; v.width = o.viewW || 640; v.height = o.viewH || 360;
+    v.srcObject = new MediaStream([tr]); document.body.appendChild(v); v.play().catch(() => {});
+    H.videos[id] = v; const fr = H.frames[id] = [];
+    const cb = (now, md) => { fr.push([performance.timeOrigin + now, md.width, md.height, md.presentedFrames]); v.requestVideoFrameCallback(cb); };
+    v.requestVideoFrameCallback(cb);
+  };
+  ws.onmessage = async (m) => {
+    const msg = JSON.parse(m.data);
+    if (msg.event === 'offer') {
+      const offer = JSON.parse(msg.data);
+      offer.sdp = offer.sdp.split('\r\n').map(l => l.startsWith('a=candidate:') ? 'a=' + rewrite(l.slice(2)) : l).join('\r\n');
+      await pc.setRemoteDescription(offer);
+      if (!published) {
+        published = true;
+        const tx = pc.getTransceivers();
+        const put = (i, track, stream, name) => {
+          if (!track) return;
+          const t = tx[i]; t.direction = 'sendrecv'; t.sender.setStreams(stream); t.sender.replaceTrack(track);
+          if (track.kind === 'video') preferCodec(t, o.codec || 'video/h264');
+          H.senders[name] = t.sender;
+        };
+        put(0, micTrack, new MediaStream(micTrack ? [micTrack] : []), 'mic');
+        put(1, camTrack, camStream, 'camera');
+        put(2, scrTrack, scrStream, 'screen');
+      }
+      const ans = await pc.createAnswer(); await pc.setLocalDescription(ans);
+      const local = { type: pc.localDescription.type, sdp: pc.localDescription.sdp };
+      if (o.relayPort) local.sdp = local.sdp.split('\r\n').filter(l => !l.startsWith('a=candidate:')).join('\r\n');
+      ws.send(JSON.stringify({ event: 'answer', data: JSON.stringify(local) }));
+      H.log('answered', pc.getTransceivers().length);
+      // Chrome sends with the first codec of the SFU's offer, so a preference only takes once
+      // the SFU re-offers after our answer, which is what @gryt/voice's sendRenegotiate is for.
+      if (o.codec && o.codec !== 'video/h264' && !H.reneg) { H.reneg = true; setTimeout(() => ws.send(JSON.stringify({ event: 'renegotiate', data: '' })), 300); }
+      if (H.senders.mic && !H.micCapped) { H.micCapped = true; const p = H.senders.mic.getParameters(); p.encodings[0].maxBitrate = 64000; await H.senders.mic.setParameters(p); }
+      if (H.senders.screen && !H.scrSet) {
+        // What controls.tsx applies to a default share: native size, 30 fps, 50 Mbps cap, high priority.
+        H.scrSet = true; const p = H.senders.screen.getParameters();
+        p.degradationPreference = 'maintain-resolution';
+        p.encodings[0].priority = 'high'; p.encodings[0].maxBitrate = 50_000_000; p.encodings[0].maxFramerate = o.screen.fps;
+        await H.senders.screen.setParameters(p);
+      }
+      if (H.senders.camera && !H.camSet) {
+        H.camSet = true; const p = H.senders.camera.getParameters();
+        p.degradationPreference = 'maintain-framerate'; p.encodings[0].priority = o.screen ? 'low' : 'medium';
+        await H.senders.camera.setParameters(p);
+      }
+    } else if (msg.event === 'candidate') {
+      const c = JSON.parse(msg.data); c.candidate = rewrite(c.candidate);
+      try { await pc.addIceCandidate(c); } catch (e) { H.log('cand err', String(e)); }
+    } else { H.log('ws', msg.event, (msg.data || '').slice(0, 120)); }
+  };
+  await opened;
+  ws.send(JSON.stringify({ event: 'client_join', data: JSON.stringify({ room_id: o.room, server_id: o.server, server_password: o.password, user_id: o.user }) }));
+  H.log('joined');
+  return true;
+};
+
+H.setParams = async function (name, enc, extra) {
+  const s = H.senders[name]; const p = s.getParameters();
+  Object.assign(p.encodings[0], enc); if (extra) Object.assign(p, extra);
+  const t0 = Date.now(); await s.setParameters(p); const t1 = Date.now();
+  H.log('setParameters', name, enc, t1 - t0);
+  return { t0, t1 };
+};
+
+H.snap = async function () {
+  const r = await H.pc.getStats(); const out = { t: Date.now(), out: {}, in: {}, pair: null, rin: {} };
+  const mids = {}; const codecs = {};
+  r.forEach(s => { if (s.type === 'codec') codecs[s.id] = s.mimeType; });
+  for (const [n, s] of Object.entries(H.senders)) { const t = H.pc.getTransceivers().find(x => x.sender === s); if (t) mids[t.mid] = n; }
+  r.forEach(s => {
+    if (s.type === 'outbound-rtp') {
+      const n = mids[s.mid] || s.mid;
+      out.out[n] = { bytes: s.bytesSent, hdr: s.headerBytesSent, rtx: s.retransmittedBytesSent, pkts: s.packetsSent, fe: s.framesEncoded, fs: s.framesSent, w: s.frameWidth, h: s.frameHeight, fps: s.framesPerSecond, kf: s.keyFramesEncoded, qlr: s.qualityLimitationReason, qld: s.qualityLimitationDurations, tgt: s.targetBitrate, enc: s.totalEncodeTime, pli: s.pliCount, nack: s.nackCount, impl: s.encoderImplementation, svc: s.scalabilityMode, active: s.active, qp: s.qpSum, rid: s.rid, hugeFrames: s.hugeFramesSent, codec: codecs[s.codecId] };
+    } else if (s.type === 'inbound-rtp' && s.kind === 'video') {
+      out.in[s.trackIdentifier] = { bytes: s.bytesReceived, hdr: s.headerBytesReceived, fd: s.framesDecoded, fr: s.framesReceived, drop: s.framesDropped, w: s.frameWidth, h: s.frameHeight, fps: s.framesPerSecond, kf: s.keyFramesDecoded, freeze: s.freezeCount, freezeDur: s.totalFreezesDuration, pause: s.pauseCount, pli: s.pliCount, nack: s.nackCount, lost: s.packetsLost, jb: s.jitterBufferDelay, jbe: s.jitterBufferEmittedCount, dec: s.decoderImplementation, codec: codecs[s.codecId] };
+    } else if (s.type === 'candidate-pair' && s.nominated && s.state === 'succeeded') {
+      out.pair = { aob: s.availableOutgoingBitrate, aib: s.availableIncomingBitrate, rtt: s.currentRoundTripTime, sent: s.bytesSent, recv: s.bytesReceived };
+    } else if (s.type === 'remote-inbound-rtp') {
+      out.rin[s.localId] = { lost: s.packetsLost, fl: s.fractionLost, rtt: s.roundTripTime, n: s.roundTripTimeMeasurements };
+    }
+  });
+  return out;
+};
+
+H.startSampling = function (ms) { H.stopSampling(); H.samplerT = setInterval(async () => { H.samples.push(await H.snap()); }, ms); };
+H.stopSampling = function () { if (H.samplerT) clearInterval(H.samplerT); H.samplerT = null; };
+H.take = function () { const s = H.samples; H.samples = []; return s; };
+H.takeFrames = function () { const f = {}; for (const [k, v] of Object.entries(H.frames)) { f[k] = v.splice(0); } return f; };
+H.sdp = function () { return { local: H.pc.localDescription?.sdp, remote: H.pc.remoteDescription?.sdp }; };
+</script></body></html>

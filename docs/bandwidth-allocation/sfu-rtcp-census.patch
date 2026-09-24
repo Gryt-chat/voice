@@ -1,0 +1,111 @@
+diff --git a/internal/signaling/coordinator.go b/internal/signaling/coordinator.go
+index a67fd95..4be7d0c 100644
+--- a/internal/signaling/coordinator.go
++++ b/internal/signaling/coordinator.go
+@@ -3,6 +3,7 @@ package signaling
+ import (
+ 	"fmt"
+ 	"log"
++	"sync"
+ 	"time"
+ 
+ 	"github.com/pion/rtcp"
+@@ -351,6 +352,7 @@ func (c *Coordinator) relayReceiverRTCP(rtpSender *webrtc.RTPSender, senderPC *w
+ 
+ 		var toRelay []rtcp.Packet
+ 		for _, pkt := range packets {
++			censusCount("from-viewer", pkt)
+ 			switch pkt.(type) {
+ 			case *rtcp.PictureLossIndication:
+ 				toRelay = append(toRelay, &rtcp.PictureLossIndication{
+@@ -370,3 +372,37 @@ func (c *Coordinator) relayReceiverRTCP(rtpSender *webrtc.RTPSender, senderPC *w
+ 		}
+ 	}
+ }
++
++// censusCount tallies RTCP packet types for the GRYT-1321 measurement. Not for merging.
++var censusMu sync.Mutex
++var census = map[string]int{}
++var censusOnce sync.Once
++
++func censusCount(dir string, pkt rtcp.Packet) {
++	name := fmt.Sprintf("%s %T", dir, pkt)
++	switch p := pkt.(type) {
++	case *rtcp.ReceiverEstimatedMaximumBitrate:
++		name = fmt.Sprintf("%s REMB", dir)
++		censusMu.Lock()
++		census[name+" last_bps"] = int(p.Bitrate)
++		censusMu.Unlock()
++	case *rtcp.TransportLayerCC:
++		name = fmt.Sprintf("%s TWCC", dir)
++	}
++	censusMu.Lock()
++	census[name]++
++	censusMu.Unlock()
++	censusOnce.Do(func() {
++		go func() {
++			for {
++				time.Sleep(5 * time.Second)
++				censusMu.Lock()
++				log.Printf("[CENSUS] %v", census)
++				censusMu.Unlock()
++			}
++		}()
++	})
++}
++
++// CensusCount is exported for the websocket package's sender-side drain.
++func CensusCount(dir string, pkt rtcp.Packet) { censusCount(dir, pkt) }
+diff --git a/internal/svc/forwarder.go b/internal/svc/forwarder.go
+index 66bcbd0..1a4663d 100644
+--- a/internal/svc/forwarder.go
++++ b/internal/svc/forwarder.go
+@@ -36,6 +36,8 @@ type LayerForwarder struct {
+ 
+ 	stopped chan struct{}
+ 	debug   bool
++
++	censusLogged bool
+ }
+ 
+ // NewLayerForwarder creates a forwarder for the given remote track and starts its goroutine,
+@@ -189,6 +191,10 @@ func (lf *LayerForwarder) run() {
+ 
+ 		if unmarshalErr == nil {
+ 			temporalID = lf.extractTemporalID(&header)
++			if !lf.censusLogged && lf.remoteTrack.Kind() == webrtc.RTPCodecTypeVideo {
++				lf.censusLogged = true
++				log.Printf("[CENSUS] incoming video %s ext ids %v", lf.trackID, header.GetExtensionIDs())
++			}
+ 		}
+ 
+ 		lf.mu.RLock()
+diff --git a/internal/websocket/handler_join.go b/internal/websocket/handler_join.go
+index f2fedec..388336c 100644
+--- a/internal/websocket/handler_join.go
++++ b/internal/websocket/handler_join.go
+@@ -12,6 +12,7 @@ import (
+ 	"sfu-v2/internal/iceguard"
+ 	"sfu-v2/internal/metrics"
+ 	"sfu-v2/internal/recovery"
++	"sfu-v2/internal/signaling"
+ 	peerManager "sfu-v2/internal/webrtc"
+ 	"sfu-v2/pkg/types"
+ )
+@@ -288,11 +289,14 @@ func drainRTCP(receiver *webrtc.RTPReceiver) {
+ 	if receiver == nil {
+ 		return
+ 	}
+-	buf := make([]byte, 1500)
+ 	for {
+-		if _, _, err := receiver.Read(buf); err != nil {
++		pkts, _, err := receiver.ReadRTCP()
++		if err != nil {
+ 			return
+ 		}
++		for _, p := range pkts {
++			signaling.CensusCount("from-sender", p)
++		}
+ 	}
+ }
+ 

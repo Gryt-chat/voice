@@ -1,0 +1,173 @@
+{
+ "chrome": "Chrome/153.0.8010.53",
+ "content": "motion",
+ "codec": "h264",
+ "rows": [
+  {
+   "label": "1080p",
+   "seconds": 15.006,
+   "wireKbps": 0,
+   "screen": {
+    "w": 1920,
+    "h": 1080,
+    "fps": 30,
+    "kbps": 11829,
+    "targetKbps": 17013,
+    "qlr": "none",
+    "encMsPerFrame": 6.13,
+    "keyframes": 0,
+    "impl": "VideoToolbox",
+    "codec": "video/H264"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 56,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "codec": "audio/opus"
+   },
+   "aobKbps": 18052,
+   "viewer": {
+    "6d3ac39e": {
+     "w": 1920,
+     "h": 1080,
+     "kbps": 11829,
+     "dropped": 0
+    }
+   }
+  },
+  {
+   "label": "720p",
+   "seconds": 15.004,
+   "wireKbps": 0,
+   "screen": {
+    "w": 1280,
+    "h": 720,
+    "fps": 30.1,
+    "kbps": 7571,
+    "targetKbps": 6783,
+    "qlr": "none",
+    "encMsPerFrame": 6.71,
+    "keyframes": 0,
+    "impl": "VideoToolbox",
+    "codec": "video/H264"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 55,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "codec": "audio/opus"
+   },
+   "aobKbps": 7324,
+   "viewer": {
+    "6d3ac39e": {
+     "w": 1280,
+     "h": 720,
+     "kbps": 7571,
+     "dropped": 0
+    }
+   }
+  },
+  {
+   "label": "360p",
+   "seconds": 15.004,
+   "wireKbps": 0,
+   "screen": {
+    "w": 640,
+    "h": 360,
+    "fps": 30,
+    "kbps": 4410,
+    "targetKbps": 5562,
+    "qlr": "none",
+    "encMsPerFrame": 3.37,
+    "keyframes": 0,
+    "impl": "VideoToolbox",
+    "codec": "video/H264"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 55,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "codec": "audio/opus"
+   },
+   "aobKbps": 5961,
+   "viewer": {
+    "6d3ac39e": {
+     "w": 640,
+     "h": 360,
+     "kbps": 4410,
+     "dropped": 0
+    }
+   }
+  },
+  {
+   "label": "paused",
+   "seconds": 15.003,
+   "wireKbps": 0,
+   "screen": {
+    "fps": 0,
+    "kbps": 1,
+    "targetKbps": 5562,
+    "qlr": "none",
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "impl": "VideoToolbox",
+    "codec": "video/H264"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 55,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "codec": "audio/opus"
+   },
+   "aobKbps": 126,
+   "viewer": {
+    "6d3ac39e": {
+     "w": 640,
+     "h": 360,
+     "kbps": 1,
+     "dropped": 0
+    }
+   }
+  },
+  {
+   "label": "1080p again",
+   "seconds": 15.004,
+   "wireKbps": 0,
+   "screen": {
+    "fps": 0,
+    "kbps": 29,
+    "targetKbps": 4426,
+    "qlr": "none",
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "impl": "VideoToolbox",
+    "codec": "video/H264"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 55,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "codec": "audio/opus"
+   },
+   "aobKbps": 5689,
+   "viewer": {
+    "6d3ac39e": {
+     "w": 1920,
+     "h": 1080,
+     "kbps": 29,
+     "dropped": 0
+    }
+   }
+  }
+ ]
+}

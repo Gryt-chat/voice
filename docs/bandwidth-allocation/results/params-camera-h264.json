@@ -1,0 +1,520 @@
+{
+ "chrome": "Chrome/153.0.8010.53",
+ "which": "camera",
+ "codec": "h264",
+ "results": [
+  {
+   "label": "scale 1 -> 2",
+   "setParametersMs": 2,
+   "sender": {
+    "ms": 64,
+    "w": 640,
+    "h": 360
+   },
+   "keyframesEncoded": 2,
+   "keyframesDecoded": 2,
+   "viewerFirstNewSize": {
+    "ms": 90,
+    "w": 640,
+    "h": 360
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 145,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "960x540",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "scale 2 -> 1",
+   "setParametersMs": 2,
+   "sender": {
+    "ms": 71,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 53,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 140,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "scale 1 -> 4",
+   "setParametersMs": 1,
+   "sender": {
+    "ms": 72,
+    "w": 480,
+    "h": 270
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 45,
+    "w": 480,
+    "h": 270
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 144,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "480x270",
+   "codec": "video/H264",
+   "impl": "OpenH264"
+  },
+  {
+   "label": "scale 4 -> 1",
+   "setParametersMs": 5,
+   "sender": {
+    "ms": 74,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 65,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 141,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "pause",
+   "setParametersMs": 1,
+   "sender": {
+    "ms": 133,
+    "stopped": true
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 0,
+   "viewerFramesDrawn": 1,
+   "viewerFreezes": 0,
+   "viewerPli": 1,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "resume",
+   "setParametersMs": 2,
+   "sender": {
+    "ms": 68,
+    "fe": 2
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 140,
+   "viewerFreezes": 1,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "fps 30 -> 10",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 11
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 167,
+   "viewerFramesDrawn": 61,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 10,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "fps 10 -> 30",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 29
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 173,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "scale 1 -> 2",
+   "setParametersMs": 2,
+   "sender": {
+    "ms": 66,
+    "w": 960,
+    "h": 540
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 41,
+    "w": 960,
+    "h": 540
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 145,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "960x540",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "scale 2 -> 1",
+   "setParametersMs": 3,
+   "sender": {
+    "ms": 65,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 70,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 143,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "scale 1 -> 4",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": 63,
+    "w": 480,
+    "h": 270
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 66,
+    "w": 480,
+    "h": 270
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 144,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "480x270",
+   "codec": "video/H264",
+   "impl": "OpenH264"
+  },
+  {
+   "label": "scale 4 -> 1",
+   "setParametersMs": 2,
+   "sender": {
+    "ms": 71,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 62,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 143,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "pause",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": 137,
+    "stopped": true
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 0,
+   "viewerFramesDrawn": 1,
+   "viewerFreezes": 0,
+   "viewerPli": 1,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "resume",
+   "setParametersMs": 2,
+   "sender": {
+    "ms": 65,
+    "fe": 1
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 139,
+   "viewerFreezes": 1,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "fps 30 -> 10",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 10
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 150,
+   "viewerFramesDrawn": 61,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 10,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "fps 10 -> 30",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 28
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 165,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "scale 1 -> 2",
+   "setParametersMs": 2,
+   "sender": {
+    "ms": 68,
+    "w": 960,
+    "h": 540
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 62,
+    "w": 960,
+    "h": 540
+   },
+   "viewerMaxGapMs": 50,
+   "viewerFramesDrawn": 144,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "960x540",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "scale 2 -> 1",
+   "setParametersMs": 2,
+   "sender": {
+    "ms": 67,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 90,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 141,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "scale 1 -> 4",
+   "setParametersMs": 1,
+   "sender": {
+    "ms": 69,
+    "w": 480,
+    "h": 270
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 51,
+    "w": 480,
+    "h": 270
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 144,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "480x270",
+   "codec": "video/H264",
+   "impl": "OpenH264"
+  },
+  {
+   "label": "scale 4 -> 1",
+   "setParametersMs": 3,
+   "sender": {
+    "ms": 71,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 60,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 141,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "pause",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": 130,
+    "stopped": true
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 0,
+   "viewerFramesDrawn": 1,
+   "viewerFreezes": 0,
+   "viewerPli": 1,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "resume",
+   "setParametersMs": 2,
+   "sender": {
+    "ms": 69,
+    "fe": 1
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 143,
+   "viewerFreezes": 1,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "fps 30 -> 10",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 9
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 167,
+   "viewerFramesDrawn": 60,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 10,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  },
+  {
+   "label": "fps 10 -> 30",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 28
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 169,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/H264",
+   "impl": "VideoToolbox"
+  }
+ ]
+}
