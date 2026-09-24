@@ -133,17 +133,14 @@ export class FakePeerConnection {
     this.remoteDescription = null;
     this.localDescription = null;
     this.senders = [];
-    this.transceivers = [];
     this.stats = new Map();
     this.statsCalls = 0;
   }
 
-  /** Keeps what was set and counts replaces, so a check can read both back. */
-  newSender(track, stream) {
+  addTrack(track) {
+    // Keeps what was set and counts replaces, so a check can read both back.
     const sender = {
       track,
-      stream,
-      kind: track.kind,
       parameters: { encodings: [{}] },
       replaces: 0,
       getParameters: () => structuredClone(sender.parameters),
@@ -158,33 +155,11 @@ export class FakePeerConnection {
       },
     };
     this.senders.push(sender);
-    this.transceivers.push({ sender, receiver: { track: { kind: track.kind } }, direction: "sendrecv" });
     return sender;
-  }
-
-  // What the browser does with a sender that has never sent, which is every paused one here:
-  // the first of this kind with no track on it is reused instead of a new m-line being made.
-  addTrack(track, stream) {
-    const free = this.senders.find(
-      (sender) => sender.track === null && sender.kind === track.kind,
-    );
-    if (free) {
-      free.track = track;
-      free.stream = stream;
-      return free;
-    }
-    return this.newSender(track, stream);
-  }
-
-  /** Always its own m-line, which is the point of it over `addTrack`. */
-  addTransceiver(track, init) {
-    const sender = this.newSender(track, init?.streams?.[0]);
-    return this.transceivers.find((transceiver) => transceiver.sender === sender);
   }
 
   removeTrack(sender) {
     this.senders = this.senders.filter((candidate) => candidate !== sender);
-    this.transceivers = this.transceivers.filter((candidate) => candidate.sender !== sender);
   }
 
   getSenders() {
@@ -192,7 +167,7 @@ export class FakePeerConnection {
   }
 
   getTransceivers() {
-    return this.transceivers;
+    return [];
   }
 
   createDataChannel() {
