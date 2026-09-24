@@ -1,0 +1,246 @@
+{
+ "chrome": "Chrome/153.0.8010.53",
+ "content": "text",
+ "codec": "h264",
+ "rows": [
+  {
+   "label": "1080p",
+   "seconds": 15.003,
+   "wireKbps": 1846,
+   "camera": {
+    "w": 1280,
+    "h": 720,
+    "fps": 29.9,
+    "kbps": 983,
+    "targetKbps": 1013,
+    "qlr": "bandwidth",
+    "encMsPerFrame": 4.33,
+    "keyframes": 1,
+    "impl": "VideoToolbox"
+   },
+   "screen": {
+    "w": 1920,
+    "h": 1080,
+    "fps": 30,
+    "kbps": 772,
+    "targetKbps": 4318,
+    "qlr": "none",
+    "encMsPerFrame": 6.42,
+    "keyframes": 0,
+    "impl": "VideoToolbox"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 57,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0
+   },
+   "aobKbps": 5713,
+   "viewer": {
+    "7735eb38": {
+     "w": 1280,
+     "h": 720,
+     "kbps": 982,
+     "dropped": 0
+    },
+    "a2ec1688": {
+     "w": 1920,
+     "h": 1080,
+     "kbps": 770,
+     "dropped": 0
+    }
+   }
+  },
+  {
+   "label": "720p",
+   "seconds": 15.003,
+   "wireKbps": 1494,
+   "camera": {
+    "w": 1280,
+    "h": 720,
+    "fps": 30.1,
+    "kbps": 986,
+    "targetKbps": 1023,
+    "qlr": "none",
+    "encMsPerFrame": 4.44,
+    "keyframes": 0,
+    "impl": "VideoToolbox"
+   },
+   "screen": {
+    "w": 1280,
+    "h": 720,
+    "fps": 30.1,
+    "kbps": 424,
+    "targetKbps": 4398,
+    "qlr": "none",
+    "encMsPerFrame": 4.78,
+    "keyframes": 0,
+    "impl": "VideoToolbox"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 57,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0
+   },
+   "aobKbps": 5817,
+   "viewer": {
+    "7735eb38": {
+     "w": 1280,
+     "h": 720,
+     "kbps": 982,
+     "dropped": 0
+    },
+    "a2ec1688": {
+     "w": 1280,
+     "h": 720,
+     "kbps": 424,
+     "dropped": 0
+    }
+   }
+  },
+  {
+   "label": "360p",
+   "seconds": 15.002,
+   "wireKbps": 1219,
+   "camera": {
+    "w": 640,
+    "h": 360,
+    "fps": 30,
+    "kbps": 952,
+    "targetKbps": 1030,
+    "qlr": "none",
+    "encMsPerFrame": 2.28,
+    "keyframes": 0,
+    "impl": "VideoToolbox"
+   },
+   "screen": {
+    "w": 640,
+    "h": 360,
+    "fps": 30,
+    "kbps": 184,
+    "targetKbps": 4180,
+    "qlr": "none",
+    "encMsPerFrame": 2.41,
+    "keyframes": 0,
+    "impl": "VideoToolbox"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 56,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0
+   },
+   "aobKbps": 5532,
+   "viewer": {
+    "7735eb38": {
+     "w": 640,
+     "h": 360,
+     "kbps": 950,
+     "dropped": 0
+    },
+    "a2ec1688": {
+     "w": 640,
+     "h": 360,
+     "kbps": 184,
+     "dropped": 0
+    }
+   }
+  },
+  {
+   "label": "paused",
+   "seconds": 15.003,
+   "wireKbps": 65,
+   "camera": {
+    "fps": 0,
+    "kbps": 0,
+    "targetKbps": 1030,
+    "qlr": "none",
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "impl": "VideoToolbox"
+   },
+   "screen": {
+    "fps": 0,
+    "kbps": 1,
+    "targetKbps": 4180,
+    "qlr": "none",
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "impl": "VideoToolbox"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 56,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0
+   },
+   "aobKbps": 120,
+   "viewer": {
+    "7735eb38": {
+     "w": 640,
+     "h": 360,
+     "kbps": 0,
+     "dropped": 0
+    },
+    "a2ec1688": {
+     "w": 640,
+     "h": 360,
+     "kbps": 1,
+     "dropped": 0
+    }
+   }
+  },
+  {
+   "label": "1080p again",
+   "seconds": 15.003,
+   "wireKbps": 1098,
+   "camera": {
+    "w": 1280,
+    "h": 720,
+    "fps": 30,
+    "kbps": 1008,
+    "targetKbps": 949,
+    "qlr": "bandwidth",
+    "encMsPerFrame": 4.2,
+    "keyframes": 0,
+    "impl": "VideoToolbox"
+   },
+   "screen": {
+    "fps": 0,
+    "kbps": 8,
+    "targetKbps": 3397,
+    "qlr": "none",
+    "encMsPerFrame": null,
+    "keyframes": 0,
+    "impl": "VideoToolbox"
+   },
+   "mic": {
+    "fps": 0,
+    "kbps": 56,
+    "targetKbps": 64,
+    "encMsPerFrame": null,
+    "keyframes": 0
+   },
+   "aobKbps": 5398,
+   "viewer": {
+    "7735eb38": {
+     "w": 1280,
+     "h": 720,
+     "kbps": 1009,
+     "dropped": 0
+    },
+    "a2ec1688": {
+     "w": 1920,
+     "h": 1080,
+     "kbps": 8,
+     "dropped": 0
+    }
+   }
+  }
+ ]
+}

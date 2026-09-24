@@ -1,0 +1,85 @@
+{
+ "chrome": "Chrome/153.0.8010.53",
+ "rows": [
+  {
+   "mode": "together",
+   "rep": 0,
+   "cameraFramesIn5s": 150,
+   "screenFramesIn5s": 148,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  },
+  {
+   "mode": "staggered",
+   "rep": 0,
+   "cameraFramesIn5s": 170,
+   "screenFramesIn5s": 148,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  },
+  {
+   "mode": "screenOnly",
+   "rep": 0,
+   "cameraFramesIn5s": 150,
+   "screenFramesIn5s": 149,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  },
+  {
+   "mode": "cameraOnly",
+   "rep": 0,
+   "cameraFramesIn5s": 151,
+   "screenFramesIn5s": 151,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  },
+  {
+   "mode": "replaceTrack",
+   "rep": 0,
+   "cameraFramesIn5s": 139,
+   "screenFramesIn5s": 149,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  },
+  {
+   "mode": "together",
+   "rep": 1,
+   "cameraFramesIn5s": 143,
+   "screenFramesIn5s": 129,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  },
+  {
+   "mode": "staggered",
+   "rep": 1,
+   "cameraFramesIn5s": 180,
+   "screenFramesIn5s": 149,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  },
+  {
+   "mode": "screenOnly",
+   "rep": 1,
+   "cameraFramesIn5s": 151,
+   "screenFramesIn5s": 149,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  },
+  {
+   "mode": "cameraOnly",
+   "rep": 1,
+   "cameraFramesIn5s": 146,
+   "screenFramesIn5s": 150,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  },
+  {
+   "mode": "replaceTrack",
+   "rep": 1,
+   "cameraFramesIn5s": 145,
+   "screenFramesIn5s": 149,
+   "impl": "VideoToolbox/VideoToolbox",
+   "codec": "video/H264"
+  }
+ ]
+}

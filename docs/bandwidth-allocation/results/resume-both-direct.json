@@ -1,0 +1,29 @@
+{
+ "chrome": "Chrome/153.0.8010.53",
+ "rows": [
+  {
+   "label": "25 s pause, resume same size",
+   "viaRelay": false,
+   "cameraFramesIn5s": 6,
+   "screenFramesIn5s": 1,
+   "cameraKeyframes": 2,
+   "screenKeyframes": 1
+  },
+  {
+   "label": "25 s pause at 3x, resume at 1x",
+   "viaRelay": false,
+   "cameraFramesIn5s": 56,
+   "screenFramesIn5s": 1,
+   "cameraKeyframes": 2,
+   "screenKeyframes": 1
+  },
+  {
+   "label": "3 s pause, resume same size",
+   "viaRelay": false,
+   "cameraFramesIn5s": 1,
+   "screenFramesIn5s": 1,
+   "cameraKeyframes": 1,
+   "screenKeyframes": 1
+  }
+ ]
+}

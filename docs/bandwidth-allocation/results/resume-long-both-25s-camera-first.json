@@ -1,0 +1,546 @@
+{
+ "chrome": "Chrome/153.0.8010.53",
+ "which": "both",
+ "pauseS": 25,
+ "how": "camera-first",
+ "aobBeforeResume": 180235,
+ "series": [
+  {
+   "s": 1,
+   "aob": 2860,
+   "camera": {
+    "fps": 1,
+    "w": 1280,
+    "tgt": 2073,
+    "kbps": 30,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 0,
+    "tgt": 3256,
+    "kbps": 66,
+    "q": "none"
+   }
+  },
+  {
+   "s": 2,
+   "aob": 5219,
+   "camera": {
+    "fps": 0,
+    "w": 1280,
+    "tgt": 2083,
+    "kbps": 0,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 0,
+    "tgt": 3256,
+    "kbps": 62,
+    "q": "none"
+   }
+  },
+  {
+   "s": 3,
+   "aob": 5219,
+   "camera": {
+    "fps": 1,
+    "w": 1280,
+    "tgt": 810,
+    "kbps": 5,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 0,
+    "tgt": 3173,
+    "kbps": 0,
+    "q": "none"
+   }
+  },
+  {
+   "s": 4,
+   "aob": 5300,
+   "camera": {
+    "fps": 3,
+    "w": 1280,
+    "tgt": 823,
+    "kbps": 38,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 31,
+    "w": 1920,
+    "tgt": 1931,
+    "kbps": 3765,
+    "q": "none"
+   }
+  },
+  {
+   "s": 5,
+   "aob": 5341,
+   "camera": {
+    "fps": 26,
+    "w": 960,
+    "tgt": 829,
+    "kbps": 697,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 29,
+    "w": 1920,
+    "tgt": 1955,
+    "kbps": 1822,
+    "q": "none"
+   }
+  },
+  {
+   "s": 6,
+   "aob": 5341,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 896,
+    "kbps": 880,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 2140,
+    "kbps": 2127,
+    "q": "none"
+   }
+  },
+  {
+   "s": 7,
+   "aob": 6044,
+   "camera": {
+    "fps": 31,
+    "w": 960,
+    "tgt": 1040,
+    "kbps": 1090,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 31,
+    "w": 1920,
+    "tgt": 3151,
+    "kbps": 994,
+    "q": "none"
+   }
+  },
+  {
+   "s": 8,
+   "aob": 6044,
+   "camera": {
+    "fps": 29,
+    "w": 960,
+    "tgt": 1039,
+    "kbps": 1013,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 29,
+    "w": 1920,
+    "tgt": 3385,
+    "kbps": 629,
+    "q": "none"
+   }
+  },
+  {
+   "s": 9,
+   "aob": 6044,
+   "camera": {
+    "fps": 31,
+    "w": 960,
+    "tgt": 1059,
+    "kbps": 1105,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 31,
+    "w": 1920,
+    "tgt": 3843,
+    "kbps": 679,
+    "q": "none"
+   }
+  },
+  {
+   "s": 10,
+   "aob": 6044,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 1055,
+    "kbps": 1093,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 4415,
+    "kbps": 659,
+    "q": "none"
+   }
+  },
+  {
+   "s": 11,
+   "aob": 6044,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 1057,
+    "kbps": 1082,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 4418,
+    "kbps": 675,
+    "q": "none"
+   }
+  },
+  {
+   "s": 12,
+   "aob": 5211,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 914,
+    "kbps": 916,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 3801,
+    "kbps": 711,
+    "q": "none"
+   }
+  },
+  {
+   "s": 13,
+   "aob": 5211,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 928,
+    "kbps": 928,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 3801,
+    "kbps": 654,
+    "q": "none"
+   }
+  },
+  {
+   "s": 14,
+   "aob": 5211,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 941,
+    "kbps": 955,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 3793,
+    "kbps": 735,
+    "q": "none"
+   }
+  },
+  {
+   "s": 15,
+   "aob": 5211,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 949,
+    "kbps": 912,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 3788,
+    "kbps": 730,
+    "q": "none"
+   }
+  },
+  {
+   "s": 16,
+   "aob": 5211,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 951,
+    "kbps": 1008,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 3785,
+    "kbps": 754,
+    "q": "none"
+   }
+  },
+  {
+   "s": 17,
+   "aob": 5517,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 994,
+    "kbps": 975,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 4022,
+    "kbps": 823,
+    "q": "none"
+   }
+  },
+  {
+   "s": 18,
+   "aob": 5517,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 989,
+    "kbps": 973,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 4027,
+    "kbps": 762,
+    "q": "none"
+   }
+  },
+  {
+   "s": 19,
+   "aob": 5517,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 988,
+    "kbps": 1040,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 4030,
+    "kbps": 796,
+    "q": "none"
+   }
+  },
+  {
+   "s": 20,
+   "aob": 5517,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 994,
+    "kbps": 998,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 4024,
+    "kbps": 827,
+    "q": "none"
+   }
+  },
+  {
+   "s": 21,
+   "aob": 5517,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 981,
+    "kbps": 1002,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 4024,
+    "kbps": 826,
+    "q": "none"
+   }
+  },
+  {
+   "s": 22,
+   "aob": 5190,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 926,
+    "kbps": 950,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 3780,
+    "kbps": 825,
+    "q": "none"
+   }
+  },
+  {
+   "s": 23,
+   "aob": 5190,
+   "camera": {
+    "fps": 31,
+    "w": 960,
+    "tgt": 929,
+    "kbps": 946,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 3785,
+    "kbps": 847,
+    "q": "none"
+   }
+  },
+  {
+   "s": 24,
+   "aob": 5190,
+   "camera": {
+    "fps": 30,
+    "w": 960,
+    "tgt": 940,
+    "kbps": 934,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 31,
+    "w": 1920,
+    "tgt": 3785,
+    "kbps": 851,
+    "q": "none"
+   }
+  },
+  {
+   "s": 25,
+   "aob": 5190,
+   "camera": {
+    "fps": 28,
+    "w": 1280,
+    "tgt": 805,
+    "kbps": 765,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 29,
+    "w": 1920,
+    "tgt": 3779,
+    "kbps": 939,
+    "q": "none"
+   }
+  },
+  {
+   "s": 26,
+   "aob": 5190,
+   "camera": {
+    "fps": 31,
+    "w": 1280,
+    "tgt": 903,
+    "kbps": 850,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 31,
+    "w": 1920,
+    "tgt": 3779,
+    "kbps": 860,
+    "q": "none"
+   }
+  },
+  {
+   "s": 27,
+   "aob": 6038,
+   "camera": {
+    "fps": 30,
+    "w": 1280,
+    "tgt": 1040,
+    "kbps": 1116,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 4411,
+    "kbps": 980,
+    "q": "none"
+   }
+  },
+  {
+   "s": 28,
+   "aob": 6038,
+   "camera": {
+    "fps": 29,
+    "w": 1280,
+    "tgt": 1037,
+    "kbps": 1036,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 29,
+    "w": 1920,
+    "tgt": 4418,
+    "kbps": 878,
+    "q": "none"
+   }
+  },
+  {
+   "s": 29,
+   "aob": 6038,
+   "camera": {
+    "fps": 31,
+    "w": 1280,
+    "tgt": 1030,
+    "kbps": 1049,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 31,
+    "w": 1920,
+    "tgt": 4418,
+    "kbps": 944,
+    "q": "none"
+   }
+  },
+  {
+   "s": 30,
+   "aob": 6038,
+   "camera": {
+    "fps": 30,
+    "w": 1280,
+    "tgt": 1034,
+    "kbps": 1088,
+    "q": "bandwidth"
+   },
+   "screen": {
+    "fps": 30,
+    "w": 1920,
+    "tgt": 4418,
+    "kbps": 1010,
+    "q": "none"
+   }
+  }
+ ]
+}

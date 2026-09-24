@@ -1,0 +1,82 @@
+{
+ "chrome": "Chrome/153.0.8010.53",
+ "rows": [
+  {
+   "label": "pause at 1x, resume same size",
+   "framesIn4s": 119,
+   "keyframes": 1,
+   "viewerDecoded": 115,
+   "size": 1920,
+   "viewerPli": 0,
+   "codec": "video/H264",
+   "pausedMs": 2500,
+   "aobKbpsAfter": 5360
+  },
+  {
+   "label": "pause at 3x, resume same size",
+   "framesIn4s": 120,
+   "keyframes": 1,
+   "viewerDecoded": 116,
+   "size": 640,
+   "viewerPli": 0,
+   "codec": "video/H264",
+   "pausedMs": 2500,
+   "aobKbpsAfter": 5405
+  },
+  {
+   "label": "pause at 3x, resume at 1x in one call",
+   "framesIn4s": 119,
+   "keyframes": 1,
+   "viewerDecoded": 115,
+   "size": 1920,
+   "viewerPli": 0,
+   "codec": "video/H264",
+   "pausedMs": 2500,
+   "aobKbpsAfter": 6211
+  },
+  {
+   "label": "pause at 3x, resize while paused, then resume",
+   "framesIn4s": 118,
+   "keyframes": 1,
+   "viewerDecoded": 117,
+   "size": 1920,
+   "viewerPli": 0,
+   "codec": "video/H264",
+   "pausedMs": 2500,
+   "aobKbpsAfter": 6434
+  },
+  {
+   "label": "pause at 1x, resume at 3x in one call",
+   "framesIn4s": 119,
+   "keyframes": 1,
+   "viewerDecoded": 117,
+   "size": 640,
+   "viewerPli": 0,
+   "codec": "video/H264",
+   "pausedMs": 2500,
+   "aobKbpsAfter": 5620
+  },
+  {
+   "label": "pause 25 s at 1x, resume same size",
+   "framesIn4s": 119,
+   "keyframes": 2,
+   "viewerDecoded": 99,
+   "size": 1920,
+   "viewerPli": 1,
+   "codec": "video/H264",
+   "pausedMs": 25000,
+   "aobKbpsAfter": 5286
+  },
+  {
+   "label": "pause 25 s at 3x, resume at 1x in one call",
+   "framesIn4s": 118,
+   "keyframes": 1,
+   "viewerDecoded": 115,
+   "size": 1920,
+   "viewerPli": 0,
+   "codec": "video/H264",
+   "pausedMs": 25000,
+   "aobKbpsAfter": 5423
+  }
+ ]
+}

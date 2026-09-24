@@ -1,0 +1,520 @@
+{
+ "chrome": "Chrome/153.0.8010.53",
+ "which": "camera",
+ "codec": "vp9",
+ "results": [
+  {
+   "label": "scale 1 -> 2",
+   "setParametersMs": 12,
+   "sender": {
+    "ms": 83,
+    "w": 960,
+    "h": 540
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 83,
+    "w": 960,
+    "h": 540
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 144,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "960x540",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 2 -> 1",
+   "setParametersMs": 15,
+   "sender": {
+    "ms": 48,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 74,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 141,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 29,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 1 -> 4",
+   "setParametersMs": 7,
+   "sender": {
+    "ms": 49,
+    "w": 480,
+    "h": 270
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 55,
+    "w": 480,
+    "h": 270
+   },
+   "viewerMaxGapMs": 50,
+   "viewerFramesDrawn": 141,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "480x270",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 4 -> 1",
+   "setParametersMs": 10,
+   "sender": {
+    "ms": 74,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 51,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 140,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 29,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "pause",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": 144,
+    "stopped": true
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 0,
+   "viewerFramesDrawn": 1,
+   "viewerFreezes": 0,
+   "viewerPli": 1,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "resume",
+   "setParametersMs": 13,
+   "sender": {
+    "ms": 86,
+    "fe": 2
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 139,
+   "viewerFreezes": 1,
+   "viewerPli": 0,
+   "senderFpsAfter": 29,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "fps 30 -> 10",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 11
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 217,
+   "viewerFramesDrawn": 61,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 10,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "fps 10 -> 30",
+   "setParametersMs": 1,
+   "sender": {
+    "ms": null,
+    "fps": 28
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 162,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 1 -> 2",
+   "setParametersMs": 10,
+   "sender": {
+    "ms": 74,
+    "w": 960,
+    "h": 540
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 64,
+    "w": 960,
+    "h": 540
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 142,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 29,
+   "sizeAfter": "960x540",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 2 -> 1",
+   "setParametersMs": 11,
+   "sender": {
+    "ms": 75,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 51,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 140,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 1 -> 4",
+   "setParametersMs": 10,
+   "sender": {
+    "ms": 75,
+    "w": 480,
+    "h": 270
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 34,
+    "w": 480,
+    "h": 270
+   },
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 139,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "480x270",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 4 -> 1",
+   "setParametersMs": 8,
+   "sender": {
+    "ms": 71,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 22,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 143,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "pause",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": 143,
+    "stopped": true
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 0,
+   "viewerFramesDrawn": 0,
+   "viewerFreezes": 0,
+   "viewerPli": 1,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "resume",
+   "setParametersMs": 21,
+   "sender": {
+    "ms": 119,
+    "fe": 1
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 140,
+   "viewerFreezes": 1,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "fps 30 -> 10",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 11
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 183,
+   "viewerFramesDrawn": 61,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 10,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "fps 10 -> 30",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 28
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 166,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 1 -> 2",
+   "setParametersMs": 8,
+   "sender": {
+    "ms": 83,
+    "w": 960,
+    "h": 540
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 42,
+    "w": 960,
+    "h": 540
+   },
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 140,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "960x540",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 2 -> 1",
+   "setParametersMs": 11,
+   "sender": {
+    "ms": 47,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 50,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 135,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 1 -> 4",
+   "setParametersMs": 11,
+   "sender": {
+    "ms": 79,
+    "w": 480,
+    "h": 270
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 97,
+    "w": 480,
+    "h": 270
+   },
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 143,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "480x270",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "scale 4 -> 1",
+   "setParametersMs": 10,
+   "sender": {
+    "ms": 81,
+    "w": 1920,
+    "h": 1080
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": {
+    "ms": 62,
+    "w": 1920,
+    "h": 1080
+   },
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 143,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "pause",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": 135,
+    "stopped": true
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 0,
+   "viewerFramesDrawn": 1,
+   "viewerFreezes": 0,
+   "viewerPli": 1,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "resume",
+   "setParametersMs": 18,
+   "sender": {
+    "ms": 58,
+    "fe": 1
+   },
+   "keyframesEncoded": 1,
+   "keyframesDecoded": 1,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 83,
+   "viewerFramesDrawn": 143,
+   "viewerFreezes": 1,
+   "viewerPli": 0,
+   "senderFpsAfter": 30,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "fps 30 -> 10",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 10
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 150,
+   "viewerFramesDrawn": 61,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 10,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  },
+  {
+   "label": "fps 10 -> 30",
+   "setParametersMs": 0,
+   "sender": {
+    "ms": null,
+    "fps": 28
+   },
+   "keyframesEncoded": 0,
+   "keyframesDecoded": 0,
+   "viewerFirstNewSize": null,
+   "viewerMaxGapMs": 67,
+   "viewerFramesDrawn": 162,
+   "viewerFreezes": 0,
+   "viewerPli": 0,
+   "senderFpsAfter": 31,
+   "sizeAfter": "1920x1080",
+   "codec": "video/VP9",
+   "impl": "libvpx"
+  }
+ ]
+}
