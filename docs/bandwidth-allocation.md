@@ -428,6 +428,9 @@ node params.mjs camera h264          # setParameters reaction; also screen, vp9
 node estimate.mjs                    # estimate against a stepped uplink; BW_PLAN="0:1000,40:2,..."
 node resume-long.mjs both 25 rekick  # resume after a long pause; or together, screen-first, camera-first, balanced
 node svc.mjs                         # L1T3 against L3T3_KEY
+# stage 1's gate: one sender, one viewer full screen and one hidden, both hidden, one back.
+# `old` is a client from before GRYT-1432, `new` runs the engine's own code from ../../dist.
+BW_SFU=./sfu-main node gate.mjs before old
 # which RTCP reaches the SFU: apply sfu-rtcp-census.patch to the SFU and build it as sfu-census
 BW_SFU=./sfu-census node census.mjs
 ```

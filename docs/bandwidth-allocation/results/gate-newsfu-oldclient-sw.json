@@ -1,0 +1,94 @@
+{
+ "label": "newsfu-oldclient-sw",
+ "client": "old",
+ "sfu": "GRYT-1432-sfu-branch",
+ "chrome": "Chrome/153.0.8010.53",
+ "oneFullOneHidden": {
+  "camera": {
+   "size": "1280x720",
+   "kbps": 991,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 76,
+   "fps": 30
+  },
+  "upKbps": 1151,
+  "aRecvKbps": 1067,
+  "bRecvKbps": 1067
+ },
+ "bothHidden": {
+  "camera": {
+   "size": "1280x720",
+   "kbps": 1025,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 84,
+   "fps": 30
+  },
+  "upKbps": 1193,
+  "aRecvKbps": 1108,
+  "bRecvKbps": 1108
+ },
+ "oneBack": {
+  "camera": {
+   "size": "1280x720",
+   "kbps": 1028,
+   "fps": 30
+  },
+  "screen": {
+   "size": "1920x1080",
+   "kbps": 84,
+   "fps": 30
+  },
+  "upKbps": 1195,
+  "aRecvKbps": 1111,
+  "bRecvKbps": 1111
+ },
+ "resume": {
+  "camera": {
+   "firstFrameMs": 23,
+   "firstSize": "1280x720",
+   "longestGapAfterMs": 100,
+   "freezes": 0,
+   "freezeS": 0
+  },
+  "screen": {
+   "firstFrameMs": 23,
+   "firstSize": "1920x1080",
+   "longestGapAfterMs": 117,
+   "freezes": 0,
+   "freezeS": 0
+  }
+ },
+ "wanted": [
+  [
+   -4892,
+   "video_wanted {\"mid\":\"2\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":0}"
+  ],
+  [
+   -4784,
+   "video_wanted {\"mid\":\"1\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":0}"
+  ],
+  [
+   -4012,
+   "video_wanted {\"mid\":\"2\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":1}"
+  ],
+  [
+   -4012,
+   "video_wanted {\"mid\":\"1\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":1}"
+  ],
+  [
+   -3760,
+   "video_wanted {\"mid\":\"1\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":2}"
+  ],
+  [
+   -3760,
+   "video_wanted {\"mid\":\"2\",\"width\":0,\"height\":0,\"fps\":0,\"watchers\":0,\"unknown\":2}"
+  ]
+ ],
+ "chromeArgs": "--disable-accelerated-video-encode"
+}

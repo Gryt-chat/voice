@@ -52,8 +52,16 @@ export async function startSfu(logFile) {
   return { proc: p, ws };
 }
 
+// The page, plus this package's built dist under /dist/, so the gate runs the engine's own code.
 export function startStatic() {
+  const dist = path.resolve(process.env.BW_VOICE_DIST || path.join(HERE, '../../dist'));
   const srv = http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://x');
+    if (url.pathname.startsWith('/dist/')) {
+      const f = path.resolve(dist, '.' + url.pathname.slice(5));
+      if (!f.startsWith(dist) || !fs.existsSync(f)) { res.writeHead(404); res.end(); return; }
+      res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(fs.readFileSync(f)); return;
+    }
     const f = path.join(HERE, 'harness.html');
     res.writeHead(200, { 'content-type': 'text/html' }); res.end(fs.readFileSync(f));
   });
@@ -106,7 +114,9 @@ export async function startChrome() {
     '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
     '--disable-features=WebRtcHideLocalIpsWithMdns', '--autoplay-policy=no-user-gesture-required',
     '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows',
-    '--no-first-run', '--no-default-browser-check', 'about:blank',
+    '--no-first-run', '--no-default-browser-check',
+    // BW_CHROME_ARGS="--disable-accelerated-video-encode" keeps H.264 off VideoToolbox.
+    ...(process.env.BW_CHROME_ARGS || '').split(' ').filter(Boolean), 'about:blank',
   ], { stdio: 'ignore' });
   onExit(() => { p.kill('SIGKILL'); try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} });
   let ver;

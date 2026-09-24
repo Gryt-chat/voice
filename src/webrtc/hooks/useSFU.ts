@@ -11,6 +11,8 @@ import { sfuConnect } from "./sfuConnectFlow";
 import { publishOnSfuSlot } from "./sfuSlots";
 import { SFUConnectionStateInternal } from "./sfuTypes";
 import { useSFUStreams } from "./useSFUStreams";
+import { createDemandReporter, type VideoDemand, type VideoRole, type VideoSendSettings } from "./videoDemand";
+import { createVideoSendController } from "./videoSender";
 import { type Phase, voiceLog } from "./voiceLogger";
 
 /**
@@ -59,6 +61,13 @@ function useSfuHook(): SFUInterface {
   // A new camera/screen track needs another SFU offer before it can publish.
   // Keep that request tied to its peer connection while signalling is unavailable.
   const pendingRenegotiatePcRef = useRef<RTCPeerConnection | null>(null);
+
+  // The one writer of video encodings, and what this viewer draws of everybody else's.
+  const videoSend = useMemo(() => createVideoSendController(
+    () => peerConnectionRef.current,
+    (role) => (role === "camera" ? videoSenderRef.current : screenVideoSenderRef.current),
+  ), []);
+  const demand = useMemo(() => createDemandReporter(() => sfuWebSocketRef.current), []);
 
   // Dependencies
   const config = useVoiceConfig();
@@ -243,8 +252,10 @@ function useSfuHook(): SFUInterface {
       setConnectionState,
       setStreams,
       performCleanup,
+      onVideoWanted: videoSend.onWanted,
     });
   }, [
+    videoSend,
     target,
     stunHosts,
     connectionState,
@@ -464,7 +475,8 @@ function useSfuHook(): SFUInterface {
     applyVideoCodecPreferences(pc, sender, preferredCodec, "CAMERA");
     lastCameraCodecRef.current = preferredCodec;
     sendRenegotiate();
-  }, [sendRenegotiate, applyVideoCodecPreferences, publishRole]);
+    videoSend.tick();
+  }, [sendRenegotiate, applyVideoCodecPreferences, publishRole, videoSend]);
 
   // Paused rather than removed, like the screen's. addTrack never reuses a sender that has sent,
   // so a new camera sender took the screen's m-line and the share had none (GRYT-1329).
@@ -509,7 +521,8 @@ function useSfuHook(): SFUInterface {
 
     voiceLog.info("SCREEN", `addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
-  }, [sendRenegotiate, applyVideoCodecPreferences, publishRole]);
+    videoSend.tick();
+  }, [sendRenegotiate, applyVideoCodecPreferences, publishRole, videoSend]);
 
   const removeScreenVideoTrack = useCallback(() => {
     const sender = screenVideoSenderRef.current;
@@ -557,6 +570,23 @@ function useSfuHook(): SFUInterface {
       lastScreenCodecRef.current = undefined;
     }
   }, [isConnected]);
+
+  // Holds, pauses and resume checks run on this clock. A new SFU socket gets our reports again.
+  useEffect(() => {
+    if (!isConnected) return;
+    demand.resend();
+    const timer = setInterval(videoSend.tick, 1000);
+    return () => clearInterval(timer);
+  }, [isConnected, videoSend, demand]);
+
+  const setVideoSendSettings = useCallback(
+    (role: VideoRole, settings: VideoSendSettings | null) => videoSend.setSettings(role, settings),
+    [videoSend],
+  );
+  const reportVideoDemand = useCallback(
+    (streamId: string, size: VideoDemand | null) => demand.report(streamId, size),
+    [demand],
+  );
 
   const connectionStateRef = useRef(connectionState);
   useEffect(() => { connectionStateRef.current = connectionState; }, [connectionState]);
@@ -873,6 +903,8 @@ function useSfuHook(): SFUInterface {
     activeSfuUrl: activeSfuUrlRef.current,
     callAloneTimeoutSeconds: connectionState.callAloneTimeoutSeconds,
     stillHere,
+    setVideoSendSettings,
+    reportVideoDemand,
   };
 }
 
@@ -899,6 +931,8 @@ const init: SFUInterface = {
   getScreenVideoSender: () => null,
   callAloneTimeoutSeconds: null,
   stillHere: () => {},
+  setVideoSendSettings: () => {},
+  reportVideoDemand: () => {},
 };
 
 const SFUHook = singletonHook(init, useSfuHook);
