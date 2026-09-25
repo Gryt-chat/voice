@@ -10,6 +10,9 @@ const H = window.H = {
   pc: null, ws: null, senders: {}, streams: {}, streamOf: {}, samples: [], frames: {}, events: [], videos: {},
   log(...a) { const s = a.map(x => typeof x === 'string' ? x : JSON.stringify(x)).join(' '); H.events.push([Date.now(), s]); },
 };
+// The engine's own log lines (encoding writes, budget decisions) land in H.events too.
+for (const k of ['log', 'warn']) { const f = console[k].bind(console); console[k] = (...a) => { if (typeof a[0] === 'string' && a[0].includes('[Voice:')) H.log(a[0].replace(/^%c\[[^\]]*\] /, '')); f(...a); }; }
+const screenPriority = (o) => o.screen?.priority === 'none' ? undefined : (o.screen?.priority || 'high');
 
 function screenTrack(w, h, fps, content) {
   // Stand-in for a shared window: a code editor that scrolls one line a second with a
@@ -162,14 +165,14 @@ H.join = async function (o) {
       if (H.ctl && !H.ctlSet) {
         // The same settings controls.tsx hands the engine for a default share and camera.
         H.ctlSet = true;
-        if (H.senders.screen) H.ctl.setSettings('screen', { priority: 'high', maxBitrate: 50_000_000, maxFramerate: o.screen.fps, degradationPreference: 'maintain-resolution' });
+        if (H.senders.screen) H.ctl.setSettings('screen', { priority: screenPriority(o), maxBitrate: 50_000_000, maxFramerate: o.screen.fps, degradationPreference: 'maintain-resolution' });
         if (H.senders.camera) H.ctl.setSettings('camera', { priority: o.screen ? 'low' : 'medium', degradationPreference: 'maintain-framerate' });
       }
       if (H.senders.screen && !H.scrSet && !H.ctl) {
         // What controls.tsx applies to a default share: native size, 30 fps, 50 Mbps cap, high priority.
         H.scrSet = true; const p = H.senders.screen.getParameters();
         p.degradationPreference = 'maintain-resolution';
-        p.encodings[0].priority = 'high'; p.encodings[0].maxBitrate = 50_000_000; p.encodings[0].maxFramerate = o.screen.fps;
+        if (screenPriority(o)) p.encodings[0].priority = screenPriority(o); p.encodings[0].maxBitrate = 50_000_000; p.encodings[0].maxFramerate = o.screen.fps;
         await H.senders.screen.setParameters(p);
       }
       if (H.senders.camera && !H.camSet && !H.ctl) {

@@ -375,6 +375,26 @@ gated through the relay here with the same 2 Mbps and 0.8 Mbps steps as `estimat
 0.8 Mbps the share should keep its size, and the viewer's freezes on it should go from 13 to
 about none.
 
+As built (GRYT-1483), the rule above changed in five places once it met the rig. The numbers are
+in that PR's body and in `results/budget-*.json`.
+
+- A share's frame rate stops at 10, not 5. At 5–6 fps and 250–450 kbps, VideoToolbox stalled a
+  1080p text share for several seconds at a time, and every stall was a freeze.
+- Sizes and frame rates follow the held estimate (down at once, up after 2 s of 20% headroom).
+  Bitrates follow this second's estimate both ways, the way Chrome's own targets do. With the
+  bitrates held as well, the share sat on a cap for seconds after each short dip in the estimate.
+- A share's need is learned from seconds it wasn't held down. Held down, an encoder fills
+  whatever it's given, so its bytes say nothing about the picture. Before anything is learned,
+  the need is the bitrate rule, which is far above a text share's.
+- Pausing the camera and shrinking the large share need the share to be dropping frames (under
+  60% of its cap) for 10 s. On the model alone they fired at 0.8 Mbps, where the text share was
+  running its full 10 fps, and each one cost a 1080p keyframe on a thin link.
+- A share sent with `maintain-framerate`, the gaming mode, gives up size before frame rate.
+
+The freezes that are left come in the first 10 s after the step, while the estimate drops and
+the queue drains. A lost packet there can also bring a PLI, and a 1080p keyframe at 250 kbps
+stalls the share for a few seconds. Neither is something the split can reach.
+
 **Stage 3: several windows.** Dynamic slots in the SFU come first. That's review-required and the
 biggest SFU diff of the three, so it gets its own PR with handler tests for adding a slot,
 dropping one and reusing one. Then the engine's sender pool, then the list in media state, then
@@ -405,9 +425,12 @@ phone is also the most likely thin downlink, which is the argument for stage 4.
   haven't looked at how.
 - **The shaper isn't a router.** It has no cross traffic, its rate changes instantly, and its
   buffer is a fixed 150 ms. On a real thin line the estimate will react on its own timings.
-- **The share's priority.** Chrome parks 3.5–4.6 Mbps of target on a text share using 0.8.
-  Stage 2's caps should fix that. Lowering the share's priority is simpler, but it would hurt a
-  motion share.
+- **The share's priority.** Settled in GRYT-1483: it stays `high`. With stage 2's caps adding up
+  to the budget, Chrome gives each stream its cap whatever the priority, so nothing is parked on
+  the share. Priority only decides the second or so before the split catches up with a falling
+  estimate, and there `high` protects the share. Two runs with the share's priority dropped
+  froze it 8 and 2 times at 0.8 Mbps, against 2–3 with `high`, which is thin but points the
+  same way. Leaving the share uncapped with `high` starved the camera to 5 fps.
 - **The bitrate rule** (pixels^0.75 down from 2.5 Mbps at 1080p) is a guess anchored on one
   point.
 - **The forwarded extensions.** The SFU forwards the sender's transport-wide sequence number and
@@ -428,6 +451,8 @@ node params.mjs camera h264          # setParameters reaction; also screen, vp9
 node estimate.mjs                    # estimate against a stepped uplink; BW_PLAN="0:1000,40:2,..."
 node resume-long.mjs both 25 rekick  # resume after a long pause; or together, screen-first, camera-first, balanced
 node svc.mjs                         # L1T3 against L3T3_KEY
+# stage 2's gate: estimate.mjs's steps with the engine's split on the sender. `old` is no engine.
+BW_SFU=./sfu-main BW_VOICE_DIST=../../dist node budget.mjs after new
 # stage 1's gate: one sender, one viewer full screen and one hidden, both hidden, one back.
 # `old` is a client from before GRYT-1432, `new` runs the engine's own code from ../../dist.
 BW_SFU=./sfu-main node gate.mjs before old

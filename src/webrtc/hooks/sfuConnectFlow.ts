@@ -518,6 +518,7 @@ export interface ConnectParams {
   setStreams: Dispatch<SetStateAction<Streams>>;
   performCleanup: (skipServerUpdate?: boolean) => Promise<void>;
   onVideoWanted?: (wanted: VideoWanted & { mid: string }) => void;
+  onIngestCap?: (bps: number | null) => void;
 }
 
 /* The SFU rejects explicit nulls where it accepts an absent key. */
@@ -546,6 +547,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     connectSeq,
     connectSeqRef,
     onVideoWanted,
+    onIngestCap,
   } = params;
   const {
     isConnectingRef,
@@ -1015,6 +1017,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
         {
           onRoomJoined: (info) => {
             callAloneTimeoutSeconds = info.callAloneTimeoutSeconds;
+            if (!isStale()) onIngestCap?.(info.maxIngestKbps === null ? null : info.maxIngestKbps * 1000);
           },
           onVideoWanted: (wanted) => {
             if (!isStale()) onVideoWanted?.(wanted);
