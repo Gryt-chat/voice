@@ -52,6 +52,8 @@ export interface RoomJoinedInfo {
    * never ends a call for being one person; null means it did not say.
    */
   callAloneTimeoutSeconds: number | null;
+  /** SFU_MAX_INGEST_KBPS: the most this peer should send the SFU, or null for no cap. */
+  maxIngestKbps: number | null;
 }
 
 /**
@@ -59,7 +61,7 @@ export interface RoomJoinedInfo {
  * parses and falls back rather than switching on a version, so an older SFU gives nulls.
  */
 export function parseRoomJoined(data: unknown): RoomJoinedInfo {
-  const nothing: RoomJoinedInfo = { callAloneTimeoutSeconds: null };
+  const nothing: RoomJoinedInfo = { callAloneTimeoutSeconds: null, maxIngestKbps: null };
   if (typeof data !== "string") return nothing;
 
   let parsed: unknown;
@@ -73,14 +75,16 @@ export function parseRoomJoined(data: unknown): RoomJoinedInfo {
 
   const seconds = (parsed as Record<string, unknown>)
     .call_alone_timeout_seconds;
+  const ingest = (parsed as Record<string, unknown>).max_ingest_kbps;
+  const maxIngestKbps = typeof ingest === "number" && Number.isFinite(ingest) && ingest > 0 ? ingest : null;
 
   // A negative number is not a shorter timeout, it is an SFU we do not understand. Same for
   // a string, which is what a hand-rolled proxy in the middle would produce.
   if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
-    return nothing;
+    return { ...nothing, maxIngestKbps };
   }
 
-  return { callAloneTimeoutSeconds: Math.floor(seconds) };
+  return { callAloneTimeoutSeconds: Math.floor(seconds), maxIngestKbps };
 }
 
 export async function connectToSfuWebSocket(

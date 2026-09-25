@@ -125,6 +125,11 @@ jobs:
       - name: Check video follows what viewers draw
         run: npm run check-video-demand
 
+      # The uplink is split between camera and share in the design's order, and the split follows
+      # the send estimate: down at once, up only once the room is there (GRYT-1483).
+      - name: Check the camera and the share split the uplink
+        run: npm run check-video-budget
+
       # A room refused with no retryAfterMs ends the call once, with its reason. It went to recovery,
       # asked five more times over 30 seconds, then blamed the network (GRYT-1476).
       - name: Check a refused room is not asked for again

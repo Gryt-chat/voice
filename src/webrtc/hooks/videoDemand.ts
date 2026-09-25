@@ -52,12 +52,14 @@ export interface VideoPlanState {
   fpsLowerSince: number | null;
   idleSince: number | null;
   paused: boolean;
+  /** Paused by the budget rather than by nobody watching. */
+  held: boolean;
   /** A resume being watched: the next check, when watching ends, the last frame count, re-kicks so far. */
   resume: { at: number; until: number; frames: number | null; tries: number } | null;
 }
 
 export const INITIAL_PLAN_STATE: VideoPlanState = {
-  rung: 1, fps: Infinity, rungLowerSince: null, fpsLowerSince: null, idleSince: null, paused: false, resume: null,
+  rung: 1, fps: Infinity, rungLowerSince: null, fpsLowerSince: null, idleSince: null, paused: false, held: false, resume: null,
 };
 
 export interface VideoPlanInput {
@@ -69,6 +71,16 @@ export interface VideoPlanInput {
   now: number;
   /** framesEncoded on this stream's outbound-rtp, when the plan has a resume to check. */
   framesEncoded: number | null;
+  /** What the budget allows this second, on top of demand. */
+  limit?: VideoLimit | null;
+}
+
+/** The budget's say over one stream: at least this scale, at most this frame rate and bitrate. */
+export interface VideoLimit {
+  scale: number;
+  fps: number;
+  maxBitrate: number;
+  paused: boolean;
 }
 
 export interface VideoEncodingPlan {
@@ -131,6 +143,7 @@ export function planVideoEncoding(input: VideoPlanInput, previous: VideoPlanStat
   const demand = settings.followDemand !== false ? wanted : null;
   const everything = demand === null || demand.unknown > 0;
   const watched = everything || demand.watchers > 0;
+  const wasOff = previous.paused || previous.held;
   let rekick = false;
 
   if (!watched) {
@@ -142,16 +155,17 @@ export function planVideoEncoding(input: VideoPlanInput, previous: VideoPlanStat
     }
   } else {
     state.idleSince = null;
-    if (state.paused) {
-      state.paused = false;
-      state.resume = { at: now + RESUME_CHECK_MS, until: now + RESUME_WATCH_MS, frames: framesEncoded, tries: 0 };
-    }
+    state.paused = false;
 
     const rung = everything || !source ? 1 : rungFor(source, demand);
     const fps = everything || !(demand.fps > 0) ? userFps : Math.min(userFps, demand.fps);
     [state.rung, state.rungLowerSince] = hold(state.rung, rung, state.rungLowerSince, now, (a, b) => a < b);
     [state.fps, state.fpsLowerSince] = hold(state.fps, fps, state.fpsLowerSince, now, (a, b) => a > b);
   }
+
+  state.held = !state.paused && input.limit?.paused === true;
+  if (state.paused || state.held) state.resume = null;
+  else if (wasOff) state.resume = { at: now + RESUME_CHECK_MS, until: now + RESUME_WATCH_MS, frames: framesEncoded, tries: 0 };
 
   if (state.resume && now + CHECK_SLACK_MS >= state.resume.at) {
     const { until, frames, tries } = state.resume;
@@ -174,8 +188,19 @@ export function planVideoEncoding(input: VideoPlanInput, previous: VideoPlanStat
       : screenBitrate(source.height / scale, fps);
     maxBitrate = Math.min(rule, maxBitrate ?? Infinity);
   }
+  const limit = input.limit;
+  if (limit) {
+    return {
+      active: !state.paused && !state.held,
+      scaleResolutionDownBy: Math.max(scale, limit.scale),
+      maxBitrate: Math.min(maxBitrate ?? Infinity, limit.maxBitrate),
+      maxFramerate: Math.min(maxFramerate ?? Infinity, limit.fps),
+      rekick,
+      state,
+    };
+  }
 
-  return { active: !state.paused, scaleResolutionDownBy: scale, maxBitrate, maxFramerate, rekick, state };
+  return { active: !state.paused && !state.held, scaleResolutionDownBy: scale, maxBitrate, maxFramerate, rekick, state };
 }
 
 /** The payload of video_wanted, or null for one we can't read. */

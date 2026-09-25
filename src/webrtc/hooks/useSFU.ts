@@ -253,6 +253,7 @@ function useSfuHook(): SFUInterface {
       setStreams,
       performCleanup,
       onVideoWanted: videoSend.onWanted,
+      onIngestCap: videoSend.setIngestCap,
     }).catch((error: unknown) => {
       // Refused is ended on purpose, or signalling coming back asks for the room again.
       if (error instanceof RoomRefusal) intentionalDisconnectRef.current = true;
