@@ -48,7 +48,8 @@
     "check-going-away": "node scripts/check-going-away.mjs",
     "check-recovery-disconnect": "node scripts/check-recovery-disconnect.mjs",
     "check-failed-repick": "node scripts/check-failed-repick.mjs",
-    "check-video-demand": "node scripts/check-video-demand.mjs"
+    "check-video-demand": "node scripts/check-video-demand.mjs",
+    "check-room-refusals": "node scripts/check-room-refusals.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",

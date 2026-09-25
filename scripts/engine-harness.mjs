@@ -434,13 +434,15 @@ export function fakeRoom(id) {
     id,
     connected: true,
     refusals: 0,
+    // A refusal with retryAfterMs is one the engine asks again after; without, it stops.
+    refusal: { reason: "refused by the fake", retryAfterMs: 2000 },
     requests: [],
     joined: [],
     requestAccess(channelId) {
       room.requests.push(channelId);
       if (room.refusals > 0) {
         room.refusals -= 1;
-        return Promise.resolve({ granted: false, reason: "refused by the fake" });
+        return Promise.resolve({ granted: false, ...room.refusal });
       }
       return Promise.resolve({
         granted: true,

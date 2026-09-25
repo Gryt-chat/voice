@@ -10,7 +10,7 @@ import {
 import { getCachedSfuUrl, selectBestSfuUrl } from "./selectBestSfuUrl";
 import { connectToSfuWebSocket } from "./sfuConnection";
 import type { VideoWanted } from "./videoDemand";
-import { SFUConnectionStateInternal } from "./sfuTypes";
+import { RoomRefusal, SFUConnectionStateInternal } from "./sfuTypes";
 import { voiceLog } from "./voiceLogger";
 
 /** How often the connect flow looks for the microphone while it waits. */
@@ -840,15 +840,15 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     });
     const access = await room.requestAccess(channelID);
     if (!access.granted) {
-      // reason and retryAfterMs are the embedder's to render. Whether a refusal is worth
-      // interrupting anybody is not the engine's call, so it reports and stops.
       voiceLog.fail(
         "CONNECT",
         4,
         `Room access denied: ${access.reason ?? "unknown"}`,
         { retryAfterMs: access.retryAfterMs },
       );
-      throw new Error(`Room access denied: ${access.reason ?? "Unknown error"}`);
+      const reason = access.reason ?? "Unknown error";
+      if (access.retryAfterMs === undefined) throw new RoomRefusal(reason);
+      throw new Error(`Room access denied: ${reason}`);
     }
     voiceLog.ok("CONNECT", 4, "Room access granted", {
       room_id: access.roomId,
@@ -1110,6 +1110,18 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       error instanceof Error ? error.message : "Connection failed";
 
     performCleanup(false).catch(console.error);
+
+    // FAILED is what recovery retries, so a refusal skips it and ends with the reason.
+    if (error instanceof RoomRefusal) {
+      setConnectionState({
+        state: SFUConnectionState.DISCONNECTED,
+        roomId: null,
+        serverId: null,
+        error: error.reason,
+        callAloneTimeoutSeconds: null,
+      });
+      throw error;
+    }
 
     setConnectionState((prev) => ({
       ...prev,
