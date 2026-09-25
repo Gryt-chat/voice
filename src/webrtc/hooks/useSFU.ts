@@ -9,7 +9,7 @@ import { SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams 
 import { CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
 import { sfuConnect } from "./sfuConnectFlow";
 import { publishOnSfuSlot } from "./sfuSlots";
-import { SFUConnectionStateInternal } from "./sfuTypes";
+import { RoomRefusal, SFUConnectionStateInternal } from "./sfuTypes";
 import { useSFUStreams } from "./useSFUStreams";
 import { createDemandReporter, type VideoDemand, type VideoRole, type VideoSendSettings } from "./videoDemand";
 import { createVideoSendController } from "./videoSender";
@@ -253,6 +253,10 @@ function useSfuHook(): SFUInterface {
       setStreams,
       performCleanup,
       onVideoWanted: videoSend.onWanted,
+    }).catch((error: unknown) => {
+      // Refused is ended on purpose, or signalling coming back asks for the room again.
+      if (error instanceof RoomRefusal) intentionalDisconnectRef.current = true;
+      throw error;
     });
   }, [
     videoSend,
@@ -629,10 +633,10 @@ function useSfuHook(): SFUInterface {
 
       const reason = access.reason ?? "no reason given";
 
-      // Permission gone is a decision rather than a hiccup, and asking again
-      // will get the same answer three times.
-      if (reason === "forbidden") {
-        console.warn("[Voice Recovery] Re-announce refused — no longer permitted here");
+      // No retryAfterMs is a decision rather than a hiccup. The full reconnect this
+      // falls back to asks once more and ends the call with the reason.
+      if (access.retryAfterMs === undefined) {
+        console.warn("[Voice Recovery] Re-announce refused for good:", reason);
         return false;
       }
 

@@ -51,8 +51,8 @@ export interface SFUInterface {
   isConnected: boolean;
   connectionState: SFUConnectionState;
   /**
-   * Why the connection ended, when the engine has something to say. "reconnect-failed" means
-   * it gave up; null covers an ordinary hang-up, which DISCONNECTED alone cannot separate.
+   * Why it ended: "reconnect-failed" when it gave up, a refused room's `reason`, or null for a
+   * hang-up, which DISCONNECTED alone cannot separate.
    */
   connectionError: string | null;
   isConnecting: boolean;

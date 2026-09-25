@@ -19,3 +19,11 @@ export interface RoomAccessData {
   sfu_urls?: string[];
   timestamp: number;
 }
+
+/** A room request refused with no `retryAfterMs`. Asking again gets the same answer. */
+export class RoomRefusal extends Error {
+  constructor(readonly reason: string) {
+    super(`Room access denied: ${reason}`);
+    this.name = "RoomRefusal";
+  }
+}

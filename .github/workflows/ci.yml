@@ -124,3 +124,8 @@ jobs:
       # and an SFU that never sends video_wanted leaves it exactly as the settings ask (GRYT-1432).
       - name: Check video follows what viewers draw
         run: npm run check-video-demand
+
+      # A room refused with no retryAfterMs ends the call once, with its reason. It went to recovery,
+      # asked five more times over 30 seconds, then blamed the network (GRYT-1476).
+      - name: Check a refused room is not asked for again
+        run: npm run check-room-refusals

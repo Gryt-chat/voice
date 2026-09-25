@@ -135,6 +135,8 @@ export interface RoomAccess {
   cacheKey?: string;
   /** Populated when refused, so the caller can say why rather than "failed". */
   reason?: string;
+  /* Set when asking again could get a different answer. A refusal without it ends the
+     call at once, with `reason` as `connectionError`, instead of going to recovery. */
   retryAfterMs?: number;
 }
 
