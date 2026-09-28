@@ -392,6 +392,8 @@ in that PR's body and in `results/budget-*.json`.
 - Pausing the camera and shrinking the large share need the share to be dropping frames (under
   60% of its cap) for 10 s. On the model alone they fired at 0.8 Mbps, where the text share was
   running its full 10 fps, and each one cost a 1080p keyframe on a thin link.
+  They're off by default (`DRASTIC_CUTS`, GRYT-1572). At 0.5 Mbps they froze the share 23 times
+  against 0.6.0's 19, and 13 and 16 with them off.
 - A share sent with `maintain-framerate`, the gaming mode, gives up size before frame rate.
 
 The freezes that are left come in the first 10 s after the step, while the estimate drops and

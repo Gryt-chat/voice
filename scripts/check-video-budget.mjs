@@ -176,7 +176,7 @@ const settled = { starved: true, was: { scale: 1, fps: 10, maxBitrate: 0, paused
   let was = null;
   const at = (now, estimate) => {
     const streams = [camera({ was: was?.[0] }), share({ ...settled, was: was?.[1] ?? settled.was })];
-    const plan = planVideoBudget({ now, estimate, ingestCap: null, reserved: 0, sent: estimate, streams }, state);
+    const plan = planVideoBudget({ now, estimate, ingestCap: null, reserved: 0, sent: estimate, streams, drasticCuts: true }, state);
     state = plan.state;
     was = plan.limits;
     return plan.limits[0].paused;
@@ -192,6 +192,19 @@ const settled = { starved: true, was: { scale: 1, fps: 10, maxBitrate: 0, paused
   assert.equal(at(31_000 + DRASTIC_AFTER_MS, 180_000), true);
   state = { ...state, estimate: 190_000 };
   assert.equal(at(32_000 + DRASTIC_AFTER_MS, 190_000), true, "a pause flapped off on a few kbps");
+}
+
+// Off by default (GRYT-1572): short for a minute, the camera keeps going and the share keeps its size.
+{
+  let state = INITIAL_BUDGET_STATE;
+  let plan = null;
+  for (let now = 0; now <= 60_000; now += 1_000) {
+    const streams = [camera({ was: plan?.limits[0] }), share({ ...settled, was: plan?.limits[1] ?? settled.was })];
+    plan = planVideoBudget({ now, estimate: 180_000, ingestCap: null, reserved: 0, sent: 180_000, streams }, state);
+    state = plan.state;
+  }
+  assert.equal(plan.limits[0].paused, false, "the camera paused with the drastic cuts off");
+  assert.equal(plan.limits[1].scale, 1, "the share shrank with the drastic cuts off");
 }
 
 // ── The engine ───────────────────────────────────────────────────────────────

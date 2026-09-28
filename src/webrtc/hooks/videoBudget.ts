@@ -6,6 +6,8 @@ export const RISE_MARGIN = 1.2;
 export const RISE_AFTER_MS = 2_000;
 /** A keyframe at 0.8 Mbps stalled a 1080p share for up to 7 s, which is no reason to shrink it. */
 export const DRASTIC_AFTER_MS = 10_000;
+/** Off until they pay off (GRYT-1572): at 0.5 Mbps they cost 23 share freezes against 0.6.0's 19. */
+export const DRASTIC_CUTS = false;
 export const MIN_CAMERA_FPS = 15;
 /** Under 10 fps, VideoToolbox stalled a text share for seconds at a time at 0.8 Mbps. */
 export const MIN_SCREEN_FPS = 10;
@@ -211,6 +213,8 @@ export interface BudgetPlanInput {
   reserved: number;
   sent: number;
   streams: BudgetStream[];
+  /** Pausing the camera and shrinking the large share. Defaults to DRASTIC_CUTS. */
+  drasticCuts?: boolean;
 }
 
 /** The split for this second, or null limits when there's no estimate to split. */
@@ -222,7 +226,7 @@ export function planVideoBudget(input: BudgetPlanInput, previous: BudgetState): 
   // Sizes and frame rates follow the held estimate; bitrates follow this second's, as Chrome's own targets do.
   const current = Math.min(state.current ?? state.estimate, input.ingestCap ?? Infinity);
   const spend = Math.max(0, (current - input.reserved) * SPEND);
-  const drastic = state.shortSince !== null && input.now - state.shortSince >= DRASTIC_AFTER_MS;
+  const drastic = (input.drasticCuts ?? DRASTIC_CUTS) && state.shortSince !== null && input.now - state.shortSince >= DRASTIC_AFTER_MS;
   const split = splitVideoBudget(budget, input.streams, drastic, spend);
   const stay = drastic && split.shortWithMargin;
   state.shortSince = split.short || stay ? state.shortSince ?? input.now : null;
