@@ -72,9 +72,19 @@ export function startStatic() {
 
 // Shapes guest -> SFU: `rate` bits/s, a `bufferMs` drop-tail queue, `delayMs` each way.
 // One upstream socket per source address, like a NAT, so ICE pairs don't mix.
+// BW_RELAY_LOG=<file> writes each packet's clear header: RTP ssrc and seq up, RTCP type both ways.
 export function startRelay() {
   const shape = { rate: 1e9, bufferMs: 150, delayMs: 15 };
   const stats = { inBytes: 0, outBytes: 0, dropped: 0, droppedBytes: 0, downBytes: 0 };
+  const logFd = process.env.BW_RELAY_LOG ? fs.openSync(process.env.BW_RELAY_LOG, 'w') : null;
+  const t0 = performance.now();
+  const trace = (dir, m, fate) => {
+    if (logFd === null || m.length < 12 || m[0] >> 6 !== 2) return;
+    const t = (performance.now() - t0).toFixed(1), pt = m[1] & 0x7f;
+    if (m[1] >= 192 && m[1] <= 223) fs.writeSync(logFd, `${t} ${dir} rtcp ${m[1]} ${m[0] & 31} ${m.readUInt32BE(4)} ${m.length} ${fate}\n`);
+    else fs.writeSync(logFd, `${t} ${dir} rtp ${pt} ${m.readUInt32BE(8)} ${m.readUInt16BE(2)} ${m[1] >> 7} ${m.length} ${fate}\n`);
+  };
+  onExit(() => { if (logFd !== null) fs.closeSync(logFd); });
   const down = dgram.createSocket('udp4');
   down.bind(CFG.relayPort, CFG.host);
   const ups = new Map();
@@ -84,12 +94,13 @@ export function startRelay() {
     let up = ups.get(key);
     if (!up) {
       up = dgram.createSocket('udp4'); up.bind(0, CFG.host); ups.set(key, up);
-      up.on('message', (m) => { stats.downBytes += m.length; setTimeout(() => down.send(m, rinfo.port, rinfo.address), shape.delayMs); });
+      up.on('message', (m) => { stats.downBytes += m.length; trace('down', m, 'ok'); setTimeout(() => down.send(m, rinfo.port, rinfo.address), shape.delayMs); });
     }
     stats.inBytes += msg.length;
     const now = performance.now();
     const start = Math.max(now, linkFreeAt);
-    if (start - now > shape.bufferMs) { stats.dropped++; stats.droppedBytes += msg.length; return; }
+    if (start - now > shape.bufferMs) { stats.dropped++; stats.droppedBytes += msg.length; trace('up', msg, 'drop'); return; }
+    trace('up', msg, 'ok');
     const txMs = (msg.length + 28) * 8 / shape.rate * 1000;
     linkFreeAt = start + txMs;
     setTimeout(() => { stats.outBytes += msg.length; up.send(msg, CFG.muxPort, CFG.host); }, linkFreeAt - now + shape.delayMs);
