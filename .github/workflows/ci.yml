@@ -134,3 +134,8 @@ jobs:
       # asked five more times over 30 seconds, then blamed the network (GRYT-1476).
       - name: Check a refused room is not asked for again
         run: npm run check-room-refusals
+
+      # Push to talk on a phone, where there is no Web Audio node to gate. setPushToTalkActive
+      # did nothing there and the microphone stayed open (GRYT-1536).
+      - name: Check push to talk gates the phone's microphone
+        run: npm run check-native-ptt

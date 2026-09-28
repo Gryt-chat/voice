@@ -50,7 +50,8 @@
     "check-failed-repick": "node scripts/check-failed-repick.mjs",
     "check-video-demand": "node scripts/check-video-demand.mjs",
     "check-video-budget": "node scripts/check-video-budget.mjs",
-    "check-room-refusals": "node scripts/check-room-refusals.mjs"
+    "check-room-refusals": "node scripts/check-room-refusals.mjs",
+    "check-native-ptt": "node scripts/check-native-ptt.mjs"
   },
   "devDependencies": {
     "@mediapipe/tasks-vision": "^1.0.1",
