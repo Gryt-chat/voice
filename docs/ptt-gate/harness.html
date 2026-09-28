@@ -1,0 +1,228 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>PTT gate measurement</title></head>
+<body><button id="go">run</button><pre id="out"></pre>
+<script>
+// Loopback call through libwebrtc: a tone goes out on pc1 and in on pc2. Compares closing the
+// talk gate with track.enabled against sender.replaceTrack(null), with Gryt's Opus fmtp.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function makeCall({ dtx, tap = false }) {
+  const ctx = new AudioContext();
+  await ctx.resume();
+  const osc = ctx.createOscillator();
+  osc.frequency.value = 440;
+  const gain = ctx.createGain();
+  gain.gain.value = 0.5;
+  const dest = ctx.createMediaStreamDestination();
+  osc.connect(gain).connect(dest);
+  osc.start();
+  const track = dest.stream.getAudioTracks()[0];
+
+  const pc1 = new RTCPeerConnection(tap ? { encodedInsertableStreams: true } : undefined);
+  const pc2 = new RTCPeerConnection();
+  pc1.onicecandidate = (e) => e.candidate && pc2.addIceCandidate(e.candidate);
+  pc2.onicecandidate = (e) => e.candidate && pc1.addIceCandidate(e.candidate);
+  const sender = pc1.addTrack(track, dest.stream);
+  const frames = [];
+  if (tap) {
+    const { readable, writable } = sender.createEncodedStreams();
+    readable.pipeThrough(new TransformStream({ transform(f, c) { frames.push([performance.now(), f.data.byteLength, f.timestamp]); c.enqueue(f); } })).pipeTo(writable);
+  }
+  const got = new Promise((r) => (pc2.ontrack = (e) => r(e)));
+  const offer = await pc1.createOffer();
+  await pc1.setLocalDescription(offer);
+  await pc2.setRemoteDescription(offer);
+  const answer = await pc2.createAnswer();
+  // Gryt's SFU offers exactly "minptime=10;useinbandfec=1". DTX only for comparison.
+  let sdp = answer.sdp.replace(/a=fmtp:111 [^\r\n]*/, "a=fmtp:111 minptime=10;useinbandfec=1" + (dtx ? ";usedtx=1" : ""));
+  await pc2.setLocalDescription({ type: "answer", sdp });
+  await pc1.setRemoteDescription({ type: "answer", sdp });
+  const ev = await got;
+  // Chrome only pulls remote audio that something plays.
+  const el = new Audio();
+  el.srcObject = ev.streams[0];
+  el.muted = true;
+  el.play().catch(() => {});
+  const receiver = ev.receiver;
+  while (pc1.connectionState !== "connected") await sleep(20);
+  await sleep(1500);
+  return { frames, ctx, osc, track, pc1, pc2, sender, receiver, fmtp: sdp.match(/a=fmtp:111 [^\r\n]*/)[0] };
+}
+
+async function outbound(pc) {
+  const stats = await pc.getStats();
+  for (const s of stats.values()) if (s.type === "outbound-rtp" && s.kind === "audio") return s;
+}
+
+async function rate(call, ms) {
+  const a = await outbound(call.pc1);
+  const t0 = performance.now();
+  await sleep(ms);
+  const b = await outbound(call.pc1);
+  const dt = (performance.now() - t0) / 1000;
+  const src = call.receiver.getSynchronizationSources()[0];
+  return {
+    pps: +((b.packetsSent - a.packetsSent) / dt).toFixed(1),
+    kbps: +(((b.bytesSent - a.bytesSent) * 8) / dt / 1000).toFixed(1),
+    // Payload only; add ~48 B/packet of IP+UDP+RTP+SRTP on the wire.
+    lastLevel: src ? +src.audioLevel.toFixed(3) : null,
+  };
+}
+
+// Polls the receiver's SSRC info every tick until a packet at speech level arrives.
+async function firstLoudPacket(call, t0, threshold, timeoutMs = 2000) {
+  const originOffset = performance.timeOrigin;
+  for (;;) {
+    const src = call.receiver.getSynchronizationSources()[0];
+    if (src && src.audioLevel >= threshold) {
+      const recvAt = src.timestamp - originOffset;
+      if (recvAt >= t0) return +(recvAt - t0).toFixed(1);
+    }
+    if (performance.now() - t0 > timeoutMs) return null;
+    await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
+async function lastLoudPacket(call, t0, threshold, timeoutMs = 2000) {
+  const originOffset = performance.timeOrigin;
+  let last = null;
+  for (;;) {
+    const src = call.receiver.getSynchronizationSources()[0];
+    if (src) {
+      const recvAt = src.timestamp - originOffset;
+      if (src.audioLevel >= threshold) last = recvAt;
+      else if (recvAt > t0) return last == null ? 0 : +Math.max(0, last - t0).toFixed(1);
+    }
+    if (performance.now() - t0 > timeoutMs) return null;
+    await new Promise((r) => setTimeout(r, 0));
+  }
+}
+
+const median = (xs) => { const v = xs.filter((x) => x != null).sort((a, b) => a - b); return v.length ? v[Math.floor(v.length / 2)] : null; };
+const max = (xs) => Math.max(...xs.filter((x) => x != null));
+
+window.progress = [];
+const mark = (m) => window.progress.push([Math.round(performance.now()), m]);
+async function measure({ dtx, rounds = 20 }) {
+  mark('call ' + dtx);
+  const call = await makeCall({ dtx });
+  mark('connected');
+  const steady = (await rate(call, 2000));
+  const threshold = steady.lastLevel * 0.5;
+  const out = { fmtp: call.fmtp, open: steady, threshold: +threshold.toFixed(3) };
+
+  // track.enabled
+  call.track.enabled = false;
+  await sleep(300);
+  out.enabledFalse = await rate(call, 2000);
+  call.track.enabled = true;
+  await sleep(1000);
+  const enResume = [], enClose = [];
+  for (let i = 0; i < rounds; i++) {
+    let t0 = performance.now();
+    call.track.enabled = false;
+    enClose.push(await lastLoudPacket(call, t0, threshold));
+    await sleep(300 + Math.random() * 200);
+    t0 = performance.now();
+    call.track.enabled = true;
+    enResume.push(await firstLoudPacket(call, t0, threshold));
+    mark('en round ' + i);
+    await sleep(300 + Math.random() * 200);
+  }
+  out.enabled = { resumeMedianMs: median(enResume), resumeMaxMs: max(enResume), closeMedianMs: median(enClose), resume: enResume };
+
+  mark('enabled done');
+  // replaceTrack(null)
+  await call.sender.replaceTrack(null);
+  await sleep(300);
+  out.replaceNull = await rate(call, 2000);
+  await call.sender.replaceTrack(call.track);
+  await sleep(1000);
+  const rtResume = [], rtClose = [], rtPromise = [];
+  for (let i = 0; i < rounds; i++) {
+    let t0 = performance.now();
+    await call.sender.replaceTrack(null);
+    rtClose.push(await lastLoudPacket(call, t0, threshold));
+    await sleep(300 + Math.random() * 200);
+    t0 = performance.now();
+    const p = call.sender.replaceTrack(call.track).then(() => rtPromise.push(+(performance.now() - t0).toFixed(1)));
+    rtResume.push(await firstLoudPacket(call, t0, threshold));
+    mark('rt round ' + i);
+    await p;
+    await sleep(300 + Math.random() * 200);
+  }
+  out.replaceTrack = { resumeMedianMs: median(rtResume), resumeMaxMs: max(rtResume), closeMedianMs: median(rtClose), promiseMedianMs: median(rtPromise), resume: rtResume };
+
+  mark('replace done');
+  call.pc1.close(); call.pc2.close(); call.osc.stop(); await call.ctx.close();
+  return out;
+}
+
+window.results = null;
+// First packet carrying any tone at all, then the first at half level, per reopen.
+async function firstTwo(call, t0, low, high, timeoutMs = 2000) {
+  const o = performance.timeOrigin; let a = null;
+  for (;;) {
+    const src = call.receiver.getSynchronizationSources()[0];
+    if (src) {
+      const at = src.timestamp - o;
+      if (at >= t0 && a == null && src.audioLevel >= low) a = +(at - t0).toFixed(1);
+      if (at >= t0 && src.audioLevel >= high) return [a, +(at - t0).toFixed(1)];
+    }
+    if (performance.now() - t0 > timeoutMs) return [a, null];
+    await new Promise((r) => setTimeout(r, 0));
+  }
+}
+window.run2 = async (rounds = 15) => {
+  const call = await makeCall({ dtx: false });
+  await sleep(500);
+  const out = { enabled: [], replaceTrack: [] };
+  for (let i = 0; i < rounds; i++) {
+    call.track.enabled = false; await sleep(400 + Math.random() * 200);
+    const t0 = performance.now(); call.track.enabled = true;
+    out.enabled.push(await firstTwo(call, t0, 0.01, 0.177)); await sleep(400);
+  }
+  for (let i = 0; i < rounds; i++) {
+    await call.sender.replaceTrack(null); await sleep(400 + Math.random() * 200);
+    const t0 = performance.now(); const p = call.sender.replaceTrack(call.track);
+    out.replaceTrack.push(await firstTwo(call, t0, 0.01, 0.177)); await p; await sleep(400);
+  }
+  call.pc1.close(); call.pc2.close(); await call.ctx.close();
+  const med = (i, k) => median(out[k].map((x) => x[i]));
+  out.summary = { enabledAnyMs: med(0, 'enabled'), enabledHalfMs: med(1, 'enabled'), replaceAnyMs: med(0, 'replaceTrack'), replaceHalfMs: med(1, 'replaceTrack') };
+  window.results2 = out; return out;
+};
+// Sender side: when the first real (non-silence) encoded frame leaves after each reopen.
+window.run3 = async (rounds = 12) => {
+  const call = await makeCall({ dtx: false, tap: true });
+  await sleep(500);
+  const firstReal = (t0) => { const f = call.frames.find((x) => x[0] >= t0 && x[1] > 20); return f ? +(f[0] - t0).toFixed(1) : null; };
+  const out = { enabled: [], replaceTrack: [] };
+  for (const mode of ['enabled', 'replaceTrack']) {
+    for (let i = 0; i < rounds; i++) {
+      if (mode === 'enabled') call.track.enabled = false; else await call.sender.replaceTrack(null);
+      await sleep(400 + Math.random() * 200);
+      const t0 = performance.now();
+      if (mode === 'enabled') call.track.enabled = true; else call.sender.replaceTrack(call.track);
+      const recv = await firstTwo(call, t0, 0.01, 0.177);
+      await sleep(100);
+      const sent = firstReal(t0);
+      const f = call.frames.find((x) => x[0] >= t0);
+      out[mode].push({ sentMs: sent, recvMs: recv[0], firstFrameBytes: f && f[1] });
+      await sleep(300);
+    }
+  }
+  call.pc1.close(); call.pc2.close(); await call.ctx.close();
+  window.results3 = out; return out;
+};
+window.run = async () => {
+  const results = { ua: navigator.userAgent };
+  results.grytFmtp = await measure({ dtx: false });
+  results.withDtx = await measure({ dtx: true });
+  window.results = results;
+  document.getElementById("out").textContent = JSON.stringify(results, null, 1);
+  return results;
+};
+document.getElementById("go").onclick = () => window.run();
+</script>
+</body></html>

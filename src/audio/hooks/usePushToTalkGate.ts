@@ -2,6 +2,7 @@ import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useRef } from "react";
 
 import { useVoiceConfig } from "../../config";
+import type { AudioPipeline } from "../../types";
 import type { MicrophoneBufferType } from "../types/Microphone";
 
 /* The embedder owns the trigger and this owns the gate. Being muted does not stop the gate
@@ -16,10 +17,23 @@ export interface PushToTalkGate {
 export function usePushToTalkGate(
   microphoneBuffer: MicrophoneBufferType,
   audioContext: AudioContext | undefined,
+  ownPipeline: AudioPipeline | null = null,
 ): PushToTalkGate {
   const { muted, serverMuted, inputMode } = useVoiceConfig().audio;
   const effectiveMuted = muted || serverMuted;
   const isPttActive = useRef(false);
+
+  // A platform with its own pipeline has no graph, so its mute is the gate too. Muted
+  // always wins, and a released button closes it in push-to-talk (GRYT-1536).
+  const applyToOwnPipeline = useCallback(() => {
+    if (!ownPipeline) return;
+    const released = inputMode === "push_to_talk" && !isPttActive.current;
+    ownPipeline.setMuted(effectiveMuted || released);
+  }, [ownPipeline, inputMode, effectiveMuted]);
+
+  useEffect(() => {
+    applyToOwnPipeline();
+  }, [applyToOwnPipeline]);
 
   // Entering push-to-talk starts closed, otherwise the microphone stays open
   // from whatever the previous mode left behind.
@@ -37,6 +51,14 @@ export function usePushToTalkGate(
   const setActive = useCallback(
     (active: boolean) => {
       if (inputMode !== "push_to_talk") return;
+
+      if (ownPipeline) {
+        if (active === isPttActive.current) return;
+        isPttActive.current = active;
+        applyToOwnPipeline();
+        return;
+      }
+
       if (!microphoneBuffer.muteGain || !audioContext) return;
       if (active === isPttActive.current) return;
 
@@ -50,7 +72,14 @@ export function usePushToTalkGate(
         audioContext.currentTime,
       );
     },
-    [inputMode, microphoneBuffer.muteGain, audioContext, effectiveMuted],
+    [
+      inputMode,
+      ownPipeline,
+      applyToOwnPipeline,
+      microphoneBuffer.muteGain,
+      audioContext,
+      effectiveMuted,
+    ],
   );
 
   // Leaving push-to-talk with the key still held would strand the flag, and the

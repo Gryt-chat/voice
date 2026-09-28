@@ -329,12 +329,8 @@ function useCreateMicrophoneHook() {
     };
   }, [platformPipeline, micStream, rnnoiseEnabled, compressorAmount]);
 
-  // Mute and gain are pushed rather than rebuilt into, because rebuilding on every slider
-  // drag would restart capture. The web path does the same through usePipelineControls.
-  useEffect(() => {
-    ownPipeline?.setMuted(effectiveMuted);
-  }, [ownPipeline, effectiveMuted]);
-
+  // Gain is pushed rather than rebuilt into, because rebuilding on every slider drag would
+  // restart capture. Mute is pushed by usePushToTalkGate, which also owns the talk button.
   useEffect(() => {
     ownPipeline?.setGain(micVolume);
   }, [ownPipeline, micVolume]);
@@ -406,6 +402,7 @@ function useCreateMicrophoneHook() {
   const { isPttActive, setActive: setPushToTalkActive } = usePushToTalkGate(
     microphoneBuffer,
     audioContext,
+    ownPipeline,
   );
 
   const getDevices = useCallback(async () => {
