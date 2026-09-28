@@ -1,0 +1,6483 @@
+{
+ "label": "early-before-3",
+ "client": "new",
+ "sfu": "sfu-main",
+ "dist": "../../dist",
+ "camView": "640x360",
+ "screen": {
+  "w": 1920,
+  "h": 1080,
+  "fps": 30,
+  "content": "text"
+ },
+ "chrome": "Chrome/154.0.8037.58",
+ "startMbps": null,
+ "joinedS": -4.5,
+ "freezesTotal": {
+  "screen": 0,
+  "camera": 9
+ },
+ "firstFrame": {
+  "screen": 75.5,
+  "camera": 2.5
+ },
+ "framesDecoded": {
+  "screen": 1,
+  "camera": 342
+ },
+ "phases": [
+  {
+   "at": 0,
+   "mbps": 0.8,
+   "camera": {
+    "size": "320x180",
+    "kbps": 8,
+    "fps": 5
+   },
+   "screen": {
+    "size": "undefinedxundefined",
+    "kbps": 1165,
+    "fps": 0
+   },
+   "aobSettled": 132,
+   "aobUnderCapS": 5.7,
+   "lastSizeChangeS": 39.7,
+   "rateFitsFromS": null,
+   "viewerScreen": {
+    "freezes": 0,
+    "freezeS": 0,
+    "recvFps": 0,
+    "size": "undefinedxundefined"
+   },
+   "viewerCamera": {
+    "freezes": 9,
+    "freezeS": 5.64,
+    "recvFps": 5,
+    "size": "320x180"
+   }
+  },
+  {
+   "at": 60,
+   "mbps": 1000,
+   "camera": {
+    "size": "320x180",
+    "kbps": 6,
+    "fps": 4
+   },
+   "screen": {
+    "size": "undefinedxundefined",
+    "kbps": 810,
+    "fps": 0
+   },
+   "aobSettled": 132,
+   "aobUnderCapS": null,
+   "lastSizeChangeS": 11.7,
+   "rateFitsFromS": null,
+   "viewerScreen": {
+    "freezes": 0,
+    "freezeS": 0,
+    "recvFps": 0,
+    "size": "1920x1080"
+   },
+   "viewerCamera": {
+    "freezes": 0,
+    "freezeS": 0,
+    "recvFps": 0,
+    "size": "320x180"
+   }
+  }
+ ],
+ "relay": {
+  "inBytes": 15657635,
+  "outBytes": 9805465,
+  "dropped": 5700,
+  "droppedBytes": 5848331,
+  "downBytes": 193034
+ },
+ "secs": [
+  {
+   "s": -3.3,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": null,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   },
+   "screen": {
+    "kbps": 0,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": null,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 0,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": null,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": -2.3,
+   "aob": 5547,
+   "camera": {
+    "kbps": 44,
+    "size": "320x180",
+    "fps": 5,
+    "qlr": "none",
+    "tgt": 87,
+    "kf": 2,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": null
+   },
+   "screen": {
+    "kbps": 1376,
+    "size": "1920x1080",
+    "fps": 1,
+    "qlr": "none",
+    "tgt": 2317,
+    "kf": 1,
+    "pli": 1,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": -1.3,
+   "aob": 5547,
+   "camera": {
+    "kbps": 51,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 87,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 17
+   },
+   "screen": {
+    "kbps": 0,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 2317,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 55,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": -0.3,
+   "aob": 5547,
+   "camera": {
+    "kbps": 58,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 104,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 16
+   },
+   "screen": {
+    "kbps": 0,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 2317,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 53,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 0.7,
+   "aob": 5547,
+   "camera": {
+    "kbps": 83,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 104,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 13
+   },
+   "screen": {
+    "kbps": 0,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 2317,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 58,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 1.7,
+   "aob": 5547,
+   "camera": {
+    "kbps": 73,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 104,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 12
+   },
+   "screen": {
+    "kbps": 0,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 3078,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 57,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 2.7,
+   "aob": null,
+   "camera": {
+    "kbps": 55,
+    "size": "320x180",
+    "fps": 10,
+    "qlr": "none",
+    "tgt": 51,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 5,
+    "huge": 0,
+    "qp": 12
+   },
+   "screen": {
+    "kbps": 1883,
+    "size": "1920x1080",
+    "fps": 5,
+    "qlr": "none",
+    "tgt": 71,
+    "kf": 1,
+    "pli": 2,
+    "fir": 0,
+    "rtxKbps": 225,
+    "huge": 1,
+    "qp": 30
+   },
+   "mic": {
+    "kbps": 58,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 3.7,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 21
+   },
+   "screen": {
+    "kbps": 1473,
+    "size": "1920x1080",
+    "fps": 1,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 1,
+    "pli": 3,
+    "fir": 0,
+    "rtxKbps": 1439,
+    "huge": 1,
+    "qp": 37
+   },
+   "mic": {
+    "kbps": 58,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 4.7,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 11,
+    "qlr": "none",
+    "tgt": 33,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 19
+   },
+   "screen": {
+    "kbps": 2234,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 1,
+    "fir": 0,
+    "rtxKbps": 2182,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 58,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 5.7,
+   "aob": 212,
+   "camera": {
+    "kbps": 131,
+    "size": "320x180",
+    "fps": 10,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 70,
+    "huge": 0,
+    "qp": 15
+   },
+   "screen": {
+    "kbps": 4241,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 3249,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 58,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 6.7,
+   "aob": null,
+   "camera": {
+    "kbps": 48,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 32,
+    "huge": 0,
+    "qp": 16
+   },
+   "screen": {
+    "kbps": 3809,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 3,
+    "fir": 0,
+    "rtxKbps": 1925,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 57,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 7.7,
+   "aob": 241,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 19
+   },
+   "screen": {
+    "kbps": 1525,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 1,
+    "fir": 0,
+    "rtxKbps": 1488,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 58,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 8.7,
+   "aob": 261,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 19
+   },
+   "screen": {
+    "kbps": 1566,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 1,
+    "fir": 0,
+    "rtxKbps": 1529,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 57,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 9.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 11,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 1,
+    "pli": 1,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 20
+   },
+   "screen": {
+    "kbps": 1419,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 1385,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 57,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 10.7,
+   "aob": 230,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 10,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 19
+   },
+   "screen": {
+    "kbps": 1366,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 3,
+    "fir": 0,
+    "rtxKbps": 1334,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 52,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 11.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 12,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 19
+   },
+   "screen": {
+    "kbps": 1343,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 1310,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 12.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 19
+   },
+   "screen": {
+    "kbps": 1452,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 1418,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 13.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 25,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 14
+   },
+   "screen": {
+    "kbps": 1551,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 3,
+    "fir": 0,
+    "rtxKbps": 1514,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 14.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 20,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 20
+   },
+   "screen": {
+    "kbps": 1779,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 1737,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 15.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 14,
+    "qlr": "none",
+    "tgt": 16,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 22
+   },
+   "screen": {
+    "kbps": 2188,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 2136,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 16.7,
+   "aob": null,
+   "camera": {
+    "kbps": 210,
+    "size": "320x180",
+    "fps": 10,
+    "qlr": "none",
+    "tgt": 16,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 36,
+    "huge": 0,
+    "qp": 21
+   },
+   "screen": {
+    "kbps": 3092,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 2813,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 17.7,
+   "aob": 144,
+   "camera": {
+    "kbps": 143,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 16,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 128,
+    "huge": 0,
+    "qp": 23
+   },
+   "screen": {
+    "kbps": 807,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 788,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 18.7,
+   "aob": null,
+   "camera": {
+    "kbps": 14,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 16,
+    "kf": 2,
+    "pli": 3,
+    "fir": 0,
+    "rtxKbps": 12,
+    "huge": 0,
+    "qp": 26
+   },
+   "screen": {
+    "kbps": 1060,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 1035,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 19.7,
+   "aob": 158,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 11,
+    "qlr": "none",
+    "tgt": 13,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 30
+   },
+   "screen": {
+    "kbps": 920,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 3,
+    "fir": 0,
+    "rtxKbps": 894,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 20.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 10,
+    "qlr": "none",
+    "tgt": 10,
+    "kf": 3,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 33
+   },
+   "screen": {
+    "kbps": 998,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 975,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 21.7,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 11,
+    "qlr": "none",
+    "tgt": 8,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 34
+   },
+   "screen": {
+    "kbps": 1006,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 3,
+    "fir": 0,
+    "rtxKbps": 982,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 22.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 9,
+    "qlr": "none",
+    "tgt": 8,
+    "kf": 3,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 3,
+    "qp": 38
+   },
+   "screen": {
+    "kbps": 1058,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 1033,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 23.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 8,
+    "qlr": "none",
+    "tgt": 8,
+    "kf": 1,
+    "pli": 2,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 1110,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 1083,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 24.7,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 12,
+    "qlr": "none",
+    "tgt": 6,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 39
+   },
+   "screen": {
+    "kbps": 1186,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 1158,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 25.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 5,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 35
+   },
+   "screen": {
+    "kbps": 1332,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 1300,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 26.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 4,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 35
+   },
+   "screen": {
+    "kbps": 1530,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 2,
+    "fir": 0,
+    "rtxKbps": 1493,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 27.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 15,
+    "qlr": "none",
+    "tgt": 3,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 41
+   },
+   "screen": {
+    "kbps": 1845,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1801,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 28.7,
+   "aob": null,
+   "camera": {
+    "kbps": 119,
+    "size": "320x180",
+    "fps": 12,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 3677,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 3590,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 29.7,
+   "aob": null,
+   "camera": {
+    "kbps": 84,
+    "size": "320x180",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 72,
+    "huge": 0,
+    "qp": null
+   },
+   "screen": {
+    "kbps": 534,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 520,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 30.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 40,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 24,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 866,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 846,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 31.7,
+   "aob": null,
+   "camera": {
+    "kbps": 2,
+    "size": "320x180",
+    "fps": 3,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 1,
+    "huge": 2,
+    "qp": 41
+   },
+   "screen": {
+    "kbps": 962,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 939,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 32.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 3,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 3,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 3,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 928,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 907,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 33.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 2,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 908,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 886,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 34.7,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 1,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 1,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 1311,
+    "size": "1920x1080",
+    "fps": 1,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 1,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1280,
+    "huge": 1,
+    "qp": 36
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 35.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 2,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 1589,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1551,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 36.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 1,
+    "pli": 1,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 41
+   },
+   "screen": {
+    "kbps": 1940,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1894,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 37.7,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 5,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 2841,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 2774,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 38,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 38.7,
+   "aob": null,
+   "camera": {
+    "kbps": 87,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 39,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 3814,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 2333,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 39.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 1,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1472,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1437,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 40.7,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1528,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1492,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 41.7,
+   "aob": 151,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1184,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 1151,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 42.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1057,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 1032,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 43.7,
+   "aob": 140,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 3,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 1,
+    "pli": 1,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 41
+   },
+   "screen": {
+    "kbps": 925,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 2,
+    "fir": 0,
+    "rtxKbps": 903,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 44.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 847,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 827,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 45.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 808,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 789,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 46.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 801,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 782,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 47.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 5,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 839,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 819,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 48.7,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 808,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 788,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 49.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 8,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 879,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 858,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 50.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 959,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 3,
+    "fir": 0,
+    "rtxKbps": 936,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 38,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 51.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 4,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1011,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 987,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 52.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1126,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1098,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 53.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1244,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1214,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 38,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 54.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 5,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1432,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1398,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 55.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 5,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1854,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1808,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 56.7,
+   "aob": null,
+   "camera": {
+    "kbps": 61,
+    "size": "320x180",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 15,
+    "huge": 0,
+    "qp": null
+   },
+   "screen": {
+    "kbps": 1622,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1584,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 57.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 15,
+    "size": "320x180",
+    "fps": 4,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 10,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 782,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 763,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 58.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 809,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 789,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 59.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 5,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 811,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 792,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 60.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 1,
+    "pli": 1,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 761,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 743,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 61.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 803,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 784,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 62.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 3,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 845,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 824,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 63.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 5,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 840,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 820,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 64.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 848,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 827,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 65.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 849,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 829,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 36,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 66.7,
+   "aob": null,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 5,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1000,
+    "size": "1920x1080",
+    "fps": 1,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 1,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 976,
+    "huge": 1,
+    "qp": 36
+   },
+   "mic": {
+    "kbps": 37,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 67.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 1,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1533,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1496,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 44,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 68.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1826,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1782,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 54,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 69.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 8,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 2737,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 2671,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 56,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 70.7,
+   "aob": null,
+   "camera": {
+    "kbps": 27,
+    "size": "320x180",
+    "fps": 3,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 2,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 4715,
+    "size": "1920x1080",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 3153,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 54,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 71.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 2,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 450,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 439,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 57,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 72.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 2,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 487,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 475,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 54,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 73.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 2,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 502,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 1,
+    "fir": 0,
+    "rtxKbps": 490,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 57,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 74.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 3,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 3,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 3,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 490,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 478,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 53,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 75.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 1,
+    "pli": 3,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 1,
+    "qp": 41
+   },
+   "screen": {
+    "kbps": 534,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 521,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 57,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 76.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 3,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 513,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 500,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 55,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 77.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 544,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 531,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 57,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 78.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 576,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 563,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 53,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 79.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 610,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 595,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 56,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 80.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 657,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 642,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 54,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 81.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 7,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 728,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 710,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 56,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 82.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 905,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 883,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 54,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 83.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 6,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1065,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1039,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 57,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 84.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 8,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1449,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1414,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 53,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 85.7,
+   "aob": null,
+   "camera": {
+    "kbps": 63,
+    "size": "320x180",
+    "fps": 1,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 0,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": 42
+   },
+   "screen": {
+    "kbps": 1326,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 1294,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 56,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 86.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 2,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 454,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 443,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 55,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 87.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 3,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 3,
+    "pli": 4,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 3,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 519,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 507,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 55,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 88.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 2,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 477,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 465,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 54,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  },
+  {
+   "s": 89.7,
+   "aob": 132,
+   "camera": {
+    "kbps": 0,
+    "size": "320x180",
+    "fps": 2,
+    "qlr": "none",
+    "tgt": 2,
+    "kf": 2,
+    "pli": 5,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 2,
+    "qp": 40
+   },
+   "screen": {
+    "kbps": 517,
+    "size": "undefinedxundefined",
+    "fps": 0,
+    "qlr": "none",
+    "tgt": 30,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 504,
+    "huge": 0,
+    "qp": null
+   },
+   "mic": {
+    "kbps": 56,
+    "size": "undefinedxundefined",
+    "fps": null,
+    "tgt": 64,
+    "kf": 0,
+    "pli": 0,
+    "fir": 0,
+    "rtxKbps": 0,
+    "huge": 0,
+    "qp": null
+   }
+  }
+ ],
+ "viewer": [
+  {
+   "s": -2,
+   "relay": {
+    "in": 200233,
+    "out": 200036,
+    "drop": 0
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 84024,
+    "lost": 0,
+    "pli": 2,
+    "fir": 0,
+    "nack": 0
+   },
+   "camera": {
+    "fz": 0,
+    "fd": 8,
+    "fr": 8,
+    "pli": 0
+   }
+  },
+  {
+   "s": -1,
+   "relay": {
+    "in": 215011,
+    "out": 214211,
+    "drop": 0
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 84024,
+    "lost": 0,
+    "pli": 7,
+    "fir": 0,
+    "nack": 0
+   },
+   "camera": {
+    "fz": 0,
+    "fd": 23,
+    "fr": 23,
+    "pli": 0
+   }
+  },
+  {
+   "s": 0,
+   "relay": {
+    "in": 231096,
+    "out": 230899,
+    "drop": 0
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 84024,
+    "lost": 0,
+    "pli": 12,
+    "fir": 0,
+    "nack": 0
+   },
+   "camera": {
+    "fz": 0,
+    "fd": 38,
+    "fr": 38,
+    "pli": 0
+   }
+  },
+  {
+   "s": 1,
+   "relay": {
+    "in": 249958,
+    "out": 249761,
+    "drop": 0
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 84024,
+    "lost": 0,
+    "pli": 17,
+    "fir": 0,
+    "nack": 0
+   },
+   "camera": {
+    "fz": 0,
+    "fd": 53,
+    "fr": 53,
+    "pli": 0
+   }
+  },
+  {
+   "s": 2,
+   "relay": {
+    "in": 267908,
+    "out": 266625,
+    "drop": 0
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 84024,
+    "lost": 0,
+    "pli": 21,
+    "fir": 0,
+    "nack": 0
+   },
+   "camera": {
+    "fz": 0,
+    "fd": 68,
+    "fr": 68,
+    "pli": 0
+   }
+  },
+  {
+   "s": 3,
+   "relay": {
+    "in": 567558,
+    "out": 352337,
+    "drop": 198749
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 117954,
+    "lost": 123,
+    "pli": 23,
+    "fir": 0,
+    "nack": 25
+   },
+   "camera": {
+    "fz": 2,
+    "fd": 73,
+    "fr": 72,
+    "pli": 0
+   }
+  },
+  {
+   "s": 4,
+   "relay": {
+    "in": 778678,
+    "out": 449688,
+    "drop": 315834
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 160041,
+    "lost": 107,
+    "pli": 25,
+    "fir": 0,
+    "nack": 59
+   },
+   "camera": {
+    "fz": 2,
+    "fd": 73,
+    "fr": 72,
+    "pli": 0
+   }
+  },
+  {
+   "s": 5,
+   "relay": {
+    "in": 1139028,
+    "out": 545594,
+    "drop": 576575
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 177576,
+    "lost": 92,
+    "pli": 26,
+    "fir": 0,
+    "nack": 95
+   },
+   "camera": {
+    "fz": 2,
+    "fd": 73,
+    "fr": 72,
+    "pli": 0
+   }
+  },
+  {
+   "s": 6,
+   "relay": {
+    "in": 1645373,
+    "out": 642197,
+    "drop": 988809
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 186930,
+    "lost": 122,
+    "pli": 28,
+    "fir": 0,
+    "nack": 133
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 92,
+    "fr": 89,
+    "pli": 0
+   }
+  },
+  {
+   "s": 7,
+   "relay": {
+    "in": 2124808,
+    "out": 734795,
+    "drop": 1373587
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 219689,
+    "lost": 138,
+    "pli": 30,
+    "fir": 0,
+    "nack": 171
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 0
+   }
+  },
+  {
+   "s": 8,
+   "relay": {
+    "in": 2336190,
+    "out": 831148,
+    "drop": 1488378
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 305815,
+    "lost": 224,
+    "pli": 30,
+    "fir": 0,
+    "nack": 230
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 0
+   }
+  },
+  {
+   "s": 9,
+   "relay": {
+    "in": 2533802,
+    "out": 927752,
+    "drop": 1589357
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 331423,
+    "lost": 251,
+    "pli": 32,
+    "fir": 0,
+    "nack": 272
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 0
+   }
+  },
+  {
+   "s": 10,
+   "relay": {
+    "in": 2712616,
+    "out": 1025659,
+    "drop": 1672797
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 347719,
+    "lost": 237,
+    "pli": 36,
+    "fir": 0,
+    "nack": 308
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 1
+   }
+  },
+  {
+   "s": 11,
+   "relay": {
+    "in": 2894473,
+    "out": 1121351,
+    "drop": 1757691
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 352375,
+    "lost": 233,
+    "pli": 40,
+    "fir": 0,
+    "nack": 344
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 1
+   }
+  },
+  {
+   "s": 12,
+   "relay": {
+    "in": 3074476,
+    "out": 1218633,
+    "drop": 1841969
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 361687,
+    "lost": 225,
+    "pli": 43,
+    "fir": 0,
+    "nack": 380
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 1
+   }
+  },
+  {
+   "s": 13,
+   "relay": {
+    "in": 3266898,
+    "out": 1314458,
+    "drop": 1938128
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 361687,
+    "lost": 225,
+    "pli": 47,
+    "fir": 0,
+    "nack": 416
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 1
+   }
+  },
+  {
+   "s": 14,
+   "relay": {
+    "in": 3477779,
+    "out": 1411819,
+    "drop": 2051737
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 369835,
+    "lost": 218,
+    "pli": 51,
+    "fir": 0,
+    "nack": 452
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 1
+   }
+  },
+  {
+   "s": 15,
+   "relay": {
+    "in": 3718618,
+    "out": 1508640,
+    "drop": 2196839
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 369835,
+    "lost": 218,
+    "pli": 56,
+    "fir": 0,
+    "nack": 488
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 1
+   }
+  },
+  {
+   "s": 16,
+   "relay": {
+    "in": 4035827,
+    "out": 1604392,
+    "drop": 2416136
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 370999,
+    "lost": 217,
+    "pli": 60,
+    "fir": 0,
+    "nack": 524
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 102,
+    "fr": 97,
+    "pli": 1
+   }
+  },
+  {
+   "s": 17,
+   "relay": {
+    "in": 4381552,
+    "out": 1697053,
+    "drop": 2671998
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 370999,
+    "lost": 217,
+    "pli": 65,
+    "fir": 0,
+    "nack": 561
+   },
+   "camera": {
+    "fz": 3,
+    "fd": 134,
+    "fr": 129,
+    "pli": 1
+   }
+  },
+  {
+   "s": 18,
+   "relay": {
+    "in": 4522652,
+    "out": 1792307,
+    "drop": 2713336
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 370999,
+    "lost": 217,
+    "pli": 70,
+    "fir": 0,
+    "nack": 597
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 141,
+    "pli": 1
+   }
+  },
+  {
+   "s": 19,
+   "relay": {
+    "in": 4661154,
+    "out": 1889169,
+    "drop": 2757795
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 389623,
+    "lost": 222,
+    "pli": 73,
+    "fir": 0,
+    "nack": 634
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 6
+   }
+  },
+  {
+   "s": 20,
+   "relay": {
+    "in": 4784106,
+    "out": 1986007,
+    "drop": 2783885
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 390787,
+    "lost": 222,
+    "pli": 77,
+    "fir": 0,
+    "nack": 661
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 11
+   }
+  },
+  {
+   "s": 21,
+   "relay": {
+    "in": 4917241,
+    "out": 2081939,
+    "drop": 2820027
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 390787,
+    "lost": 222,
+    "pli": 82,
+    "fir": 0,
+    "nack": 688
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 16
+   }
+  },
+  {
+   "s": 22,
+   "relay": {
+    "in": 5049999,
+    "out": 2178321,
+    "drop": 2856441
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 86,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 20
+   }
+  },
+  {
+   "s": 23,
+   "relay": {
+    "in": 5189446,
+    "out": 2275263,
+    "drop": 2899845
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 91,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 25
+   }
+  },
+  {
+   "s": 24,
+   "relay": {
+    "in": 5342712,
+    "out": 2372153,
+    "drop": 2954972
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 96,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 26
+   }
+  },
+  {
+   "s": 25,
+   "relay": {
+    "in": 5501126,
+    "out": 2469115,
+    "drop": 3019349
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 101,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 26
+   }
+  },
+  {
+   "s": 26,
+   "relay": {
+    "in": 5681581,
+    "out": 2565763,
+    "drop": 3101915
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 105,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 26
+   }
+  },
+  {
+   "s": 27,
+   "relay": {
+    "in": 5889887,
+    "out": 2661828,
+    "drop": 3212664
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 26
+   }
+  },
+  {
+   "s": 28,
+   "relay": {
+    "in": 6146671,
+    "out": 2757975,
+    "drop": 3373383
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 162,
+    "fr": 144,
+    "pli": 26
+   }
+  },
+  {
+   "s": 29,
+   "relay": {
+    "in": 6562903,
+    "out": 2847156,
+    "drop": 3712271
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 165,
+    "fr": 150,
+    "pli": 26
+   }
+  },
+  {
+   "s": 30,
+   "relay": {
+    "in": 6671625,
+    "out": 2940342,
+    "drop": 3714937
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 5,
+    "fd": 231,
+    "fr": 217,
+    "pli": 26
+   }
+  },
+  {
+   "s": 31,
+   "relay": {
+    "in": 6800296,
+    "out": 3036195,
+    "drop": 3747555
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 6,
+    "fd": 251,
+    "fr": 230,
+    "pli": 27
+   }
+  },
+  {
+   "s": 32,
+   "relay": {
+    "in": 6926062,
+    "out": 3132045,
+    "drop": 3776361
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 6,
+    "fd": 251,
+    "fr": 230,
+    "pli": 32
+   }
+  },
+  {
+   "s": 33,
+   "relay": {
+    "in": 7044733,
+    "out": 3228702,
+    "drop": 3801668
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 6,
+    "fd": 251,
+    "fr": 230,
+    "pli": 37
+   }
+  },
+  {
+   "s": 34,
+   "relay": {
+    "in": 7175163,
+    "out": 3325238,
+    "drop": 3835650
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 6,
+    "fd": 251,
+    "fr": 230,
+    "pli": 42
+   }
+  },
+  {
+   "s": 35,
+   "relay": {
+    "in": 7360643,
+    "out": 3421947,
+    "drop": 3924412
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 6,
+    "fd": 251,
+    "fr": 230,
+    "pli": 47
+   }
+  },
+  {
+   "s": 36,
+   "relay": {
+    "in": 7585773,
+    "out": 3519510,
+    "drop": 4049871
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 6,
+    "fd": 251,
+    "fr": 230,
+    "pli": 51
+   }
+  },
+  {
+   "s": 37,
+   "relay": {
+    "in": 7862233,
+    "out": 3615566,
+    "drop": 4231362
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 6,
+    "fd": 251,
+    "fr": 230,
+    "pli": 51
+   }
+  },
+  {
+   "s": 38,
+   "relay": {
+    "in": 8532235,
+    "out": 3712335,
+    "drop": 4812408
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 6,
+    "fd": 251,
+    "fr": 230,
+    "pli": 51
+   }
+  },
+  {
+   "s": 39,
+   "relay": {
+    "in": 8686653,
+    "out": 3805935,
+    "drop": 4864100
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 398935,
+    "lost": 215,
+    "pli": 106,
+    "fir": 0,
+    "nack": 692
+   },
+   "camera": {
+    "fz": 7,
+    "fd": 261,
+    "fr": 247,
+    "pli": 51
+   }
+  },
+  {
+   "s": 40,
+   "relay": {
+    "in": 8887460,
+    "out": 3902750,
+    "drop": 4968452
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 417591,
+    "lost": 234,
+    "pli": 106,
+    "fir": 0,
+    "nack": 699
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 51
+   }
+  },
+  {
+   "s": 41,
+   "relay": {
+    "in": 9072815,
+    "out": 3999272,
+    "drop": 5059177
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 479389,
+    "lost": 293,
+    "pli": 106,
+    "fir": 0,
+    "nack": 753
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 51
+   }
+  },
+  {
+   "s": 42,
+   "relay": {
+    "in": 9224657,
+    "out": 4095075,
+    "drop": 5113002
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 479389,
+    "lost": 295,
+    "pli": 111,
+    "fir": 0,
+    "nack": 789
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 51
+   }
+  },
+  {
+   "s": 43,
+   "relay": {
+    "in": 9357597,
+    "out": 4192010,
+    "drop": 5150469
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 493381,
+    "lost": 283,
+    "pli": 115,
+    "fir": 0,
+    "nack": 825
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 44,
+   "relay": {
+    "in": 9473597,
+    "out": 4289240,
+    "drop": 5169121
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 507375,
+    "lost": 271,
+    "pli": 117,
+    "fir": 0,
+    "nack": 861
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 45,
+   "relay": {
+    "in": 9586133,
+    "out": 4384793,
+    "drop": 5184608
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 507375,
+    "lost": 271,
+    "pli": 122,
+    "fir": 0,
+    "nack": 897
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 46,
+   "relay": {
+    "in": 9693649,
+    "out": 4481739,
+    "drop": 5196994
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 125,
+    "fir": 0,
+    "nack": 933
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 47,
+   "relay": {
+    "in": 9801059,
+    "out": 4579202,
+    "drop": 5208737
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 130,
+    "fir": 0,
+    "nack": 969
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 48,
+   "relay": {
+    "in": 9913259,
+    "out": 4674886,
+    "drop": 5221995
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 135,
+    "fir": 0,
+    "nack": 1003
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 49,
+   "relay": {
+    "in": 10025876,
+    "out": 4771411,
+    "drop": 5237889
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 140,
+    "fir": 0,
+    "nack": 1030
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 50,
+   "relay": {
+    "in": 10143207,
+    "out": 4868355,
+    "drop": 5261843
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 145,
+    "fir": 0,
+    "nack": 1057
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 51,
+   "relay": {
+    "in": 10268911,
+    "out": 4965695,
+    "drop": 5290089
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1084
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 52,
+   "relay": {
+    "in": 10407902,
+    "out": 5062384,
+    "drop": 5331439
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 53,
+   "relay": {
+    "in": 10557965,
+    "out": 5158000,
+    "drop": 5385652
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 54,
+   "relay": {
+    "in": 10731054,
+    "out": 5255344,
+    "drop": 5461705
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 55,
+   "relay": {
+    "in": 10933245,
+    "out": 5352093,
+    "drop": 5567067
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 56,
+   "relay": {
+    "in": 11270423,
+    "out": 5443633,
+    "drop": 5822183
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 267,
+    "fr": 247,
+    "pli": 52
+   }
+  },
+  {
+   "s": 57,
+   "relay": {
+    "in": 11359315,
+    "out": 5530089,
+    "drop": 5822183
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 325,
+    "fr": 310,
+    "pli": 52
+   }
+  },
+  {
+   "s": 58,
+   "relay": {
+    "in": 11467859,
+    "out": 5626392,
+    "drop": 5825985
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 52
+   }
+  },
+  {
+   "s": 59,
+   "relay": {
+    "in": 11575828,
+    "out": 5722319,
+    "drop": 5837419
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 52
+   }
+  },
+  {
+   "s": 60,
+   "relay": {
+    "in": 11684180,
+    "out": 5819158,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 52
+   }
+  },
+  {
+   "s": 61,
+   "relay": {
+    "in": 11787040,
+    "out": 5938550,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 62,
+   "relay": {
+    "in": 11894339,
+    "out": 6045869,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 63,
+   "relay": {
+    "in": 12006785,
+    "out": 6158289,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 64,
+   "relay": {
+    "in": 12120260,
+    "out": 6267101,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 65,
+   "relay": {
+    "in": 12232886,
+    "out": 6384479,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 66,
+   "relay": {
+    "in": 12351112,
+    "out": 6502781,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 67,
+   "relay": {
+    "in": 12502192,
+    "out": 6653861,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 68,
+   "relay": {
+    "in": 12714160,
+    "out": 6865829,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 69,
+   "relay": {
+    "in": 12985205,
+    "out": 7136874,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 70,
+   "relay": {
+    "in": 13393597,
+    "out": 7545266,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 0,
+    "fr": 0,
+    "kf": 0,
+    "bytes": 516703,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 319,
+    "pli": 53
+   }
+  },
+  {
+   "s": 71,
+   "relay": {
+    "in": 13869204,
+    "out": 8020873,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 57
+   }
+  },
+  {
+   "s": 72,
+   "relay": {
+    "in": 13938755,
+    "out": 8086801,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 62
+   }
+  },
+  {
+   "s": 73,
+   "relay": {
+    "in": 14008880,
+    "out": 8160369,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 146,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 66
+   }
+  },
+  {
+   "s": 74,
+   "relay": {
+    "in": 14080740,
+    "out": 8232139,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 71
+   }
+  },
+  {
+   "s": 75,
+   "relay": {
+    "in": 14150625,
+    "out": 8302097,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 76
+   }
+  },
+  {
+   "s": 76,
+   "relay": {
+    "in": 14226293,
+    "out": 8377765,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 77
+   }
+  },
+  {
+   "s": 77,
+   "relay": {
+    "in": 14299712,
+    "out": 8451184,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 77
+   }
+  },
+  {
+   "s": 78,
+   "relay": {
+    "in": 14380122,
+    "out": 8527973,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 77
+   }
+  },
+  {
+   "s": 79,
+   "relay": {
+    "in": 14460959,
+    "out": 8612431,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 77
+   }
+  },
+  {
+   "s": 80,
+   "relay": {
+    "in": 14550989,
+    "out": 8697621,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 77
+   }
+  },
+  {
+   "s": 81,
+   "relay": {
+    "in": 14646214,
+    "out": 8792844,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 77
+   }
+  },
+  {
+   "s": 82,
+   "relay": {
+    "in": 14750956,
+    "out": 8902428,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 77
+   }
+  },
+  {
+   "s": 83,
+   "relay": {
+    "in": 14877505,
+    "out": 9028977,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 77
+   }
+  },
+  {
+   "s": 84,
+   "relay": {
+    "in": 15033300,
+    "out": 9184772,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 339,
+    "fr": 367,
+    "pli": 77
+   }
+  },
+  {
+   "s": 85,
+   "relay": {
+    "in": 15320216,
+    "out": 9471688,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 342,
+    "fr": 435,
+    "pli": 78
+   }
+  },
+  {
+   "s": 86,
+   "relay": {
+    "in": 15373105,
+    "out": 9524577,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 342,
+    "fr": 435,
+    "pli": 83
+   }
+  },
+  {
+   "s": 87,
+   "relay": {
+    "in": 15442732,
+    "out": 9594204,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 342,
+    "fr": 435,
+    "pli": 87
+   }
+  },
+  {
+   "s": 88,
+   "relay": {
+    "in": 15515118,
+    "out": 9663588,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 342,
+    "fr": 435,
+    "pli": 92
+   }
+  },
+  {
+   "s": 89,
+   "relay": {
+    "in": 15584554,
+    "out": 9736026,
+    "drop": 5848331
+   },
+   "screen": {
+    "fz": 0,
+    "fd": 1,
+    "fr": 1,
+    "kf": 1,
+    "bytes": 698160,
+    "lost": 263,
+    "pli": 147,
+    "fir": 0,
+    "nack": 1092
+   },
+   "camera": {
+    "fz": 9,
+    "fd": 342,
+    "fr": 435,
+    "pli": 97
+   }
+  }
+ ],
+ "events": [
+  [
+   0.1,
+   "video_wanted {\"mid\":\"2\",\"width\":1920,\"height\":1088,\"fps\":60,\"watchers\":1,\"unknown\":0}"
+  ],
+  [
+   0.1,
+   "video_wanted {\"mid\":\"1\",\"width\":640,\"height\":368,\"fps\":60,\"watchers\":1,\"unknown\":0}"
+  ],
+  [
+   1.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=3693433 maxFramerate=15 wanted=1920x1088@60 watchers=1 unknown=0 estimate=5547 seen=none"
+  ],
+  [
+   4.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=63336 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=194 seen=658"
+  ],
+  [
+   4.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=59016 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=194 seen=none"
+  ],
+  [
+   5.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=50000 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=183 seen=none"
+  ],
+  [
+   7.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=98165 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=183 seen=none"
+  ],
+  [
+   8.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=116354 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=183 seen=none"
+  ],
+  [
+   9.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=50000 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   10.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=50669 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=527"
+  ],
+  [
+   10.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=109351 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   11.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=40535 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=421"
+  ],
+  [
+   11.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=50000 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   12.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=32428 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=337"
+  ],
+  [
+   13.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=25942 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=270"
+  ],
+  [
+   13.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=56284 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   14.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=20754 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=216"
+  ],
+  [
+   14.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=64396 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   15.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=16603 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=173"
+  ],
+  [
+   19.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=13282 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=138"
+  ],
+  [
+   19.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=94643 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   20.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=10626 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=110"
+  ],
+  [
+   20.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=75201 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   21.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=8501 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=88"
+  ],
+  [
+   24.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=6801 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=71"
+  ],
+  [
+   25.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=5440 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=57"
+  ],
+  [
+   26.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=4352 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=45"
+  ],
+  [
+   27.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=3482 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=36"
+  ],
+  [
+   28.5,
+   "[Voice:CAMERA] encoding: active=true scale=4 maxBitrate=2786 maxFramerate=15 wanted=640x368@60 watchers=1 unknown=0 estimate=132 seen=29"
+  ],
+  [
+   28.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=84384 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   41.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=98813 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   42.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=82520 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ],
+  [
+   68.5,
+   "[Voice:SCREEN] encoding: active=true scale=1 maxBitrate=65412 maxFramerate=10 wanted=1920x1088@60 watchers=1 unknown=0 estimate=132 seen=none"
+  ]
+ ]
+}
