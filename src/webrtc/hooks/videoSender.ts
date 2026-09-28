@@ -47,6 +47,8 @@ interface RoleState {
 interface OutboundSample {
   bytes: number;
   frames: number | null;
+  /** Frames the track handed the encoder, from media-source, so a still share isn't a stalled one. */
+  sourceFrames: number | null;
   /** Chrome's own target for it, which a camera's encoder fills whatever it's showing. */
   target: number | null;
   limited: boolean;
@@ -67,6 +69,8 @@ type StatsReport = {
   bytesSent?: number;
   headerBytesSent?: number;
   framesEncoded?: number;
+  mediaSourceId?: string;
+  frames?: number;
   targetBitrate?: number;
   qualityLimitationReason?: string;
   state?: string;
@@ -93,9 +97,11 @@ async function sample(pc: RTCPeerConnection): Promise<Sample | null> {
     const bytes = (r.bytesSent ?? 0) + (r.headerBytesSent ?? 0);
     if (r.kind === "audio") audioBytes += bytes;
     else if (r.mid !== undefined) {
+      const source = r.mediaSourceId ? all.find((m) => m.id === r.mediaSourceId) : undefined;
       outbound.set(r.mid, {
         bytes,
         frames: typeof r.framesEncoded === "number" ? r.framesEncoded : null,
+        sourceFrames: typeof source?.frames === "number" ? source.frames : null,
         target: typeof r.targetBitrate === "number" && r.targetBitrate > 0 ? r.targetBitrate : null,
         limited: r.qualityLimitationReason === "bandwidth",
       });
@@ -219,8 +225,10 @@ export function createVideoSendController(
         else if (r.last?.active && now - r.changedAt >= SETTLE_MS) {
           const held = Math.min(r.last.maxBitrate ?? Infinity, out.target ?? Infinity);
           const frames = out.frames !== null && before.frames !== null ? (out.frames - before.frames) / dt : null;
-          r.starved = frames !== null && frames < r.last.fps * 0.6;
-          r.rate = learnRate(r.rate, used, r.last.scale, r.last.fps, used >= held * 0.85 || out.limited);
+          const offered = out.sourceFrames !== null && before.sourceFrames !== null ? (out.sourceFrames - before.sourceFrames) / dt : Infinity;
+          r.starved = frames !== null && frames < Math.min(r.last.fps, offered) * 0.6;
+          // A stalled encoder's bytes say as little as a held one's: a keyframe stall once taught it 8 kbps.
+          r.rate = learnRate(r.rate, used, r.last.scale, r.last.fps, used >= held * 0.85 || out.limited || r.starved);
         }
       }
       const input = { role, source, settings: r.settings, wanted: demand, now, framesEncoded: out?.frames ?? null };

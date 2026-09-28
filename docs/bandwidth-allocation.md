@@ -375,7 +375,7 @@ gated through the relay here with the same 2 Mbps and 0.8 Mbps steps as `estimat
 0.8 Mbps the share should keep its size, and the viewer's freezes on it should go from 13 to
 about none.
 
-As built (GRYT-1483), the rule above changed in five places once it met the rig. The numbers are
+As built (GRYT-1483), the rule above changed in six places once it met the rig. The numbers are
 in that PR's body and in `results/budget-*.json`.
 
 - A share's frame rate stops at 10, not 5. At 5–6 fps and 250–450 kbps, VideoToolbox stalled a
@@ -386,6 +386,9 @@ in that PR's body and in `results/budget-*.json`.
 - A share's need is learned from seconds it wasn't held down. Held down, an encoder fills
   whatever it's given, so its bytes say nothing about the picture. Before anything is learned,
   the need is the bitrate rule, which is far above a text share's.
+- A second where the encoder stalled isn't learned from either, meaning it encoded under 60% of
+  the frames its source handed it. Under an 800 kbps ingest cap, a 1080p share stuck on its
+  first keyframe taught the split that it needed 8 kbps. It was never cut and froze 26 times.
 - Pausing the camera and shrinking the large share need the share to be dropping frames (under
   60% of its cap) for 10 s. On the model alone they fired at 0.8 Mbps, where the text share was
   running its full 10 fps, and each one cost a 1080p keyframe on a thin link.
@@ -453,6 +456,8 @@ node resume-long.mjs both 25 rekick  # resume after a long pause; or together, s
 node svc.mjs                         # L1T3 against L3T3_KEY
 # stage 2's gate: estimate.mjs's steps with the engine's split on the sender. `old` is no engine.
 BW_SFU=./sfu-main BW_VOICE_DIST=../../dist node budget.mjs after new
+# the same under an ingest cap, with the SFU built from a branch that sends max_ingest_kbps
+SFU_MAX_INGEST_KBPS=800 BW_SFU=./sfu-cap node budget.mjs cap800 new
 # stage 1's gate: one sender, one viewer full screen and one hidden, both hidden, one back.
 # `old` is a client from before GRYT-1432, `new` runs the engine's own code from ../../dist.
 BW_SFU=./sfu-main node gate.mjs before old

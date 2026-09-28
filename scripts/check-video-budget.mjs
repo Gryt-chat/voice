@@ -243,6 +243,19 @@ const link = (estimate, kbps) => {
     ["out", { type: "outbound-rtp", kind: "video", mid, bytesSent: bytes, headerBytesSent: 0, framesEncoded: bytes / 1000, targetBitrate: kbps * 1000 }],
   ]);
 };
+// An encoder stalled on a keyframe: next to no bytes while the source offers 30 fps. Learning from
+// that taught the rig's share 8 kbps under an ingest cap, so it was never cut and froze 26 times.
+let offered = 0;
+for (let i = 0; i < 4; i++) {
+  bytes += 1_000;
+  offered += 30;
+  pc.stats = new Map([
+    ["pair", { type: "candidate-pair", id: "pair", nominated: true, state: "succeeded", availableOutgoingBitrate: 5_000_000 }],
+    ["out", { type: "outbound-rtp", kind: "video", mid, mediaSourceId: "src", bytesSent: bytes, headerBytesSent: 0, framesEncoded: i, targetBitrate: 1_300_000 }],
+    ["src", { type: "media-source", id: "src", kind: "video", frames: offered }],
+  ]);
+  await wait(1_000);
+}
 for (let i = 0; i < 3; i++) {
   link(5_000_000, 1_300);
   await wait(1_000);
@@ -252,7 +265,7 @@ assert.equal(encoding().scaleResolutionDownBy, 1);
 
 link(300_000, 250);
 await wait(1_000);
-assert.equal(encoding().maxFramerate, MIN_CAMERA_FPS, "a falling estimate didn't cut the camera within a second");
+assert.equal(encoding().maxFramerate, MIN_CAMERA_FPS, "a falling estimate didn't cut the camera within a second, or the stall taught it a tiny rate");
 assert.ok(encoding().scaleResolutionDownBy > 1);
 assert.ok(encoding().maxBitrate <= 300_000 * SPEND, `camera capped at ${encoding().maxBitrate} on a 300 kbps estimate`);
 

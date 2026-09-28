@@ -187,6 +187,11 @@ H.join = async function (o) {
       H.log('video_wanted', msg.data);
       const w = H.parseVideoWanted?.(msg.data);
       if (w && H.ctl) H.ctl.onWanted(w);
+    } else if (msg.event === 'room_joined' && H.ctl) {
+      // What useSFU does with room_joined. Engines before 0.6.1 have no setIngestCap.
+      const { parseRoomJoined } = await import('/dist/webrtc/hooks/sfuConnection.js');
+      const info = parseRoomJoined(msg.data); H.log('room_joined', msg.data);
+      H.ctl.setIngestCap?.(info.maxIngestKbps === null ? null : info.maxIngestKbps * 1000);
     } else { H.log('ws', msg.event, (msg.data || '').slice(0, 120)); }
   };
   await opened;
