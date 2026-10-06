@@ -11,6 +11,35 @@ import { MicrophoneBufferType } from "../types/Microphone";
  */
 const COMPRESSOR_MAKEUP_DB = 3;
 
+/** Where the limiter starts working. Speech below it passes unchanged (GRYT-1679). */
+const LIMITER_THRESHOLD_DB = -6;
+
+/** Chrome's compressor adds +3.3 dB makeup at these settings (measured). Taken back off so the
+ *  always-on stage doesn't make everyone louder. */
+const LIMITER_MAKEUP_DB = 3.34;
+
+/** Hard ceiling after the limiter: a tanh curve, so nothing reaches 0 dBFS even at +20 dB in. */
+const OUTPUT_CEILING_DB = -1;
+
+/** WaveShaper input range. The curve maps -range..range, so a signal far over full scale still bends smoothly. */
+const SOFT_CLIP_RANGE = 4;
+
+function createSoftClipper(audioContext: AudioContext): { input: GainNode; output: WaveShaperNode } {
+  const ceiling = Math.pow(10, OUTPUT_CEILING_DB / 20);
+  const curve = new Float32Array(4096);
+  for (let i = 0; i < curve.length; i++) {
+    const x = ((i / (curve.length - 1)) * 2 - 1) * SOFT_CLIP_RANGE;
+    curve[i] = ceiling * Math.tanh(x / ceiling);
+  }
+  const input = audioContext.createGain();
+  input.gain.value = 1 / SOFT_CLIP_RANGE;
+  const output = audioContext.createWaveShaper();
+  output.curve = curve;
+  output.oversample = "4x";
+  input.connect(output);
+  return { input, output };
+}
+
 export interface CreateMicrophoneBufferParams {
   audioContext: AudioContext;
   micStream: MediaStream | undefined;
@@ -123,6 +152,22 @@ export function createMicrophoneBuffer({
     processingChain = compressorMakeup;
   }
 
+  // Always on, whatever else is: auto gain and the compressor both add level, and nothing
+  // else stops a loud word going over 0 dBFS.
+  const limiter = audioContext.createDynamicsCompressor();
+  limiter.threshold.value = LIMITER_THRESHOLD_DB;
+  limiter.knee.value = 0;
+  limiter.ratio.value = 20;
+  limiter.attack.value = 0.001;
+  limiter.release.value = 0.1;
+  const limiterTrim = audioContext.createGain();
+  limiterTrim.gain.value = Math.pow(10, -LIMITER_MAKEUP_DB / 20);
+  const softClip = createSoftClipper(audioContext);
+  processingChain.connect(limiter);
+  limiter.connect(limiterTrim);
+  limiterTrim.connect(softClip.input);
+  processingChain = softClip.output;
+
   if (noiseGateNode) {
     // Input 0 carries the signal being gated. Input 1 is a tap taken before RNNoise, because
     // that is where the threshold was measured — post-chain would change what it means.
@@ -158,6 +203,7 @@ export function createMicrophoneBuffer({
     agcGain,
     compressor,
     compressorMakeup,
+    limiter,
   };
 }
 
@@ -497,23 +543,29 @@ export function usePipelineControls({
     const targetLinear = Math.pow(10, autoGainTargetDb / 20);
     const silenceFloor = 0.001;
     const minGain = 0.1;
-    const maxGain = 31.6;
+    // +12 dB at most. +30 dB lifted room noise between words into a clipped first syllable.
+    const maxGain = 4;
+    const peakCeiling = Math.pow(10, LIMITER_THRESHOLD_DB / 20);
     const smoothUp = 0.02;
-    const smoothDown = 0.08;
+    const smoothDown = 0.5;
 
     const adjust = () => {
       analyserNode.getFloatTimeDomainData(dataArray);
 
       let sum = 0;
+      let peak = 0;
       for (let i = 0; i < dataArray.length; i++) {
         sum += dataArray[i] * dataArray[i];
+        const a = Math.abs(dataArray[i]);
+        if (a > peak) peak = a;
       }
 
       const rms = Math.sqrt(sum / dataArray.length);
 
       if (rms <= silenceFloor) return;
 
-      const desiredGain = targetLinear / rms;
+      // Aim for the RMS target, but never so loud that the peak passes the ceiling.
+      const desiredGain = Math.min(targetLinear / rms, peakCeiling / Math.max(peak, 1e-6));
       const clamped = Math.max(minGain, Math.min(maxGain, desiredGain));
       const alpha = clamped > agcGainValueRef.current ? smoothUp : smoothDown;
 

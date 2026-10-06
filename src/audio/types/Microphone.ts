@@ -21,6 +21,8 @@ export type MicrophoneBufferType = {
   /** Makeup gain after the compressor, so taming peaks does not just get
    *  quieter. Absent when the compressor is off (GRYT-511). */
   compressorMakeup?: GainNode;
+  /** Last stage before the gate, always on: nothing leaves above OUTPUT_CEILING_DB (GRYT-1679). */
+  limiter?: DynamicsCompressorNode;
 };
 
 /**
