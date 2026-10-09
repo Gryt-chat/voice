@@ -67,6 +67,11 @@ jobs:
       - name: Check candidates that beat the offer are kept
         run: npm run check-early-candidates
 
+      # A call that never connects has no selected pair, so the log names every candidate
+      # and pair instead, leaving out our own addresses (GRYT-9).
+      - name: Check the ICE failure report
+        run: npm run check-ice-failure-report
+
       # Drops a call while another server is on screen. Recovery goes back to the call's
       # server with that server's STUN list, and once it gives up, the call stays ended.
       - name: Check recovery stays on the active call server
