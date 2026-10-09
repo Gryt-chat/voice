@@ -10,6 +10,7 @@ import {
 import { getCachedSfuUrl, selectBestSfuUrl } from "./selectBestSfuUrl";
 import { connectToSfuWebSocket } from "./sfuConnection";
 import type { VideoWanted } from "./videoDemand";
+import { iceFailureReport } from "./iceReport";
 import { RoomRefusal, SFUConnectionStateInternal } from "./sfuTypes";
 import { voiceLog } from "./voiceLogger";
 
@@ -92,6 +93,9 @@ async function dumpIceSelectedPair(pc: RTCPeerConnection, label: string) {
       null;
 
     if (!selectedPair) {
+      // A warning, so it lands in the log a bug report attaches (GRYT-9).
+      const entries: { id: string; type: string }[] = [];
+      report.forEach((stat) => entries.push(stat as { id: string; type: string }));
       voiceLog.warn(
         "WEBRTC",
         `ICE debug (${label}): no candidate-pair selected yet`,
@@ -99,6 +103,7 @@ async function dumpIceSelectedPair(pc: RTCPeerConnection, label: string) {
           connectionState: pc.connectionState,
           iceConnectionState: pc.iceConnectionState,
           signalingState: pc.signalingState,
+          ...iceFailureReport(entries),
         },
       );
       return;
@@ -900,13 +905,15 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
             iceState: pc.iceConnectionState,
           },
         );
-        dumpIceSelectedPair(pc, "timeout").catch(() => undefined);
         setConnectionState((prev) => ({
           ...prev,
           state: SFUConnectionState.FAILED,
           error: "Connection timed out",
         }));
-        performCleanup(false).catch(console.error);
+        // Cleanup closes the connection, and getStats throws on a closed one.
+        dumpIceSelectedPair(pc, "timeout")
+          .catch(() => undefined)
+          .finally(() => performCleanup(false).catch(console.error));
       }
     }, 20000);
 
