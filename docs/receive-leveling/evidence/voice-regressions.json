@@ -1,0 +1,127 @@
+[
+  {
+    "name": "check-receive-dsp",
+    "exitCode": 0,
+    "output": "{\n  \"checks\": 28,\n  \"passed\": [\n    \"Signalsmith fixed PeakHold equals sliding-window max\",\n    \"Signalsmith BoxFilter equals filled moving average\",\n    \"impulse boundaries/cold clipping/sample ceiling 8000\",\n    \"quiet→shout→quiet 8000\",\n    \"silence/low stationary noise no gain chasing 8000\",\n    \"manual 0/100/200 and disable raw samples 8000\",\n    \"impulse boundaries/cold clipping/sample ceiling 16000\",\n    \"quiet→shout→quiet 16000\",\n    \"silence/low stationary noise no gain chasing 16000\",\n    \"manual 0/100/200 and disable raw samples 16000\",\n    \"impulse boundaries/cold clipping/sample ceiling 44100\",\n    \"quiet→shout→quiet 44100\",\n    \"silence/low stationary noise no gain chasing 44100\",\n    \"manual 0/100/200 and disable raw samples 44100\",\n    \"impulse boundaries/cold clipping/sample ceiling 48000\",\n    \"quiet→shout→quiet 48000\",\n    \"silence/low stationary noise no gain chasing 48000\",\n    \"manual 0/100/200 and disable raw samples 48000\",\n    \"impulse boundaries/cold clipping/sample ceiling 96000\",\n    \"quiet→shout→quiet 96000\",\n    \"silence/low stationary noise no gain chasing 96000\",\n    \"manual 0/100/200 and disable raw samples 96000\",\n    \"stereo/empty/missing channels and NaN/Inf remain finite\",\n    \"independent users/manual do not affect adaptive measurements\",\n    \"multi-route aligned sum has strict final ceiling\",\n    \"disable drops adaptive boost and protects pending lookahead samples\",\n    \"stationary loud noise stays within bounded gain; music bypass does not boost\",\n    \"actual worklet program runs core and clears mute tail without allocation\"\n  ],\n  \"scenarios\": [\n    {\n      \"rate\": 8000,\n      \"beforeQuietRms\": 0.014142135611268817,\n      \"beforeShoutRms\": 0.6717514417977546,\n      \"beforeSamplePeak\": 0.949999988079071,\n      \"quietGainDb\": 5.110143873782831,\n      \"shoutRms\": 0.1384937283614324,\n      \"samplePeak\": 0.7079457640647888\n    },\n    {\n      \"rate\": 16000,\n      \"beforeQuietRms\": 0.014142135628853629,\n      \"beforeShoutRms\": 0.671751442464673,\n      \"beforeSamplePeak\": 0.949999988079071,\n      \"quietGainDb\": 5.110040455272972,\n      \"shoutRms\": 0.1383772089529944,\n      \"samplePeak\": 0.7079457640647888\n    },\n    {\n      \"rate\": 44100,\n      \"beforeQuietRms\": 0.014142135630060053,\n      \"beforeShoutRms\": 0.6717472201741793,\n      \"beforeSamplePeak\": 0.9499997496604919,\n      \"quietGainDb\": 5.109931452216108,\n      \"shoutRms\": 0.13833649827686847,\n      \"samplePeak\": 0.7079457640647888\n    },\n    {\n      \"rate\": 48000,\n      \"beforeQuietRms\": 0.014142135625450445,\n      \"beforeShoutRms\": 0.6717475618484916,\n      \"beforeSamplePeak\": 0.949999988079071,\n      \"quietGainDb\": 5.1099703834588395,\n      \"shoutRms\": 0.13833476497125688,\n      \"samplePeak\": 0.7079457640647888\n    },\n    {\n      \"rate\": 96000,\n      \"beforeQuietRms\": 0.014142135634732753,\n      \"beforeShoutRms\": 0.671749499663493,\n      \"beforeSamplePeak\": 0.949999988079071,\n      \"quietGainDb\": 5.109952720334713,\n      \"shoutRms\": 0.1383285625658455,\n      \"samplePeak\": 0.7079457640647888\n    }\n  ],\n  \"ceiling\": 0.7079457843841379,\n  \"note\": \"Synthetic audio; no listening, microphone, server or hearing-safety validation.\"\n}\n"
+  },
+  {
+    "name": "check-surface",
+    "exitCode": 0,
+    "output": "public surface ok: 46 required, 51 exported, no source-path URLs\n"
+  },
+  {
+    "name": "check-native-entry",
+    "exitCode": 0,
+    "output": "native entry ok: 49 file(s) reachable, no bundler-visible web-only references\n"
+  },
+  {
+    "name": "check-type-names",
+    "exitCode": 0,
+    "output": "type names ok: index.d.ts reaches 38 file(s), 140 declared name(s), no duplicates\ntype names ok: native.d.ts reaches 38 file(s), 141 declared name(s), no duplicates\n"
+  },
+  {
+    "name": "check-room-joined",
+    "exitCode": 0,
+    "output": "room_joined ok: the timeout and the ingest cap survive the wire, and an SFU that says nothing says null\n"
+  },
+  {
+    "name": "check-face-framing",
+    "exitCode": 0,
+    "output": "face-framing: ok\n"
+  },
+  {
+    "name": "check-track-replace",
+    "exitCode": 0,
+    "output": "track replace: ok, once per rebuild, by kind, not while disconnected\n"
+  },
+  {
+    "name": "check-connection-settles",
+    "exitCode": 0,
+    "output": "connection settles: ok, in either order, and a dead call stays dead\n"
+  },
+  {
+    "name": "check-native-audio-ends",
+    "exitCode": 0,
+    "output": "native audio ends: ok, dead native stream dropped, browser audio untouched\n"
+  },
+  {
+    "name": "check-early-candidates",
+    "exitCode": 0,
+    "output": "early candidates: ok, held until the offer is applied, in order, and only for their own call\n"
+  },
+  {
+    "name": "check-active-call-target",
+    "exitCode": 0,
+    "output": "active call target: recovery stays on the call's server with its STUN list, and giving up is leaving\n"
+  },
+  {
+    "name": "check-mic-request-race",
+    "exitCode": 0,
+    "output": "microphone request races: stale results stopped, busy flag owned, phones ask for the default\n"
+  },
+  {
+    "name": "check-video-stats",
+    "exitCode": 0,
+    "output": "video stats: outbound rows resolved through media-source and polled once a second\n"
+  },
+  {
+    "name": "check-camera-sender",
+    "exitCode": 0,
+    "output": "camera sender: paused when the camera goes off, and the same one carries it when it comes back\n"
+  },
+  {
+    "name": "check-sfu-slots",
+    "exitCode": 0,
+    "output": "sfu slots: each role on an SFU slot of its own, kept across pauses, toggles and a held renegotiation\n"
+  },
+  {
+    "name": "check-mic-bitrate",
+    "exitCode": 0,
+    "output": "mic bitrate: 64 kbps unless the channel says otherwise, and kept across the engine's own reconnects\n"
+  },
+  {
+    "name": "check-camera-resync",
+    "exitCode": 0,
+    "output": "camera resync: getters stable across renders, and a track is only replaced by a different one\n"
+  },
+  {
+    "name": "check-voice-latency",
+    "exitCode": 0,
+    "output": "voice latency: polled once a second, whatever renders in between\n"
+  },
+  {
+    "name": "check-going-away",
+    "exitCode": 0,
+    "output": "going away: ok, only a clean 1000 ends the call, and a proxy's 1001 reconnects it\n"
+  },
+  {
+    "name": "check-recovery-disconnect",
+    "exitCode": 0,
+    "output": "recovery disconnect: a rejoin after signalling returns reports RECONNECTING, and a hang-up still ends the call\n"
+  },
+  {
+    "name": "check-failed-repick",
+    "exitCode": 0,
+    "output": "failed re-pick: ok\n"
+  },
+  {
+    "name": "check-video-demand",
+    "exitCode": 0,
+    "output": "video demand: ok, the ladder, holds, pause, re-kick and demand reports; nothing changes against an old SFU\n"
+  },
+  {
+    "name": "check-video-budget",
+    "exitCode": 0,
+    "output": "video budget: ok, the cut order, the holds, the estimate's rise and fall, and the engine follows it\n"
+  },
+  {
+    "name": "check-room-refusals",
+    "exitCode": 0,
+    "output": "room refusals: a refusal without retryAfterMs ends the call once with its reason; the rest still retry\n"
+  },
+  {
+    "name": "check-native-ptt",
+    "exitCode": 0,
+    "output": "native push to talk: the talk button gates the sent track, and mute always wins\n"
+  }
+]

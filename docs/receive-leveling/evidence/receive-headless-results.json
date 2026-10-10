@@ -1,0 +1,166 @@
+{
+  "browser": "153.0.8010.12",
+  "rendered": [
+    {
+      "rate": 44100,
+      "enabled": false,
+      "maxError": 0,
+      "maxPeak": 4,
+      "stereoError": 0,
+      "firstNonzero": 266,
+      "expectedDelaySamples": 266
+    },
+    {
+      "rate": 44100,
+      "enabled": true,
+      "maxError": 0,
+      "maxPeak": 0.7079457640647888,
+      "stereoError": 0,
+      "firstNonzero": 266,
+      "expectedDelaySamples": 266
+    },
+    {
+      "rate": 48000,
+      "enabled": false,
+      "maxError": 0,
+      "maxPeak": 4,
+      "stereoError": 0,
+      "firstNonzero": 288,
+      "expectedDelaySamples": 288
+    },
+    {
+      "rate": 48000,
+      "enabled": true,
+      "maxError": 0,
+      "maxPeak": 0.7079457640647888,
+      "stereoError": 0,
+      "firstNonzero": 288,
+      "expectedDelaySamples": 288
+    }
+  ],
+  "lifecycle": {
+    "states": [
+      {
+        "status": "loading",
+        "latencyMs": 0
+      },
+      {
+        "status": "degraded",
+        "latencyMs": 0,
+        "reason": "worklet-unavailable"
+      },
+      {
+        "status": "active",
+        "latencyMs": 6
+      },
+      {
+        "status": "disabled",
+        "latencyMs": 6
+      },
+      {
+        "status": "active",
+        "latencyMs": 6
+      },
+      {
+        "status": "degraded",
+        "latencyMs": 0,
+        "reason": "stream-processor-error"
+      },
+      {
+        "status": "active",
+        "latencyMs": 6
+      },
+      {
+        "status": "degraded",
+        "latencyMs": 0,
+        "reason": "bus-processor-error"
+      },
+      {
+        "status": "active",
+        "latencyMs": 6
+      },
+      {
+        "status": "suspended",
+        "latencyMs": 6,
+        "reason": "audio-context-suspended"
+      },
+      {
+        "status": "active",
+        "latencyMs": 6
+      },
+      {
+        "status": "degraded",
+        "latencyMs": 0,
+        "reason": "test-force-rebuild"
+      },
+      {
+        "status": "active",
+        "latencyMs": 6
+      },
+      {
+        "status": "degraded",
+        "latencyMs": 0,
+        "reason": "bus-processor-error"
+      },
+      {
+        "status": "active",
+        "latencyMs": 6
+      },
+      {
+        "status": "active",
+        "latencyMs": 3
+      },
+      {
+        "status": "loading",
+        "latencyMs": 3
+      },
+      {
+        "status": "active",
+        "latencyMs": 6
+      }
+    ],
+    "loads": 2,
+    "fallback": {
+      "status": "degraded",
+      "latencyMs": 0,
+      "reason": "worklet-unavailable"
+    },
+    "fallbackGain": 0.5,
+    "active": {
+      "status": "active",
+      "latencyMs": 6
+    },
+    "screenEnabled": 0,
+    "unknownEnabled": 0,
+    "micEnabled": 1,
+    "routeMuted": 1,
+    "busMuted": 1,
+    "disabled": {
+      "status": "disabled",
+      "latencyMs": 6
+    },
+    "failure": {
+      "status": "degraded",
+      "latencyMs": 0,
+      "reason": "stream-processor-error"
+    },
+    "boostRemoved": true,
+    "newNode": true,
+    "busFailure": {
+      "status": "degraded",
+      "latencyMs": 0,
+      "reason": "bus-processor-error"
+    },
+    "suspended": {
+      "status": "suspended",
+      "latencyMs": 6,
+      "reason": "audio-context-suspended"
+    },
+    "actualProcessorExceptionRecovered": true,
+    "remainingRoutes": 0,
+    "newRoleUnknown": 0,
+    "disposed": true,
+    "timerCleared": true
+  },
+  "note": "Headless Chromium, muted output, synthetic buffers/oscillators, real AudioWorklet. Injected error callbacks and one actual throwing processor are covered; no physical device/microphone/voice listening."
+}
