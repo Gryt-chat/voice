@@ -26,6 +26,9 @@ jobs:
 
       - run: npm run build
 
+      - name: Check RNNoise worklet registration follows its AudioContext
+        run: npm run check-rnnoise-contexts
+
       # These three run against the built dist and used to run only from `prepublishOnly`,
       # which is after a merge. GRYT-344 and GRYT-433 are why they run before one.
       - name: Check the built package imports and is complete
