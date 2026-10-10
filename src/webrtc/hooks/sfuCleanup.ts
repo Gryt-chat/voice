@@ -141,6 +141,7 @@ export async function performSfuCleanup(
   setStreamSources(prev => {
     Object.values(prev).forEach((source) => {
       try {
+        source.receiveCleanup?.dispose();
         source.gain?.disconnect();
         source.analyser?.disconnect();
         source.stream?.disconnect();

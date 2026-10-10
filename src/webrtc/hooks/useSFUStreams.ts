@@ -1,6 +1,8 @@
 import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
 
 import { sliderToOutputGain } from "../../shared/audioVolume";
+import { getReceiveController } from "../../audio/lib/receiveGraph";
+import { useVoiceConfig } from "../../config/index";
 
 import { Streams, StreamSources, VideoStreams } from "../types/SFU";
 import type { RoomCoordinator } from "../../types";
@@ -28,13 +30,13 @@ export function useSFUStreams({
   setStreamSources,
   setVideoStreams,
   audioContext,
-  remoteBusNode,
   outputVolume,
   isDeafened,
   isConnected,
   room,
   previousRemoteStreamsRef,
 }: UseSFUStreamsParams): void {
+  const config = useVoiceConfig();
   const streamsRef = useRef(streams);
   streamsRef.current = streams;
   const streamSourcesRef = useRef(streamSources);
@@ -76,6 +78,7 @@ export function useSFUStreams({
     const mismatchedIds = Object.keys(streamSources).filter((id) => {
       const streamData = streams[id];
       if (!streamData) return false;
+      if (streamSources[id].gain.context !== audioContext) return true;
       const sourceNode = streamSources[id].stream;
       if ("mediaStream" in sourceNode) {
         return (sourceNode as MediaStreamAudioSourceNode).mediaStream !== streamData.stream;
@@ -103,6 +106,7 @@ export function useSFUStreams({
       const source = streamSources[id];
       if (survivingEntries.has(source)) return;
       try {
+        source.receiveCleanup?.dispose();
         source.gain.disconnect();
         source.analyser.disconnect();
         source.stream.disconnect();
@@ -119,7 +123,7 @@ export function useSFUStreams({
       allStaleIds.forEach((id) => delete next[id]);
       return next;
     });
-  }, [streams, streamSources, setStreamSources]);
+  }, [streams, streamSources, setStreamSources, audioContext]);
 
   // Setup audio processing (sourceNode/analyser/gainNode) per remote stream
   useEffect(() => {
@@ -206,9 +210,7 @@ export function useSFUStreams({
         gainNode.gain.value = outputGain;
 
         sourceNode.connect(analyserNode);
-        analyserNode.connect(gainNode);
-        const destination = remoteBusNode ?? audioContext.destination;
-        gainNode.connect(destination);
+        const receiveCleanup = getReceiveController(audioContext, config.audio.receiveLevelingEnabled ?? false).attach(analyserNode, gainNode);
 
         voiceLog.ok("WEBRTC", "PLAY", `Playback connected: stream ${streamID} → analyser → gain(${outputGain.toFixed(2)}) → speakers`, {
           audioContextState: audioContext.state,
@@ -220,6 +222,7 @@ export function useSFUStreams({
           analyser: analyserNode,
           stream: sourceNode,
           audioElement: audioEl,
+          receiveCleanup,
         };
 
         newStreamSources[streamID] = entry;

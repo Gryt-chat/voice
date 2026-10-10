@@ -1,0 +1,82 @@
+{
+  "checks": 28,
+  "passed": [
+    "Signalsmith fixed PeakHold equals sliding-window max",
+    "Signalsmith BoxFilter equals filled moving average",
+    "impulse boundaries/cold clipping/sample ceiling 8000",
+    "quiet→shout→quiet 8000",
+    "silence/low stationary noise no gain chasing 8000",
+    "manual 0/100/200 and disable raw samples 8000",
+    "impulse boundaries/cold clipping/sample ceiling 16000",
+    "quiet→shout→quiet 16000",
+    "silence/low stationary noise no gain chasing 16000",
+    "manual 0/100/200 and disable raw samples 16000",
+    "impulse boundaries/cold clipping/sample ceiling 44100",
+    "quiet→shout→quiet 44100",
+    "silence/low stationary noise no gain chasing 44100",
+    "manual 0/100/200 and disable raw samples 44100",
+    "impulse boundaries/cold clipping/sample ceiling 48000",
+    "quiet→shout→quiet 48000",
+    "silence/low stationary noise no gain chasing 48000",
+    "manual 0/100/200 and disable raw samples 48000",
+    "impulse boundaries/cold clipping/sample ceiling 96000",
+    "quiet→shout→quiet 96000",
+    "silence/low stationary noise no gain chasing 96000",
+    "manual 0/100/200 and disable raw samples 96000",
+    "stereo/empty/missing channels and NaN/Inf remain finite",
+    "independent users/manual do not affect adaptive measurements",
+    "multi-route aligned sum has strict final ceiling",
+    "disable drops adaptive boost and protects pending lookahead samples",
+    "stationary loud noise stays within bounded gain; music bypass does not boost",
+    "actual worklet program runs core and clears mute tail without allocation"
+  ],
+  "scenarios": [
+    {
+      "rate": 8000,
+      "beforeQuietRms": 0.014142135611268817,
+      "beforeShoutRms": 0.6717514417977546,
+      "beforeSamplePeak": 0.949999988079071,
+      "quietGainDb": 5.110143873782831,
+      "shoutRms": 0.1384937283614324,
+      "samplePeak": 0.7079457640647888
+    },
+    {
+      "rate": 16000,
+      "beforeQuietRms": 0.014142135628853629,
+      "beforeShoutRms": 0.671751442464673,
+      "beforeSamplePeak": 0.949999988079071,
+      "quietGainDb": 5.110040455272972,
+      "shoutRms": 0.1383772089529944,
+      "samplePeak": 0.7079457640647888
+    },
+    {
+      "rate": 44100,
+      "beforeQuietRms": 0.014142135630060053,
+      "beforeShoutRms": 0.6717472201741793,
+      "beforeSamplePeak": 0.9499997496604919,
+      "quietGainDb": 5.109931452216108,
+      "shoutRms": 0.13833649827686847,
+      "samplePeak": 0.7079457640647888
+    },
+    {
+      "rate": 48000,
+      "beforeQuietRms": 0.014142135625450445,
+      "beforeShoutRms": 0.6717475618484916,
+      "beforeSamplePeak": 0.949999988079071,
+      "quietGainDb": 5.1099703834588395,
+      "shoutRms": 0.13833476497125688,
+      "samplePeak": 0.7079457640647888
+    },
+    {
+      "rate": 96000,
+      "beforeQuietRms": 0.014142135634732753,
+      "beforeShoutRms": 0.671749499663493,
+      "beforeSamplePeak": 0.949999988079071,
+      "quietGainDb": 5.109952720334713,
+      "shoutRms": 0.1383285625658455,
+      "samplePeak": 0.7079457640647888
+    }
+  ],
+  "ceiling": 0.7079457843841379,
+  "note": "Synthetic audio; no listening, microphone, server or hearing-safety validation."
+}

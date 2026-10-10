@@ -27,6 +27,8 @@ export interface VoiceConfig {
     serverDeafened: boolean;
     /** Playback gain for everyone else, 0–1. */
     outputVolume: number;
+    /** Web receiver DSP. Omitted means disabled; independent of the sending autoGain. */
+    receiveLevelingEnabled?: boolean;
     /* Underscores. An embedder typing this as a plain string can pass "push-to-talk",
        compile on both sides, and have push-to-talk silently never engage (GRYT-340). */
     inputMode: "voice_activity" | "push_to_talk";

@@ -1,4 +1,5 @@
 import type { VideoDemand, VideoRole, VideoSendSettings } from "../hooks/videoDemand";
+import type { ReceiveStreamControl } from '../../audio/lib/receiveGraph';
 
 export interface Streams {
   [id: string]: StreamData;
@@ -18,6 +19,7 @@ export type StreamSources = {
     analyser: AnalyserNode;
     stream: MediaStreamAudioSourceNode | MediaElementAudioSourceNode;
     audioElement?: HTMLAudioElement;
+    receiveCleanup?: ReceiveStreamControl;
   };
 };
 

@@ -1,0 +1,56 @@
+{
+  "runtime": "v22.23.2",
+  "platform": "win32",
+  "arch": "x64",
+  "cpu": "Intel(R) Core(TM) i7-14700K",
+  "logicalCpus": 28,
+  "rate": 48000,
+  "frames": 128,
+  "stereo": true,
+  "priority": "requested BelowNormal",
+  "blockBudgetMs": 2.6666666666666665,
+  "trials": 400,
+  "rows": [
+    {
+      "routes": 1,
+      "meanMs": 0.016739000000000014,
+      "p95Ms": 0.022500000000000853,
+      "p99Ms": 0.07430000000000092,
+      "maximumMs": 0.1203000000000003,
+      "meanBudgetPercent": 0.6277125000000006
+    },
+    {
+      "routes": 4,
+      "meanMs": 0.05684174999999996,
+      "p95Ms": 0.098700000000008,
+      "p99Ms": 0.11220000000000141,
+      "maximumMs": 0.13479999999999848,
+      "meanBudgetPercent": 2.131565624999999
+    },
+    {
+      "routes": 8,
+      "meanMs": 0.13003350000000033,
+      "p95Ms": 0.22419999999999618,
+      "p99Ms": 0.3038999999999987,
+      "maximumMs": 0.5408999999999935,
+      "meanBudgetPercent": 4.876256250000012
+    },
+    {
+      "routes": 16,
+      "meanMs": 0.22875650000000114,
+      "p95Ms": 0.3631000000000313,
+      "p99Ms": 0.44360000000000355,
+      "maximumMs": 0.5360999999999763,
+      "meanBudgetPercent": 8.578368750000042
+    },
+    {
+      "routes": 32,
+      "meanMs": 0.46192899999999854,
+      "p95Ms": 0.7373000000000047,
+      "p99Ms": 0.8901000000000181,
+      "maximumMs": 1.012299999999982,
+      "meanBudgetPercent": 17.322337499999946
+    }
+  ],
+  "note": "Sequential Node synthetic core benchmark under current concurrent system load. Excludes Chromium worklet scheduling/GC, graph nodes, decoding and device costs; this is not proof of glitch-free playback."
+}

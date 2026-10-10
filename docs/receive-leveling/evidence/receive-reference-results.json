@@ -1,0 +1,32 @@
+{
+  "comparisons": [
+    {
+      "rate": 8000,
+      "stereoSamples": 16384,
+      "maxError": 2.031936330304518e-8
+    },
+    {
+      "rate": 16000,
+      "stereoSamples": 16384,
+      "maxError": 2.0319475768637574e-8
+    },
+    {
+      "rate": 44100,
+      "stereoSamples": 16384,
+      "maxError": 2.0319475879659876e-8
+    },
+    {
+      "rate": 48000,
+      "stereoSamples": 16384,
+      "maxError": 2.0319475879659876e-8
+    },
+    {
+      "rate": 96000,
+      "stereoSamples": 16384,
+      "maxError": 2.0319930627010763e-8
+    }
+  ],
+  "basics": "369e906e03760ec219d07b06fa06dc4fd099f377",
+  "dsp": "4f62b0a8783c483c353d0232654fe0ffea3cd434",
+  "note": "Original LimiterDouble, 3ms attack, 1-sample additional hold, 60ms release, full channel link, one FIR stage; TS adds final numerical clamp and nonfinite sanitization."
+}

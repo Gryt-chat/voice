@@ -21,11 +21,16 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "third-party",
+    "docs/receive-leveling.md"
   ],
   "scripts": {
-    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "node scripts/generate-receive-dsp.mjs --check && node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.mjs",
+    "typecheck": "node scripts/generate-receive-dsp.mjs --check && tsc -p tsconfig.json --noEmit",
+    "check-receive-dsp": "node scripts/check-receive-dsp.mjs",
+    "bench-receive-dsp": "node scripts/bench-receive-dsp.mjs",
     "test:comment-length": "node scripts/check-comment-length.mjs",
     "prepublishOnly": "npm run build && npm run check-surface && npm run check-native-entry && npm run check-type-names",
     "check-surface": "node scripts/check-public-surface.mjs",

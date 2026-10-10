@@ -24,6 +24,7 @@ export {
 } from "./hooks/useNativeScreenCapture";
 export { useMicrophone } from "./hooks/useMicrophone";
 export { useSpeakers } from "./hooks/useSpeakers";
+export type { ReceiveLevelingState, ReceiveAudioRole, ReceiveStreamControl } from "./lib/receiveGraph";
 export { type LatencyBreakdown, useVoiceLatency } from "./hooks/useVoiceLatency";
 export { type PushToTalkGate, usePushToTalkGate } from "./hooks/usePushToTalkGate";
 export {
