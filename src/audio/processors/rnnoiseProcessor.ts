@@ -76,18 +76,26 @@ class RNNoiseWorkletProcessor extends AudioWorkletProcessor {
 registerProcessor('${RNNOISE_WORKLET_NAME}', RNNoiseWorkletProcessor);
 `;
 
-let workletRegistered = false;
+const workletRegistrations = new WeakMap<AudioContext, Promise<void>>();
 
 async function ensureWorkletRegistered(ctx: AudioContext): Promise<void> {
-  if (workletRegistered) return;
-  const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
-  const url = URL.createObjectURL(blob);
-  try {
-    await ctx.audioWorklet.addModule(url);
-    workletRegistered = true;
-  } finally {
-    URL.revokeObjectURL(url);
+  let registration = workletRegistrations.get(ctx);
+  if (!registration) {
+    registration = (async () => {
+      const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+      try {
+        await ctx.audioWorklet.addModule(url);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    })().catch((error) => {
+      workletRegistrations.delete(ctx);
+      throw error;
+    });
+    workletRegistrations.set(ctx, registration);
   }
+  await registration;
 }
 
 export class RNNoiseProcessor {
