@@ -46,10 +46,9 @@ export default tseslint.config(
     ],
     rules: { "@typescript-eslint/no-restricted-types": "off" },
   },
-  // unknown: not typed yet.
+  // unknown: log details, browser stats and the SFU's opaque join token, all loose on purpose.
   {
     files: [
-      "src/platform/native.ts",
       "src/shared/singletonHook.ts",
       "src/types.ts",
       "src/webrtc/hooks/iceReport.ts",
@@ -57,6 +56,11 @@ export default tseslint.config(
       "src/webrtc/hooks/useVideoStats.ts",
       "src/webrtc/hooks/voiceLogger.ts",
     ],
+    rules: { "@typescript-eslint/no-restricted-types": "off" },
+  },
+  // unknown: only inside casts to react-native-webrtc's types.
+  {
+    files: ["src/platform/native.ts"],
     rules: { "@typescript-eslint/no-restricted-types": "off" },
   },
   // unknown: socket payloads arrive unchecked and are validated there.
