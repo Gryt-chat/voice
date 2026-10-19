@@ -10,19 +10,19 @@ const entry = resolve(dist, "native.js");
 // follows `new Worker(new URL(...))`; unreachable web code costs bundle size and nothing.
 const FORBIDDEN = ["new Worker", "import.meta.url"];
 
-const seen = new Set();
+const seen = new Set<string>();
 
 /**
  * Comments are stripped first, and this is not a nicety: the files that matter here explain
  * at length why they do not touch AudioWorklet, and the raw text scan failed on that.
  */
-function stripComments(source) {
+function stripComments(source: string) {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/(^|[^:])\/\/.*$/gm, "$1");
 }
 
-async function walk(file) {
+async function walk(file: string) {
   if (seen.has(file)) return;
   seen.add(file);
 

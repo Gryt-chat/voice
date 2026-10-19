@@ -29,9 +29,9 @@ assert.ok(body, `could not find the catch block around ${MARKER}`);
 const run = new Function("error", "rawStreamRef", "usingNativeVideoRef", "setScreenShareActive", "console", body);
 const quiet = { error: () => {}, log: () => {}, warn: () => {} };
 
-function failWith({ raw, nativeVideo }) {
-  const writes = [];
-  run(new Error("NotAllowedError"), { current: raw }, { current: nativeVideo }, (v) => writes.push(v), quiet);
+function failWith({ raw, nativeVideo }: { raw: object | null; nativeVideo: boolean }) {
+  const writes: boolean[] = [];
+  run(new Error("NotAllowedError"), { current: raw }, { current: nativeVideo }, (v: boolean) => writes.push(v), quiet);
   return writes;
 }
 

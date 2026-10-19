@@ -10,18 +10,18 @@ const dist = resolve(import.meta.dirname, "../dist");
 const DECLARATION =
   /^export\s+(?:declare\s+)?(?:abstract\s+)?(?:interface|type|class|function|const|let|var|enum|namespace)\s+([A-Za-z_$][\w$]*)/gm;
 
-function stripComments(source) {
+function stripComments(source: string) {
   return source
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/(^|[^:])\/\/.*$/gm, "$1");
 }
 
 /** dist emits `from "./engine.js"` in the .d.ts too, so map back to the types. */
-function typesFor(specifier, from) {
+function typesFor(specifier: string, from: string) {
   return resolve(dirname(from), specifier.replace(/\.js$/, ".d.ts"));
 }
 
-async function walk(file, declarations, seen) {
+async function walk(file: string, declarations: Map<string, Set<string>>, seen: Set<string>) {
   if (seen.has(file)) return;
   seen.add(file);
 
@@ -41,8 +41,8 @@ async function walk(file, declarations, seen) {
 let failed = false;
 
 for (const entry of ["index.d.ts", "native.d.ts"]) {
-  const declarations = new Map();
-  const seen = new Set();
+  const declarations = new Map<string, Set<string>>();
+  const seen = new Set<string>();
   await walk(resolve(dist, entry), declarations, seen);
 
   const clashes = [...declarations].filter(([, where]) => where.size > 1);
