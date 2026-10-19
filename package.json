@@ -25,7 +25,8 @@
   ],
   "scripts": {
     "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p scripts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:scripts": "tsc -p scripts",
     "lint": "eslint --flag unstable_native_nodejs_ts_config .",
     "test:comment-length": "node scripts/check-comment-length.ts",
     "prepublishOnly": "npm run build && npm run check-surface && npm run check-native-entry && npm run check-type-names",
