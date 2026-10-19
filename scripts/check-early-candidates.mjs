@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Feeds the SFU socket its messages in both orders. A candidate that beat the offer was
 // dropped, and the join sat on connecting until the 20s timeout (GRYT-1263).
 

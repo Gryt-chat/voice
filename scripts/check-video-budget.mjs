@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Splitting the uplink between the camera and the share (GRYT-1483): the rule on its own clock,
 // then the engine against a fake send estimate.
 

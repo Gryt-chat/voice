@@ -6,7 +6,7 @@ import TestRenderer, { type ReactTestRenderer } from "react-test-renderer";
 
 import type { AudioPipeline, AudioPipelineOptions, RoomAccess, VoiceConfig, VoicePlatform } from "../dist/types.js";
 
-/** Where a fake is handed to the engine as the browser type it stands in for. It implements only what the engine calls. */
+/** Where a fake crosses into the browser type it stands in for, or back. It implements only what the engine calls. */
 export function asReal<T>(fake: object): T {
   return fake as T;
 }
@@ -244,6 +244,8 @@ export interface FakeSender {
   setParameters(parameters: { encodings: RTCRtpEncodingParameters[] }): Promise<void>;
   replaceTrack(next: FakeTrack | null): Promise<void>;
   setStreams(...next: FakeStream[]): void;
+  /** Set by a check that wants to find this sender again, such as "camera". */
+  role?: string;
 }
 
 export interface FakeTransceiver {

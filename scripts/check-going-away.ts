@@ -1,16 +1,16 @@
-/* eslint-env node */
-
 // Closes a joined SFU socket each way it can close. Cloudflare's 1001 on a proxy restart was taken
 // for the call ending, and the server then put the member out of voice for good (GRYT-1359).
 
 import assert from "node:assert/strict";
+
+import type { SFUWebSocketCloseInfo } from "../dist/webrtc/hooks/sfuConnection.js";
 
 console.log = () => {};
 console.info = () => {};
 console.warn = () => {};
 console.error = () => {};
 
-const sockets = [];
+const sockets: FakeSocket[] = [];
 
 class FakeSocket {
   static CONNECTING = 0;
@@ -18,7 +18,13 @@ class FakeSocket {
   static CLOSING = 2;
   static CLOSED = 3;
 
-  constructor(url) {
+  url: string;
+  readyState: number;
+  onopen?: () => void;
+  onmessage?: (event: { data: string }) => void;
+  onclose?: (event: { code: number; reason: string; wasClean: boolean }) => void;
+
+  constructor(url: string) {
     this.url = url;
     this.readyState = FakeSocket.CONNECTING;
     sockets.push(this);
@@ -35,31 +41,33 @@ class FakeSocket {
     this.onopen?.();
   }
 
-  receive(event, data) {
+  receive(event: string, data: object) {
     this.onmessage?.({ data: JSON.stringify({ event, data: JSON.stringify(data) }) });
   }
 
-  closedBy(code, reason, wasClean) {
+  closedBy(code: number, reason: string, wasClean: boolean) {
     this.readyState = FakeSocket.CLOSED;
     this.onclose?.({ code, reason, wasClean });
   }
 }
 
-globalThis.WebSocket = FakeSocket;
+Object.assign(globalThis, { WebSocket: FakeSocket });
 
 const { connectToSfuWebSocket } = await import("../dist/webrtc/hooks/sfuConnection.js");
 
 async function joined() {
-  const reported = [];
-  const refs = {
+  const reported: SFUWebSocketCloseInfo[] = [];
+  const refs: Parameters<typeof connectToSfuWebSocket>[2] = {
     isDisconnectingRef: { current: false },
     sfuWebSocketRef: { current: null },
-    peerConnectionRef: { current: { connectionState: "connected" } },
+    // The connection's state is all the socket code reads from it.
+    peerConnectionRef: { current: { connectionState: "connected" } as RTCPeerConnection },
   };
   const connecting = connectToSfuWebSocket("ws://sfu.test/client", { room_id: "room" }, refs, false, {
     onAbnormalClose: (info) => reported.push(info),
   });
   const ws = sockets.at(-1);
+  assert.ok(ws, "connectToSfuWebSocket opened no socket");
   ws.open();
   ws.receive("room_joined", { call_alone_timeout_seconds: 0 });
   refs.sfuWebSocketRef.current = await connecting;

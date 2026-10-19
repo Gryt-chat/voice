@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Runs the effect that swaps the sent audio track after the pipeline rebuilds.
 // Measured against two clients in a call, it fired twice per rebuild. GRYT-1073.
 
