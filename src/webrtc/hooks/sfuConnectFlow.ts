@@ -1,8 +1,8 @@
-import { Dispatch, MutableRefObject, SetStateAction } from "react";
+import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
 import { getVoicePlatform } from "../../platform";
 import type { RoomCoordinator } from "../../types";
-import { SFUConnectionState, Streams } from "../types/SFU";
+import { SFUConnectionState, type Streams } from "../types/SFU";
 import {
   connectingMayBeWritten,
   peerConnectedSettles,
@@ -11,7 +11,7 @@ import { getCachedSfuUrl, selectBestSfuUrl } from "./selectBestSfuUrl";
 import { connectToSfuWebSocket } from "./sfuConnection";
 import type { VideoWanted } from "./videoDemand";
 import { iceFailureReport } from "./iceReport";
-import { RoomRefusal, SFUConnectionStateInternal } from "./sfuTypes";
+import { RoomRefusal, type SFUConnectionStateInternal } from "./sfuTypes";
 import { voiceLog } from "./voiceLogger";
 
 /** How often the connect flow looks for the microphone while it waits. */

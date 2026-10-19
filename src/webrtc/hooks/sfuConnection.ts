@@ -1,4 +1,4 @@
-import { MutableRefObject } from "react";
+import type { MutableRefObject } from "react";
 
 import { parseVideoWanted, type VideoWanted } from "./videoDemand";
 import { voiceLog } from "./voiceLogger";

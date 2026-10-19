@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { sliderToOutputGain } from "../../shared/audioVolume";
 import { voiceLog } from "../../webrtc/hooks/voiceLogger";
 
-import { MicrophoneBufferType } from "../types/Microphone";
+import type { MicrophoneBufferType } from "../types/Microphone";
 
 /**
  * Makeup gain applied after the compressor, in decibels. Constant rather than derived, so

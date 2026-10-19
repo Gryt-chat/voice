@@ -10,11 +10,7 @@ import {
   ensureNoiseGateWorklet,
 } from "../processors/noiseGateProcessor";
 import { getIsBrowserSupported } from "../utils/mediaDevices";
-import {
-  MicrophoneBufferType,
-  MicrophoneInterface,
-  MicrophoneUnavailableReason,
-} from "../types/Microphone";
+import type { MicrophoneBufferType, MicrophoneInterface, MicrophoneUnavailableReason } from "../types/Microphone";
 import {
   createMicrophoneBuffer,
   usePipelineControls,

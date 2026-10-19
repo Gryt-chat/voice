@@ -1,4 +1,4 @@
-import { DenoiseState,Rnnoise } from '@shiguredo/rnnoise-wasm';
+import { type DenoiseState,Rnnoise } from '@shiguredo/rnnoise-wasm';
 
 let denoiseState: DenoiseState | null = null;
 const FRAME_SIZE = 480;
