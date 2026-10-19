@@ -1,0 +1,13 @@
+# The GRYT-1321 measurement rig, run by hand against Chrome. It's the record of how the numbers were made.
+docs/bandwidth-allocation/budget.mjs
+docs/bandwidth-allocation/census.mjs
+docs/bandwidth-allocation/estimate.mjs
+docs/bandwidth-allocation/gate.mjs
+docs/bandwidth-allocation/lib.mjs
+docs/bandwidth-allocation/params.mjs
+docs/bandwidth-allocation/resume-both.mjs
+docs/bandwidth-allocation/resume-long.mjs
+docs/bandwidth-allocation/resume-modes.mjs
+docs/bandwidth-allocation/resume.mjs
+docs/bandwidth-allocation/sizes.mjs
+docs/bandwidth-allocation/svc.mjs
