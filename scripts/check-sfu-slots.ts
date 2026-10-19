@@ -5,6 +5,9 @@ import assert from "node:assert/strict";
 
 // First, so the fake timers and sockets are in place before any engine module loads.
 import {
+  asReal,
+  type FakeStream,
+  type FakeTrack,
   advance,
   answered,
   FakeSocket,
@@ -44,21 +47,32 @@ async function call() {
   const socket = FakeSocket.last();
   assert.equal(answered(socket).length, 4, "the SFU's first offer was never answered");
 
-  const streams = new Map();
-  const stream = (track) => streams.get(track) ?? streams.set(track, fakeStream(track)).get(track);
+  const streams = new Map<FakeTrack, FakeStream>();
+  const stream = (track: FakeTrack) => {
+    const known = streams.get(track);
+    if (known) return known;
+    const made = fakeStream(track);
+    streams.set(track, made);
+    return made;
+  };
+  const real = (track: FakeTrack) => [asReal<MediaStreamTrack>(track), asReal<MediaStream>(stream(track))] as const;
   const on = {
-    camera: (track) => settle(() => engine.current.addVideoTrack(track, stream(track))),
-    screen: (track) => settle(() => engine.current.addScreenVideoTrack(track, stream(track))),
-    screenAudio: (track) => settle(() => engine.current.addScreenAudioTrack(track, stream(track))),
+    camera: (track: FakeTrack) => settle(() => engine.current.addVideoTrack(...real(track))),
+    screen: (track: FakeTrack) => settle(() => engine.current.addScreenVideoTrack(...real(track))),
+    screenAudio: (track: FakeTrack) => settle(() => engine.current.addScreenAudioTrack(...real(track))),
   };
   const off = {
     camera: () => settle(() => engine.current.removeVideoTrack()),
     screen: () => settle(() => engine.current.removeScreenVideoTrack()),
     screenAudio: () => settle(() => engine.current.removeScreenAudioTrack()),
   };
-  const midOf = (track) => pc.getTransceivers().find((t) => t.sender.track === track)?.mid;
+  const midOf = (track: FakeTrack) => pc.getTransceivers().find((t) => t.sender.track === track)?.mid;
   /** What the SFU is told a mid carries, from the last answer. */
-  const wire = (mid) => answered(socket).find((line) => line.mid === mid);
+  const wire = (mid: string | null | undefined) => {
+    const line = answered(socket).find((candidate) => candidate.mid === mid);
+    assert.ok(line, `the last answer has no mid ${mid}`);
+    return line;
+  };
   return { engine, pc, socket, stream, on, off, midOf, wire };
 }
 
@@ -75,12 +89,13 @@ async function call() {
 }
 
 // ---- the bug: camera off before its renegotiation lands, then a share ----
-for (const [first, second] of [["camera", "screen"], ["screen", "camera"]]) {
+for (const [first, second] of [["camera", "screen"], ["screen", "camera"]] as const) {
   const { engine, pc, socket, stream, on, off, midOf, wire } = await call();
   socket.hold = true;
   const a = fakeTrack("video", first);
   await on[first](a);
   const slotA = pc.getTransceivers().find((t) => t.sender.track === a);
+  assert.ok(slotA, `the ${first} never got a transceiver`);
   await off[first]();
   const b = fakeTrack("video", second);
   await on[second](b);
@@ -88,7 +103,7 @@ for (const [first, second] of [["camera", "screen"], ["screen", "camera"]]) {
   await advance(100);
 
   assert.ok(midOf(b), `the ${second} is on an m-line the SFU never offered`);
-  assert.notEqual(midOf(b), slotA?.mid, `the ${second} took the paused ${first}'s slot`);
+  assert.notEqual(midOf(b), slotA.mid, `the ${second} took the paused ${first}'s slot`);
   assert.equal(wire(midOf(b)).stream, stream(b).id, `the ${second} went out under another stream id`);
   assert.equal(wire(slotA.mid).stream, stream(a).id, `the paused ${first}'s slot lost its stream id`);
 
@@ -96,7 +111,7 @@ for (const [first, second] of [["camera", "screen"], ["screen", "camera"]]) {
   await on[first](back);
   await advance(100);
   assert.equal(midOf(back), slotA.mid, `the ${first} came back somewhere other than its own slot`);
-  assert.equal(pc.getTransceivers().find((t) => t.mid === midOf(b)).sender.track, b, `the ${first} coming back took the ${second} off the wire`);
+  assert.equal(pc.getTransceivers().find((t) => t.mid === midOf(b))?.sender.track, b, `the ${first} coming back took the ${second} off the wire`);
   assert.equal(wire(slotA.mid).stream, stream(a).id, `the ${first} came back under a new stream id`);
   assert.equal(pc.getTransceivers().length, 4, "a role made an m-line of its own");
   await engine.unmount();
@@ -105,16 +120,17 @@ for (const [first, second] of [["camera", "screen"], ["screen", "camera"]]) {
 // ---- toggling grows nothing, and screen audio keeps off the microphone's m-line ----
 {
   const { engine, pc, stream, on, off, midOf, wire } = await call();
-  let camera;
+  let camera: FakeTrack | undefined;
   for (let i = 0; i < 10; i++) {
     camera = fakeTrack("video", "camera");
     await on.camera(camera);
     await off.camera();
   }
+  assert.ok(camera);
   await on.camera(camera);
-  let screen;
-  let screenAudio;
-  const shares = [];
+  let screen: FakeTrack | undefined;
+  let screenAudio: FakeTrack | undefined;
+  const shares: FakeTrack[] = [];
   for (let i = 0; i < 5; i++) {
     screen = fakeTrack("video", "screen");
     screenAudio = fakeTrack("audio", "screen");
@@ -124,6 +140,7 @@ for (const [first, second] of [["camera", "screen"], ["screen", "camera"]]) {
     await off.screen();
     await off.screenAudio();
   }
+  assert.ok(screen && screenAudio);
   await on.screen(screen);
   await on.screenAudio(screenAudio);
   await advance(100);
@@ -147,7 +164,7 @@ for (const [first, second] of [["camera", "screen"], ["screen", "camera"]]) {
   await on.screen(screen);
   await on.camera(camera);
   await advance(100);
-  assert.ok(["1", "2"].includes(midOf(screen)) && ["1", "2"].includes(midOf(camera)), "a role went out on a forwarded m-line");
+  assert.ok(["1", "2"].includes(midOf(screen) ?? "") && ["1", "2"].includes(midOf(camera) ?? ""), "a role went out on a forwarded m-line");
   assert.notEqual(midOf(screen), midOf(camera));
   assert.equal(wire("4").direction, "recvonly");
   assert.equal(pc.getTransceivers().length, 6);
