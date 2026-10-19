@@ -50,9 +50,9 @@ assert.equal(engine.current.latency.networkRttMs, 42, "the poll did not read the
 
 // Each incoming stream against its own counters: one shared one mixed two speakers up (gh-53).
 {
-  const inbound = (id: string, delay: number, emitted: number, extra = {}) =>
+  const inbound = (id: string, delay: number, emitted: number, extra = {}): [string, object] =>
     [id, { id, type: "inbound-rtp", kind: "audio", jitterBufferDelay: delay, jitterBufferEmittedCount: emitted, packetsReceived: 100, ...extra }];
-  const cp = ["CP1", { id: "CP1", type: "candidate-pair", state: "succeeded", nominated: true, currentRoundTripTime: 0.042 }];
+  const cp: [string, object] = ["CP1", { id: "CP1", type: "candidate-pair", state: "succeeded", nominated: true, currentRoundTripTime: 0.042 }];
   pc.stats = new Map([cp, inbound("A", 400, 10_000), inbound("B", 1_200, 10_000, { jitterBufferTargetDelay: 1_000 })]);
   await advance(1_000);
   pc.stats = new Map([cp, inbound("A", 800, 20_000), inbound("B", 2_400, 20_000, { jitterBufferTargetDelay: 2_000 })]);
