@@ -5,11 +5,11 @@ import { useSpeakers } from "../../audio/hooks/useSpeakers";
 import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
 import { singletonHook } from "../../shared/singletonHook";
 
-import { SFUConnectionState, SFUInterface, Streams, StreamSources, VideoStreams } from "../types/SFU";
-import { CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
+import { SFUConnectionState, type SFUInterface, type Streams, type StreamSources, type VideoStreams } from "../types/SFU";
+import { type CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
 import { sfuConnect } from "./sfuConnectFlow";
 import { publishOnSfuSlot } from "./sfuSlots";
-import { RoomRefusal, SFUConnectionStateInternal } from "./sfuTypes";
+import { RoomRefusal, type SFUConnectionStateInternal } from "./sfuTypes";
 import { useSFUStreams } from "./useSFUStreams";
 import { createDemandReporter, type VideoDemand, type VideoRole, type VideoSendSettings } from "./videoDemand";
 import { createVideoSendController } from "./videoSender";

@@ -1,8 +1,8 @@
-import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef } from "react";
+import { type Dispatch, type MutableRefObject, type SetStateAction, useEffect, useRef } from "react";
 
 import { sliderToOutputGain } from "../../shared/audioVolume";
 
-import { Streams, StreamSources, VideoStreams } from "../types/SFU";
+import type { Streams, StreamSources, VideoStreams } from "../types/SFU";
 import type { RoomCoordinator } from "../../types";
 import { voiceLog } from "./voiceLogger";
 

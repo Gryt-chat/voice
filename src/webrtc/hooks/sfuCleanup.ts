@@ -1,6 +1,6 @@
-import { Dispatch, MutableRefObject, SetStateAction } from "react";
+import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 
-import { Streams, StreamSources } from "../types/SFU";
+import type { Streams, StreamSources } from "../types/SFU";
 import type { RoomCoordinator } from "../../types";
 import { voiceLog } from "./voiceLogger";
 

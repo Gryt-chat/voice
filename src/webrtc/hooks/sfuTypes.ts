@@ -1,4 +1,4 @@
-import { SFUConnectionState } from "../types/SFU";
+import type { SFUConnectionState } from "../types/SFU";
 
 export interface SFUConnectionStateInternal {
   state: SFUConnectionState;

@@ -67,21 +67,6 @@ export default tseslint.config(
     ],
     rules: { "@typescript-eslint/no-restricted-types": "off" },
   },
-  // Type-only imports not marked yet; a mechanical PR of its own fixes them.
-  {
-    files: [
-      "src/audio/hooks/microphonePipeline.ts",
-      "src/audio/hooks/useMicrophone.ts",
-      "src/audio/processors/rnnoiseWorker.ts",
-      "src/webrtc/hooks/sfuCleanup.ts",
-      "src/webrtc/hooks/sfuConnectFlow.ts",
-      "src/webrtc/hooks/sfuConnection.ts",
-      "src/webrtc/hooks/sfuTypes.ts",
-      "src/webrtc/hooks/useSFU.ts",
-      "src/webrtc/hooks/useSFUStreams.ts",
-    ],
-    rules: { "@typescript-eslint/consistent-type-imports": "off" },
-  },
   // @typescript-eslint/no-unused-vars: from before ESLint ran here.
   {
     files: [
