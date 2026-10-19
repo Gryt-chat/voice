@@ -5,6 +5,8 @@ import assert from "node:assert/strict";
 
 import {
   advance,
+  asReal,
+  type FakeTrack,
   fakePhonePlatform,
   fakeRoom,
   fakeStream,
@@ -31,14 +33,16 @@ import {
   splitVideoBudget,
   streamNeed,
 } from "../dist/webrtc/hooks/videoBudget.js";
+import type { BudgetStream } from "../dist/webrtc/hooks/videoBudget.js";
+import type { VideoLimit } from "../dist/webrtc/hooks/videoDemand.js";
 import { useSFU } from "../dist/webrtc/hooks/useSFU.js";
 
 // ── The rule ─────────────────────────────────────────────────────────────────
 
-const camera = (extra = {}) => ({ role: "camera", source: { width: 1280, height: 720 }, scale: 1, fps: 30, large: false, rate: null, ...extra });
+const camera = (extra: Partial<BudgetStream> = {}): BudgetStream => ({ role: "camera", source: { width: 1280, height: 720 }, scale: 1, fps: 30, large: false, rate: null, ...extra });
 // A text share: 0.87 Mbps at 1080p30 in the design's runs.
-const share = (extra = {}) => ({ role: "screen", source: { width: 1920, height: 1080 }, scale: 1, fps: 30, maxBitrate: 50_000_000, large: true, rate: 870_000, ...extra });
-const total = (streams, limits) => limits.reduce((sum, l, i) => sum + (l.paused ? 0 : streamNeed(streams[i], l.scale, l.fps)), 0);
+const share = (extra: Partial<BudgetStream> = {}): BudgetStream => ({ role: "screen", source: { width: 1920, height: 1080 }, scale: 1, fps: 30, maxBitrate: 50_000_000, large: true, rate: 870_000, ...extra });
+const total = (streams: BudgetStream[], limits: VideoLimit[]) => limits.reduce((sum, l, i) => sum + (l.paused ? 0 : streamNeed(streams[i], l.scale, l.fps)), 0);
 
 // Plenty: demand's sizes stand, and each stream is capped at its own ceiling rather than 50 Mbps.
 {
@@ -124,13 +128,14 @@ const settled = { starved: true, was: { scale: 1, fps: 10, maxBitrate: 0, paused
   const at1080p30 = learnRate(null, 870_000, 1, 30, false);
   assert.equal(at1080p30, 870_000);
   const at360p = learnRate(null, 190_000, 3, 30, false);
+  assert.ok(at360p !== null, "a 360p sample taught nothing");
   const back = streamNeed(share({ rate: at360p }), 3, 30);
   assert.ok(Math.abs(back - 190_000 * 1.25) < 1_000, `a 360p sample came back as a need of ${back} at 360p`);
   assert.ok(Math.abs(at360p - 870_000) < 150_000, `a 360p sample read as ${at360p} at 1080p`);
   assert.equal(learnRate(870_000, 300_000, 1, 30, true), 870_000, "a capped stream's rate fell to its cap");
   assert.equal(learnRate(870_000, 2_000_000, 1, 30, true), 870_000, "a capped stream's bytes were read as its need");
   assert.equal(learnRate(null, 300_000, 1, 30, true), null);
-  assert.ok(learnRate(870_000, 300_000, 1, 30, false) < 870_000, "a free stream's rate never fell");
+  assert.ok(Number(learnRate(870_000, 300_000, 1, 30, false)) < 870_000, "a free stream's rate never fell");
 }
 
 // The estimate falls at once, rises after two seconds of 20% headroom, and ignores an idle decay.
@@ -163,7 +168,9 @@ const settled = { starved: true, was: { scale: 1, fps: 10, maxBitrate: 0, paused
   const streams = [camera(), share({ rate: 780_000 })];
   const low = planVideoBudget({ now: 0, estimate: 700_000, ingestCap: null, reserved: 64_000, sent: 700_000, streams }, INITIAL_BUDGET_STATE);
   const was = low.limits;
+  assert.ok(was, "no limits at 700 kbps");
   const up = planVideoBudget({ now: 1_000, estimate: 3_000_000, ingestCap: null, reserved: 64_000, sent: 700_000, streams: streams.map((s, i) => ({ ...s, was: was[i] })) }, low.state);
+  assert.ok(up.limits, "no limits at 3 Mbps");
   assert.equal(up.limits[0].scale, was[0].scale, "the camera grew on a rise nobody trusts yet");
   assert.ok(up.limits[1].maxBitrate > 2 * was[1].maxBitrate, "the share's bitrate waited for the rise to be trusted");
 }
@@ -171,12 +178,13 @@ const settled = { starved: true, was: { scale: 1, fps: 10, maxBitrate: 0, paused
 // The drastic cuts wait DRASTIC_AFTER_MS of being short, and lift once there's RISE_MARGIN to spare.
 {
   let state = INITIAL_BUDGET_STATE;
-  let was = null;
-  const at = (now, estimate) => {
+  let was: VideoLimit[] | null = null;
+  const at = (now: number, estimate: number) => {
     const streams = [camera({ was: was?.[0] }), share({ ...settled, was: was?.[1] ?? settled.was })];
     const plan = planVideoBudget({ now, estimate, ingestCap: null, reserved: 0, sent: estimate, streams, drasticCuts: true }, state);
     state = plan.state;
     was = plan.limits;
+    assert.ok(plan.limits, `no limits at ${estimate}`);
     return plan.limits[0].paused;
   };
   assert.equal(at(0, 180_000), false);
@@ -195,12 +203,13 @@ const settled = { starved: true, was: { scale: 1, fps: 10, maxBitrate: 0, paused
 // Off by default (GRYT-1572): short for a minute, the camera keeps going and the share keeps its size.
 {
   let state = INITIAL_BUDGET_STATE;
-  let plan = null;
+  let plan: ReturnType<typeof planVideoBudget> | null = null;
   for (let now = 0; now <= 60_000; now += 1_000) {
-    const streams = [camera({ was: plan?.limits[0] }), share({ ...settled, was: plan?.limits[1] ?? settled.was })];
+    const streams = [camera({ was: plan?.limits?.[0] }), share({ ...settled, was: plan?.limits?.[1] ?? settled.was })];
     plan = planVideoBudget({ now, estimate: 180_000, ingestCap: null, reserved: 0, sent: 180_000, streams }, state);
     state = plan.state;
   }
+  assert.ok(plan?.limits, "no limits after a minute");
   assert.equal(plan.limits[0].paused, false, "the camera paused with the drastic cuts off");
   assert.equal(plan.limits[1].scale, 1, "the share shrank with the drastic cuts off");
 }
@@ -209,7 +218,7 @@ const settled = { starved: true, was: { scale: 1, fps: 10, maxBitrate: 0, paused
 
 let clock = 1_000_000;
 Date.now = () => clock;
-async function wait(ms) {
+async function wait(ms: number) {
   for (let left = ms; left > 0; left -= 500) {
     clock += Math.min(500, left);
     await advance(Math.min(500, left));
@@ -234,12 +243,13 @@ const pc = phone.lastPeer();
 await settle(() => pc.reach("connected"));
 assert.equal(engine.current.connectionState, "connected", "the call never came up");
 
-const track = { ...fakeTrack("video", "camera"), getSettings: () => ({ width: 1280, height: 720, frameRate: 30 }) };
-await settle(() => engine.current.addVideoTrack(track, fakeStream(track)));
-await settle(() => engine.current.setVideoSendSettings("camera", { priority: "medium", degradationPreference: "maintain-framerate" }));
+const track: FakeTrack = { ...fakeTrack("video", "camera"), getSettings: () => ({ deviceId: "camera", width: 1280, height: 720, frameRate: 30 }) };
+await settle(() => engine.current.addVideoTrack(asReal<MediaStreamTrack>(track), asReal<MediaStream>(fakeStream(track))));
+await settle(() => engine.current.setVideoSendSettings?.("camera", { priority: "medium", degradationPreference: "maintain-framerate" }));
 await wait(1_000);
 const sender = pc.getSenders().find((candidate) => candidate.track === track);
-const mid = pc.getTransceivers().find((t) => t.sender === sender).mid;
+assert.ok(sender, "the camera has no sender");
+const mid = pc.getTransceivers().find((t) => t.sender === sender)?.mid;
 const encoding = () => sender.parameters.encodings[0];
 
 // No estimate in the stats, which is how the engine starts: demand alone, as before.
@@ -247,9 +257,9 @@ await wait(3_000);
 assert.equal(encoding().maxBitrate, undefined, "a camera got a cap with no estimate to split");
 
 let bytes = 0;
-const link = (estimate, kbps) => {
+const link = (estimate: number, kbps: number) => {
   bytes += (kbps * 1000) / 8;
-  pc.stats = new Map([
+  pc.stats = new Map<string, object>([
     ["pair", { type: "candidate-pair", id: "pair", nominated: true, state: "succeeded", availableOutgoingBitrate: estimate }],
     ["out", { type: "outbound-rtp", kind: "video", mid, bytesSent: bytes, headerBytesSent: 0, framesEncoded: bytes / 1000, targetBitrate: kbps * 1000 }],
   ]);
@@ -260,7 +270,7 @@ let offered = 0;
 for (let i = 0; i < 4; i++) {
   bytes += 1_000;
   offered += 30;
-  pc.stats = new Map([
+  pc.stats = new Map<string, object>([
     ["pair", { type: "candidate-pair", id: "pair", nominated: true, state: "succeeded", availableOutgoingBitrate: 5_000_000 }],
     ["out", { type: "outbound-rtp", kind: "video", mid, mediaSourceId: "src", bytesSent: bytes, headerBytesSent: 0, framesEncoded: i, targetBitrate: 1_300_000 }],
     ["src", { type: "media-source", id: "src", kind: "video", frames: offered }],
@@ -277,8 +287,8 @@ assert.equal(encoding().scaleResolutionDownBy, 1);
 link(300_000, 250);
 await wait(1_000);
 assert.equal(encoding().maxFramerate, MIN_CAMERA_FPS, "a falling estimate didn't cut the camera within a second, or the stall taught it a tiny rate");
-assert.ok(encoding().scaleResolutionDownBy > 1);
-assert.ok(encoding().maxBitrate <= 300_000 * SPEND, `camera capped at ${encoding().maxBitrate} on a 300 kbps estimate`);
+assert.ok((encoding().scaleResolutionDownBy ?? 1) > 1);
+assert.ok((encoding().maxBitrate ?? Infinity) <= 300_000 * SPEND, `camera capped at ${encoding().maxBitrate} on a 300 kbps estimate`);
 
 await engine.unmount();
 process.stdout.write("video budget: ok, the cut order, the holds, the estimate's rise and fall, and the engine follows it\n");
