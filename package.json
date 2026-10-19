@@ -38,7 +38,7 @@
     "check-track-replace": "node scripts/check-track-replace.ts",
     "check-connection-settles": "node scripts/check-connection-settles.ts",
     "check-native-audio-ends": "node scripts/check-native-audio-ends.ts",
-    "check-early-candidates": "node scripts/check-early-candidates.mjs",
+    "check-early-candidates": "node scripts/check-early-candidates.ts",
     "check-ice-failure-report": "node scripts/check-ice-failure-report.ts",
     "check-active-call-target": "node scripts/check-active-call-target.ts",
     "check-mic-request-race": "node scripts/check-mic-request-race.ts",
@@ -52,7 +52,7 @@
     "check-recovery-disconnect": "node scripts/check-recovery-disconnect.ts",
     "check-failed-repick": "node scripts/check-failed-repick.ts",
     "check-video-demand": "node scripts/check-video-demand.ts",
-    "check-video-budget": "node scripts/check-video-budget.mjs",
+    "check-video-budget": "node scripts/check-video-budget.ts",
     "check-room-refusals": "node scripts/check-room-refusals.ts",
     "check-native-ptt": "node scripts/check-native-ptt.ts"
   },

@@ -6,10 +6,9 @@ import TestRenderer, { type ReactTestRenderer } from "react-test-renderer";
 
 import type { AudioPipeline, AudioPipelineOptions, RoomAccess, VoiceConfig, VoicePlatform } from "../dist/types.js";
 
-/** Where a fake crosses into the browser type it stands in for, or back. It implements only what the engine calls. */
-export function asReal<T>(fake: object): T {
-  return fake as T;
-}
+import { asReal } from "./as-real.ts";
+
+export { asReal };
 
 // Opts out of the renderer's deprecation warning; `unstable_isConcurrent` keeps createRoot.
 Object.assign(globalThis, { IS_REACT_NATIVE_TEST_ENVIRONMENT: true, IS_REACT_ACT_ENVIRONMENT: true });

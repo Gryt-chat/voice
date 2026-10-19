@@ -3,13 +3,15 @@
 
 import assert from "node:assert/strict";
 
-const logged = [];
+import { asReal } from "./as-real.ts";
+
+const logged: string[] = [];
 console.log = () => {};
 console.info = () => {};
 console.warn = () => {};
-console.error = (...args) => logged.push(args.map(String).join(" "));
+console.error = (...args: Parameters<typeof console.error>) => logged.push(args.map(String).join(" "));
 
-const sockets = [];
+const sockets: FakeSocket[] = [];
 
 class FakeSocket {
   static CONNECTING = 0;
@@ -17,14 +19,21 @@ class FakeSocket {
   static CLOSING = 2;
   static CLOSED = 3;
 
-  constructor(url) {
+  url: string;
+  readyState: number;
+  sent: { event: string; data: string }[];
+  onopen?: () => void;
+  onmessage?: (event: { data: string }) => void;
+  onclose?: (event: { code: number; reason: string; wasClean: boolean }) => void;
+
+  constructor(url: string) {
     this.url = url;
     this.readyState = FakeSocket.CONNECTING;
     this.sent = [];
     sockets.push(this);
   }
 
-  send(text) {
+  send(text: string) {
     this.sent.push(JSON.parse(text));
   }
 
@@ -37,7 +46,7 @@ class FakeSocket {
     this.onopen?.();
   }
 
-  receive(event, data) {
+  receive(event: string, data: object) {
     this.onmessage?.({ data: JSON.stringify({ event, data: JSON.stringify(data) }) });
   }
 
@@ -47,17 +56,12 @@ class FakeSocket {
   }
 }
 
-globalThis.WebSocket = FakeSocket;
-globalThis.RTCSessionDescription = class {
-  constructor(init) {
+class Plain {
+  constructor(init: object) {
     Object.assign(this, init);
   }
-};
-globalThis.RTCIceCandidate = class {
-  constructor(init) {
-    Object.assign(this, init);
-  }
-};
+}
+Object.assign(globalThis, { WebSocket: FakeSocket, RTCSessionDescription: Plain, RTCIceCandidate: Plain });
 
 const later = () => new Promise((resolve) => setImmediate(resolve));
 const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
@@ -69,7 +73,19 @@ function invalidState() {
 }
 
 /** Descriptions resolve a task later, as the real ones do, so messages can land in between. */
+interface Description {
+  type: string;
+  sdp: string;
+}
+
 class FakePeer {
+  signalingState: string;
+  connectionState: string;
+  remoteDescription: Description | null;
+  localDescription: Description | null;
+  events: string[];
+  added: string[];
+
   constructor() {
     this.signalingState = "stable";
     this.connectionState = "new";
@@ -79,7 +95,7 @@ class FakePeer {
     this.added = [];
   }
 
-  setRemoteDescription(description) {
+  setRemoteDescription(description: Description) {
     this.events.push(`remote ${description.type}`);
     return later().then(() => {
       if (this.signalingState === "closed") throw invalidState();
@@ -92,7 +108,7 @@ class FakePeer {
     return later().then(() => ({ type: "answer", sdp: "v=0\r\n" }));
   }
 
-  setLocalDescription(description) {
+  setLocalDescription(description: Description) {
     return later().then(() => {
       this.localDescription = description;
       this.signalingState = "stable";
@@ -100,7 +116,7 @@ class FakePeer {
   }
 
   // Checked when the operation runs, as the spec chains it. No remote description: rejected, gone.
-  addIceCandidate(candidate) {
+  addIceCandidate(candidate: { candidate: string }) {
     return later().then(() => {
       if (this.signalingState === "closed" || !this.remoteDescription) {
         this.events.push(`rejected ${candidate.candidate}`);
@@ -123,28 +139,29 @@ class FakePeer {
 
 const { connectToSfuWebSocket } = await import("../dist/webrtc/hooks/sfuConnection.js");
 
-async function joined(pc) {
-  const refs = {
+async function joined(pc: FakePeer) {
+  const refs: Parameters<typeof connectToSfuWebSocket>[2] = {
     isDisconnectingRef: { current: false },
     sfuWebSocketRef: { current: null },
-    peerConnectionRef: { current: pc },
+    peerConnectionRef: { current: asReal<RTCPeerConnection>(pc) },
   };
   const connecting = connectToSfuWebSocket("ws://sfu.test/client", { room_id: "room" }, refs);
   const ws = sockets.at(-1);
+  assert.ok(ws, "connectToSfuWebSocket opened no socket");
   ws.open();
   ws.receive("room_joined", { call_alone_timeout_seconds: 0 });
   refs.sfuWebSocketRef.current = await connecting;
   return { ws, refs };
 }
 
-const candidate = (port) => ({
+const candidate = (port: number) => ({
   candidate: `candidate:1 1 udp 2130706431 203.0.113.10 ${port} typ host`,
   sdpMid: "0",
   sdpMLineIndex: 0,
 });
 const [A, B, C, D, E] = [3478, 3479, 3480, 3481, 3482].map(candidate);
 const offer = { type: "offer", sdp: "v=0\r\n" };
-const answers = (ws) => ws.sent.filter((m) => m.event === "answer").length;
+const answers = (ws: FakeSocket) => ws.sent.filter((m) => m.event === "answer").length;
 
 // The reported order. Its host candidate was the only address the browser had for the SFU.
 {
@@ -215,12 +232,13 @@ const answers = (ws) => ws.sent.filter((m) => m.event === "answer").length;
 }
 
 // The call is rebuilt before the offer lands. A candidate held for one peer connection stays there.
-for (const laterCandidates of [[], [B]]) {
+const rebuilds: ReturnType<typeof candidate>[][] = [[], [B]];
+for (const laterCandidates of rebuilds) {
   const first = new FakePeer();
   const second = new FakePeer();
   const { ws, refs } = await joined(first);
   ws.receive("candidate", A);
-  refs.peerConnectionRef.current = second;
+  refs.peerConnectionRef.current = asReal<RTCPeerConnection>(second);
   for (const c of laterCandidates) ws.receive("candidate", c);
   ws.receive("offer", offer);
   await settle();
