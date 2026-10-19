@@ -18,7 +18,7 @@ const { peerConnectedSettles, connectingMayBeWritten } = await import(
 );
 
 /** The `setConnectionState(...)` argument that follows a marker, parens balanced. */
-function updaterAfter(marker) {
+function updaterAfter(marker: string) {
   const anchor = flow.indexOf(marker);
   assert.notEqual(anchor, -1, `${FLOW} no longer has "${marker}". Move this check with it.`);
 
@@ -35,9 +35,9 @@ function updaterAfter(marker) {
   throw new Error(`unbalanced parens after "${marker}" in ${FLOW}`);
 }
 
-function run(source, prev, extra = {}) {
+function run(source: string, prev: object, extra: Record<string, string | number> = {}) {
   const names = ["SFUConnectionState", "peerConnectedSettles", "connectingMayBeWritten"];
-  const values = [SFUConnectionState, peerConnectedSettles, connectingMayBeWritten];
+  const values: (object | string | number)[] = [SFUConnectionState, peerConnectedSettles, connectingMayBeWritten];
   for (const [name, value] of Object.entries(extra)) {
     names.push(name);
     values.push(value);
