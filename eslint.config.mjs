@@ -96,7 +96,7 @@ export default tseslint.config(
     ],
     rules: { "no-nested-ternary": "off" },
   },
-  // Casts through unknown where the types don't line up yet.
+  // A library's types differ from the DOM ones the SDK speaks: react-native-webrtc's, and MediaPipe's detector.
   {
     files: [
       "src/audio/lib/faceFraming.ts",
