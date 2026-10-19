@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Sending video at the size viewers draw it (GRYT-1432): the rule on its own clock, then the
 // engine against a fake SFU, including one that never sends video_wanted.
 

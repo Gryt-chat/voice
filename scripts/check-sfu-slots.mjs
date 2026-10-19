@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Each role has to go out on one of the m-lines the SFU offered, one of its own. A camera paused
 // before its renegotiation landed gave its slot to the share, and #67's own m-lines never sent (GRYT-1337).
 

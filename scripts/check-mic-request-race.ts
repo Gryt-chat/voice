@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Microphone requests racing device changes, consumers leaving and the connect flow's wait.
 // The hook half runs useMicrophone itself on a phone-shaped platform (0.5.6 broke there).
 
@@ -7,6 +5,7 @@ import assert from "node:assert/strict";
 
 // First, so the fake timers and sockets are in place before any engine module loads.
 import {
+  asReal,
   advance,
   fakePhonePlatform,
   fakeRoom,
@@ -29,24 +28,16 @@ import { useSFU } from "../dist/webrtc/hooks/useSFU.js";
 function fakeStream() {
   let stopped = false;
   return {
-    stream: {
+    stream: asReal<MediaStream>({
       getTracks() {
         return [{ stop: () => { stopped = true; } }];
       },
-    },
+    }),
     wasStopped: () => stopped,
   };
 }
 
-function deferred() {
-  let resolve;
-  let reject;
-  const promise = new Promise((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
-}
+const deferred = () => Promise.withResolvers<MediaStream>();
 
 // No request and "the platform default" are both represented with undefined.
 // They are not the same state: native must start its first default-device request.
@@ -60,7 +51,7 @@ function deferred() {
 // The selected device succeeds normally.
 {
   const request = { deviceId: "mic-a" };
-  let current = request;
+  const current = request;
   const mic = fakeStream();
   const result = await acquireMicrophoneForRequest(
     request,
@@ -78,7 +69,7 @@ function deferred() {
 // A selected-device failure falls back while the same request is still current.
 {
   const request = { deviceId: "missing" };
-  let current = request;
+  const current = request;
   let calls = 0;
   let primaryFailures = 0;
   const fallback = fakeStream();
@@ -182,7 +173,7 @@ function deferred() {
 // ── The hook, on a phone-shaped platform ─────────────────────────────────────
 
 /** useMicrophone with one consumer, switched on after mount the way a call takes it. */
-async function microphoneWith({ deviceId, manual = false } = {}) {
+async function microphoneWith({ deviceId, manual = false }: { deviceId?: string; manual?: boolean } = {}) {
   const phone = fakePhonePlatform();
   phone.microphone.manual = manual;
   setVoicePlatform(phone);
@@ -225,7 +216,7 @@ async function microphoneWith({ deviceId, manual = false } = {}) {
   assert.equal(second?.deviceId, "mic-b", "the device change did not start its own request");
 
   await settle(() => first.resolve());
-  assert.equal(first.stream.track.readyState, "ended", "the superseded microphone was left open");
+  assert.equal(first.stream?.track.readyState, "ended", "the superseded microphone was left open");
   assert.equal(mic().isAcquiring, true, "a superseded request cleared the replacement's busy flag");
   assert.equal(mic().microphoneBuffer.processedStream, undefined, "the superseded microphone was used");
 
@@ -245,7 +236,7 @@ async function microphoneWith({ deviceId, manual = false } = {}) {
   assert.equal(mic().isAcquiring, false, "a request with no consumer left kept the busy flag");
 
   await settle(() => pending.resolve());
-  assert.equal(pending.stream.track.readyState, "ended", "a microphone nobody wanted was left open");
+  assert.equal(pending.stream?.track.readyState, "ended", "a microphone nobody wanted was left open");
   assert.equal(mic().microphoneBuffer.processedStream, undefined);
   await engine.unmount();
 }
