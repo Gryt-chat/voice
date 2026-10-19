@@ -26,6 +26,7 @@
   "scripts": {
     "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
     "test:comment-length": "node scripts/check-comment-length.mjs",
     "prepublishOnly": "npm run build && npm run check-surface && npm run check-native-entry && npm run check-type-names",
     "check-surface": "node scripts/check-public-surface.mjs",
@@ -55,13 +56,17 @@
     "check-native-ptt": "node scripts/check-native-ptt.mjs"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@mediapipe/tasks-vision": "^1.0.1",
     "@shiguredo/rnnoise-wasm": "^2025.1.5",
     "@types/node": "^20.19.33",
     "@types/react": "^19",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "react-native-webrtc": "^124.0.8",
     "react-test-renderer": "^19.2.8",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.2"
   },
   "publishConfig": {
     "access": "public"
