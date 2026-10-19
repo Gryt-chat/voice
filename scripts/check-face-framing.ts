@@ -6,7 +6,7 @@ const { combineSamples, MIN_CONFIDENCE, MIN_SAMPLES } = await import(
   "../dist/audio/lib/faceFraming.js"
 );
 
-const at = (x, y, score = 0.9) => ({ x, y, score });
+const at = (x: number, y: number, score = 0.9) => ({ x, y, score });
 
 // --- not enough to be a claim ---
 
@@ -35,6 +35,7 @@ assert.deepEqual(
   assert.ok(mean > 0.4, "the mean really is dragged by the outlier");
 
   const framing = combineSamples(samples);
+  assert.ok(framing);
   assert.ok(framing.x >= 0.3 && framing.x <= 0.32, `median stayed with the agreement: ${framing.x}`);
   assert.ok(framing.y >= 0.4 && framing.y <= 0.42);
 }
@@ -84,6 +85,7 @@ for (const bad of [
 // is 0.30000000000000004, and the value ends up as a CSS percentage.
 {
   const framing = combineSamples([at(0.1, 0.1), at(0.2, 0.2), at(0.4, 0.4), at(0.5, 0.5)]);
+  assert.ok(framing);
   assert.ok(Math.abs(framing.x - 0.3) < 1e-9, `x was ${framing.x}`);
   assert.ok(Math.abs(framing.y - 0.3) < 1e-9, `y was ${framing.y}`);
 }

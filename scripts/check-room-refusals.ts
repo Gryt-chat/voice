@@ -1,26 +1,25 @@
-/* eslint-env node */
-
 // A room request the server refuses for good ends the call with its reason, once. It used to go
 // to recovery and ask five more times over 30 seconds, then blame the network (GRYT-1476).
 
 import assert from "node:assert/strict";
 
 // First, so the fake timers and sockets are in place before any engine module loads.
-import { advance, fakePhonePlatform, fakeRoom, log, mountEngine, settle, voiceConfig } from "./engine-harness.ts";
+import { advance, type FakeRoom, fakePhonePlatform, fakeRoom, log, mountEngine, settle, voiceConfig } from "./engine-harness.ts";
 
 import { VoiceConfigProvider } from "../dist/config/index.js";
 import { setVoicePlatform } from "../dist/platform/index.js";
 import { VoiceSingletonHooks } from "../dist/shared/SingletonHooks.js";
 import { useSFU } from "../dist/webrtc/hooks/useSFU.js";
+import type { SFUInterface } from "../dist/webrtc/types/SFU.js";
 
-async function engineOn(room) {
+async function engineOn(room: FakeRoom) {
   const phone = fakePhonePlatform();
   setVoicePlatform(phone);
-  const seen = [];
+  const seen: string[] = [];
   const engine = await mountEngine({
     provider: VoiceConfigProvider,
     runner: VoiceSingletonHooks,
-    read: () => {
+    useRead: () => {
       const sfu = useSFU();
       seen.push(sfu.connectionState);
       return sfu;
@@ -31,10 +30,10 @@ async function engineOn(room) {
   return { phone, engine, seen, sfu: () => engine.current };
 }
 
-async function join(sfu, channel) {
-  const result = { error: null };
+async function join(sfu: () => SFUInterface, channel: string) {
+  const result: { error: Error | null } = { error: null };
   await settle(() => {
-    sfu().connect(channel).catch((error) => {
+    sfu().connect(channel).catch((error: Error) => {
       result.error = error;
     });
   });
@@ -79,7 +78,7 @@ for (const reason of ["unidentified", "rate_limited", "unavailable"]) {
 
   assert.equal(room.requests.length, 3, `${reason}: asked ${room.requests.length} times`);
   assert.equal(phone.peers.length, 1, `${reason}: never got to a peer connection`);
-  await settle(() => phone.peers.at(-1).reach("connected"));
+  await settle(() => phone.lastPeer().reach("connected"));
   assert.equal(sfu().connectionState, "connected");
   await engine.unmount();
 }
@@ -89,17 +88,17 @@ for (const reason of ["unidentified", "rate_limited", "unavailable"]) {
   const room = fakeRoom("server-a");
   const { phone, engine, seen, sfu } = await engineOn(room);
   await join(sfu, "chan-a");
-  await settle(() => phone.peers.at(-1).reach("connected"));
+  await settle(() => phone.lastPeer().reach("connected"));
   assert.equal(sfu().connectionState, "connected");
 
   seen.length = 0;
-  await settle(() => phone.peers.at(-1).reach("failed"));
+  await settle(() => phone.lastPeer().reach("failed"));
   await advance(10_000);
 
   assert.ok(seen.includes("reconnecting"), `a failed peer connection did not recover: ${[...new Set(seen)]}`);
   assert.equal(room.requests.length, 2, `asked ${room.requests.length} times`);
   assert.equal(phone.peers.length, 2, "no new peer connection after the failure");
-  await settle(() => phone.peers.at(-1).reach("connected"));
+  await settle(() => phone.lastPeer().reach("connected"));
   assert.equal(sfu().connectionState, "connected");
   await engine.unmount();
 }
@@ -109,7 +108,7 @@ for (const reason of ["unidentified", "rate_limited", "unavailable"]) {
   const room = fakeRoom("server-a");
   const { phone, engine, sfu } = await engineOn(room);
   await join(sfu, "chan-a");
-  await settle(() => phone.peers.at(-1).reach("connected"));
+  await settle(() => phone.lastPeer().reach("connected"));
 
   room.refusals = Infinity;
   room.refusal = { reason: "not_found" };

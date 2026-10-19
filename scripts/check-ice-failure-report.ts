@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // A call that never connects has no selected pair. The report then has to name every
 // candidate and pair, without our own address (GRYT-9).
 

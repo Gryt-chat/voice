@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Drives a call on one server through recovery while another server is on screen. Recovery
 // followed the server on screen, lost its STUN list, and rejoined calls it had given up on.
 
@@ -26,7 +24,7 @@ import { useSFU } from "../dist/webrtc/hooks/useSFU.js";
 const A_STUN = [{ urls: ["stun:a.test"] }];
 
 /** A connected call on server A. `view` is what is on screen afterwards, and its STUN list. */
-async function callOnA({ view = "b", viewStun = [] } = {}) {
+async function callOnA({ view = "b", viewStun = [] }: { view?: "a" | "b"; viewStun?: string[] } = {}) {
   const phone = fakePhonePlatform();
   setVoicePlatform(phone);
   const rooms = { a: fakeRoom("server-a"), b: fakeRoom("server-b") };
@@ -38,7 +36,7 @@ async function callOnA({ view = "b", viewStun = [] } = {}) {
   const engine = await mountEngine({
     provider: VoiceConfigProvider,
     runner: VoiceSingletonHooks,
-    read: () => ({ sfu: useSFU(), mic: useMicrophone(false) }),
+    useRead: () => ({ sfu: useSFU(), mic: useMicrophone(false) }),
     config: voiceConfig({ stunHosts: ["stun:a.test"] }),
     target: targets.a,
   });
@@ -47,7 +45,7 @@ async function callOnA({ view = "b", viewStun = [] } = {}) {
     engine.current.sfu.connect("chan-a").catch(() => {});
   });
   await advance(1_000);
-  await settle(() => phone.peers.at(-1).reach("connected"));
+  await settle(() => phone.lastPeer().reach("connected"));
   assert.equal(engine.current.sfu.connectionState, "connected", "the call never came up");
 
   if (view === "b") {
@@ -59,7 +57,7 @@ async function callOnA({ view = "b", viewStun = [] } = {}) {
     rooms,
     engine,
     sfu: () => engine.current.sfu,
-    dropSfu: () => settle(() => FakeSocket.all.at(-1).drop()),
+    dropSfu: () => settle(() => FakeSocket.last().drop()),
   };
 }
 
@@ -166,7 +164,7 @@ async function callOnA({ view = "b", viewStun = [] } = {}) {
   const attempts = rooms.a.requests.length;
   assert.equal(attempts, 6, "expected the first join and five retries");
   const [mic] = phone.microphone.requests;
-  assert.equal(mic.stream.track.readyState, "ended", "the microphone stayed open after giving up");
+  assert.equal(mic.stream?.track.readyState, "ended", "the microphone stayed open after giving up");
 
   rooms.a.refusals = 0;
   await settle(() => rooms.b.reconnect());

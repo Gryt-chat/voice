@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Push-to-talk on a platform with its own pipeline. The gate drove a Web Audio node only,
 // so on a phone setPushToTalkActive did nothing and the microphone stayed open (GRYT-1536).
 
@@ -12,6 +10,7 @@ import { useMicrophone } from "../dist/audio/hooks/useMicrophone.js";
 import { VoiceConfigProvider } from "../dist/config/index.js";
 import { setVoicePlatform } from "../dist/platform/index.js";
 import { VoiceSingletonHooks } from "../dist/shared/SingletonHooks.js";
+import type { VoiceConfig } from "../dist/types.js";
 
 /** The phone platform, with a pipeline that applies mute the way nativePlatform's does. */
 async function phoneMicrophone(audio = {}) {
@@ -28,13 +27,13 @@ async function phoneMicrophone(audio = {}) {
   setVoicePlatform(phone);
 
   const base = voiceConfig();
-  const configWith = (overrides) => ({ ...base, audio: { ...base.audio, ...overrides } });
+  const configWith = (overrides: Partial<VoiceConfig["audio"]>) => ({ ...base, audio: { ...base.audio, ...overrides } });
   let current = configWith(audio);
 
   const engine = await mountEngine({
     provider: VoiceConfigProvider,
     runner: VoiceSingletonHooks,
-    read: (wanted) => useMicrophone(wanted),
+    useRead: (wanted) => useMicrophone(wanted),
     config: current,
     target: null,
     probe: false,
@@ -45,12 +44,12 @@ async function phoneMicrophone(audio = {}) {
     engine,
     mic: () => engine.current,
     // Reads what is actually sent, not what the gate thinks it did.
-    open: () => engine.current.microphoneBuffer.processedStream.getAudioTracks()[0].enabled,
-    async set(overrides) {
+    open: () => engine.current.microphoneBuffer.processedStream?.getAudioTracks()[0].enabled,
+    async set(overrides: Partial<VoiceConfig["audio"]>) {
       current = configWith({ ...current.audio, ...overrides });
       await engine.update({ config: current });
     },
-    press(active) {
+    press(active: boolean) {
       engine.current.setPushToTalkActive(active);
     },
   };

@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Feeds useVideoStats the stats report Chromium actually produces. Its outbound-rtp has no
 // trackIdentifier, so every outbound row read as the camera and the debug overlay showed dashes.
 
@@ -8,6 +6,7 @@ import assert from "node:assert/strict";
 // First, so the fake timers and sockets are in place before any engine module loads.
 import {
   advance,
+  asReal,
   fakePhonePlatform,
   fakeRoom,
   fakeStream,
@@ -24,11 +23,11 @@ import { VoiceSingletonHooks } from "../dist/shared/SingletonHooks.js";
 import { useSFU } from "../dist/webrtc/hooks/useSFU.js";
 import { useVideoStats } from "../dist/webrtc/hooks/useVideoStats.js";
 
-function statsReport(entries) {
-  return new Map(entries.map((entry) => [entry.id, entry]));
+function statsReport(entries: ({ id: string } & Record<string, string | number>)[]) {
+  return new Map<string, object>(entries.map((entry) => [entry.id, entry]));
 }
 
-function outbound(id, ssrc, extra) {
+function outbound(id: string, ssrc: number, extra: object) {
   return {
     id,
     type: "outbound-rtp",
@@ -49,7 +48,7 @@ const room = fakeRoom("server-a");
 const engine = await mountEngine({
   provider: VoiceConfigProvider,
   runner: VoiceSingletonHooks,
-  read: (enabled) => ({ sfu: useSFU(), stats: useVideoStats(enabled) }),
+  useRead: (enabled) => ({ sfu: useSFU(), stats: useVideoStats(enabled) }),
   config: voiceConfig({ stunHosts: ["stun:a.test"] }),
   target: { id: "server-a", room },
   probe: false,
@@ -59,14 +58,14 @@ await settle(() => {
   engine.current.sfu.connect("chan-a").catch(() => {});
 });
 await advance(1_000);
-const pc = phone.peers.at(-1);
+const pc = phone.lastPeer();
 await settle(() => pc.reach("connected"));
 
 const camera = fakeTrack("video", "camera");
 const screen = fakeTrack("video", "screen");
 await settle(() => {
-  engine.current.sfu.addVideoTrack(camera, fakeStream(camera));
-  engine.current.sfu.addScreenVideoTrack(screen, fakeStream(screen));
+  engine.current.sfu.addVideoTrack(asReal<MediaStreamTrack>(camera), asReal<MediaStream>(fakeStream(camera)));
+  engine.current.sfu.addScreenVideoTrack(asReal<MediaStreamTrack>(screen), asReal<MediaStream>(fakeStream(screen)));
 });
 
 // Chromium's shape: the track id is on media-source, reached through mediaSourceId. The

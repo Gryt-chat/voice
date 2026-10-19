@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Runs the effect that mirrors the native capture stream into screenAudioStream.
 // A helper that exits mid-share has to take the shared audio stream with it.
 
@@ -14,7 +12,7 @@ const source = readFileSync(
   "utf8",
 );
 
-function effectBody(text, marker) {
+function effectBody(text: string, marker: string) {
   const anchor = text.indexOf(marker);
   assert.notEqual(anchor, -1, `${SOURCE} no longer has "${marker}". Move this check with it.`);
 
@@ -40,17 +38,19 @@ const effect = new Function(
 
 const quiet = { log: () => {}, warn: () => {} };
 
-function fakeStream(id) {
+type FakeAudio = ReturnType<typeof fakeStream>;
+
+function fakeStream(id: string) {
   const track = { id: `${id}-track`, label: "", enabled: true, readyState: "live", muted: false };
   return { id, getAudioTracks: () => [track] };
 }
 
 /** One share's worth of screenAudioStream, fed the native stream value by value. */
-function share({ native, initial = null }) {
+function share({ native, initial = null }: { native: boolean; initial?: FakeAudio | null }) {
   const ref = { current: native };
   let screenAudioStream = initial;
-  const writes = [];
-  const set = (s) => {
+  const writes: (string | null)[] = [];
+  const set = (s: FakeAudio | null) => {
     writes.push(s?.id ?? null);
     screenAudioStream = s;
   };
@@ -60,7 +60,7 @@ function share({ native, initial = null }) {
     get screenAudioStream() {
       return screenAudioStream;
     },
-    nativeStreamIs(stream) {
+    nativeStreamIs(stream: FakeAudio | null) {
       effect(ref, stream, set, quiet);
     },
   };
@@ -74,12 +74,12 @@ function share({ native, initial = null }) {
   assert.equal(s.screenAudioStream?.id, "native-dest", "the native stream never reached screenAudioStream");
 
   s.nativeStreamIs(null);
-  assert.equal(s.screenAudioStream, null, "screenAudioStream still holds a native stream that stopped");
   assert.equal(
     s.screenAudioStream?.id ?? "",
     "",
     "the shared audio stream id is still there to be announced after the helper exited",
   );
+  assert.equal(s.screenAudioStream, null, "screenAudioStream still holds a native stream that stopped");
 }
 
 // Browser loopback audio is not the native stream's to clear.

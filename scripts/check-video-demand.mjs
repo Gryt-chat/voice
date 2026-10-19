@@ -172,7 +172,7 @@ const room = fakeRoom("server-a");
 const engine = await mountEngine({
   provider: VoiceConfigProvider,
   runner: VoiceSingletonHooks,
-  read: () => useSFU(),
+  useRead: () => useSFU(),
   config: voiceConfig({ stunHosts: ["stun:a.test"] }),
   target: { id: "server-a", room },
 });
@@ -180,10 +180,10 @@ await settle(() => {
   engine.current.connect("chan-a").catch(() => {});
 });
 await wait(1_000);
-const pc = phone.peers.at(-1);
+const pc = phone.lastPeer();
 await settle(() => pc.reach("connected"));
 assert.equal(engine.current.connectionState, "connected", "the call never came up");
-const socket = FakeSocket.all.at(-1);
+const socket = FakeSocket.last();
 
 const track = { ...fakeTrack("video", "camera"), getSettings: () => ({ width: 1280, height: 720 }) };
 await settle(() => engine.current.addVideoTrack(track, fakeStream(track)));
@@ -254,11 +254,11 @@ assert.deepEqual(demands().filter((d) => d.stream_id === "late-tile"), [{ stream
 // A new SFU socket after a drop starts with no reports, so it gets every track's last one again.
 await settle(() => socket.drop());
 await wait(3_000);
-const next = phone.peers.at(-1);
+const next = phone.lastPeer();
 assert.notEqual(next, pc, "the call wasn't rebuilt after the SFU dropped");
 await settle(() => next.reach("connected"));
 await wait(500);
-const again = FakeSocket.all.at(-1).sent.filter((m) => m.event === "video_demand").map((m) => JSON.parse(m.data));
+const again = FakeSocket.last().sent.filter((m) => m.event === "video_demand").map((m) => JSON.parse(m.data));
 assert.deepEqual(again.find((d) => d.stream_id === "their-camera-stream"), { stream_id: "their-camera-stream", width: 0, height: 0, fps: 60 }, "the new SFU socket wasn't told what this viewer draws");
 
 await engine.unmount();

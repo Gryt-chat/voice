@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // The ceiling on the microphone's sender. Opus's 510 kbps left a camera on a thin link 30 kbps,
 // and a reconnect the engine made on its own dropped the channel's setting (GRYT-1332).
 
@@ -7,6 +5,7 @@ import assert from "node:assert/strict";
 
 // First, so the fake timers and sockets are in place before any engine module loads.
 import {
+  type FakePhone,
   advance,
   FakeSocket,
   fakePhonePlatform,
@@ -23,14 +22,14 @@ import { VoiceSingletonHooks } from "../dist/shared/SingletonHooks.js";
 import { useSFU } from "../dist/webrtc/hooks/useSFU.js";
 
 /** A call in `chan-a`, joined with the channel's eSports mode and bitrate as given. */
-async function join(...channelSettings) {
+async function join(...channelSettings: [eSportsMode?: boolean, maxBitrate?: number]) {
   const phone = fakePhonePlatform();
   setVoicePlatform(phone);
   const room = fakeRoom("server-a");
   const engine = await mountEngine({
     provider: VoiceConfigProvider,
     runner: VoiceSingletonHooks,
-    read: () => useSFU(),
+    useRead: () => useSFU(),
     config: voiceConfig({ stunHosts: ["stun:a.test"] }),
     target: { id: "server-a", room },
   });
@@ -39,14 +38,14 @@ async function join(...channelSettings) {
     engine.current.connect("chan-a", ...channelSettings).catch(() => {});
   });
   await advance(1_000);
-  await settle(() => phone.peers.at(-1).reach("connected"));
+  await settle(() => phone.lastPeer().reach("connected"));
   assert.equal(engine.current.connectionState, "connected", "the call never came up");
   return { phone, room, engine };
 }
 
 /** maxBitrate on the microphone's sender in the newest peer connection. */
-function micCeiling(phone) {
-  const sender = phone.peers.at(-1).getSenders().find((candidate) => candidate.track?.kind === "audio");
+function micCeiling(phone: FakePhone) {
+  const sender = phone.lastPeer().getSenders().find((candidate) => candidate.track?.kind === "audio");
   assert.ok(sender, "no microphone sender");
   return sender.parameters.encodings[0].maxBitrate;
 }
@@ -59,11 +58,12 @@ function micCeiling(phone) {
 }
 
 // A channel's own bitrate still wins, above the default and below it, and eSports is 128 kbps.
-for (const [settings, expected] of [
+const cases: [[eSportsMode?: boolean, maxBitrate?: number], number][] = [
   [[false, 256_000], 256_000],
   [[false, 32_000], 32_000],
   [[true], 128_000],
-]) {
+];
+for (const [settings, expected] of cases) {
   const { phone, engine } = await join(...settings);
   assert.equal(micCeiling(phone), expected, `channel settings ${JSON.stringify(settings)}`);
   await engine.unmount();
@@ -72,7 +72,7 @@ for (const [settings, expected] of [
 // The SFU drops and the engine reconnects by itself. The channel's settings go with it.
 {
   const { phone, engine } = await join(false, 256_000);
-  await settle(() => FakeSocket.all.at(-1).drop());
+  await settle(() => FakeSocket.last().drop());
   await advance(2_000);
   assert.equal(phone.peers.length, 2, `no reconnect (${engine.current.connectionState})`);
   assert.equal(micCeiling(phone), 256_000, "the reconnect dropped the channel's bitrate");
@@ -81,7 +81,7 @@ for (const [settings, expected] of [
 
 {
   const { phone, engine } = await join(true);
-  await settle(() => FakeSocket.all.at(-1).drop());
+  await settle(() => FakeSocket.last().drop());
   await advance(2_000);
   assert.equal(phone.peers.length, 2, `no reconnect (${engine.current.connectionState})`);
   assert.equal(phone.peers[1].config.bundlePolicy, "max-bundle", "the reconnect dropped eSports mode");

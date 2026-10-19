@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Signalling comes back and finds the SFU dead, so the engine tears the call down and rejoins.
 // That passed through DISCONNECTED, which the client reads as leaving, and it stopped the camera.
 
@@ -27,12 +25,12 @@ async function connectedCall() {
   const phone = fakePhonePlatform();
   setVoicePlatform(phone);
   const room = fakeRoom("server-a");
-  const seen = [];
+  const seen: { state: string; server: string | null }[] = [];
 
   const engine = await mountEngine({
     provider: VoiceConfigProvider,
     runner: VoiceSingletonHooks,
-    read: () => {
+    useRead: () => {
       const sfu = useSFU();
       seen.push({ state: sfu.connectionState, server: sfu.currentServerConnected });
       return sfu;
@@ -45,24 +43,24 @@ async function connectedCall() {
     engine.current.connect("chan-a").catch(() => {});
   });
   await advance(1_000);
-  await settle(() => phone.peers.at(-1).reach("connected"));
+  await settle(() => phone.lastPeer().reach("connected"));
   assert.equal(engine.current.connectionState, "connected", "the call never came up");
   seen.length = 0;
 
   return { phone, room, engine, seen, sfu: () => engine.current };
 }
 
-const states = (seen) => [...new Set(seen.map((s) => s.state))];
+const states = (seen: { state: string }[]) => [...new Set(seen.map((s) => s.state))];
 
 // The server restarts and the SFU went with it: the socket is gone before anything noticed.
 {
   const { phone, room, engine, seen, sfu } = await connectedCall();
-  FakeSocket.all.at(-1).close();
+  FakeSocket.last().close();
   await settle(() => room.reconnect());
   await advance(1_000);
 
   assert.equal(phone.peers.length, 2, `no full reconnect (${sfu().connectionState})`);
-  await settle(() => phone.peers.at(-1).reach("connected"));
+  await settle(() => phone.lastPeer().reach("connected"));
   assert.equal(sfu().connectionState, "connected");
 
   assert.ok(!states(seen).includes("disconnected"), `a recovery reported the call ended: ${states(seen)}`);
@@ -86,7 +84,7 @@ const states = (seen) => [...new Set(seen.map((s) => s.state))];
 // Hanging up in the half second before the rejoin is still leaving.
 {
   const { phone, room, engine, sfu } = await connectedCall();
-  FakeSocket.all.at(-1).close();
+  FakeSocket.last().close();
   await settle(() => room.reconnect());
   await advance(100);
   assert.equal(sfu().connectionState, "reconnecting");

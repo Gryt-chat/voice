@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // useVoiceLatency reads the stats once a second. It restarted its poll on every render, which came
 // to about eight reads a second in a call (GRYT-1330).
 
@@ -29,7 +27,7 @@ const room = fakeRoom("server-a");
 const engine = await mountEngine({
   provider: VoiceConfigProvider,
   runner: VoiceSingletonHooks,
-  read: (enabled) => ({ sfu: useSFU(), latency: useVoiceLatency(enabled).latency }),
+  useRead: (enabled) => ({ sfu: useSFU(), latency: useVoiceLatency(enabled).latency }),
   config: voiceConfig({ stunHosts: ["stun:a.test"] }),
   target: { id: "server-a", room },
   probe: false,
@@ -39,7 +37,7 @@ await settle(() => {
   engine.current.sfu.connect("chan-a").catch(() => {});
 });
 await advance(1_000);
-const pc = phone.peers.at(-1);
+const pc = phone.lastPeer();
 await settle(() => pc.reach("connected"));
 
 pc.stats = new Map([
@@ -51,7 +49,7 @@ await advance(1_000);
 assert.equal(engine.current.latency.networkRttMs, 42, "the poll did not read the connection");
 
 /** A config that renders the engine again. Noise suppression also rebuilds a callback the poll reads. */
-function config(i) {
+function config(i: number) {
   const next = voiceConfig({ stunHosts: ["stun:a.test"] });
   next.audio.noiseSuppression = i % 2 === 1;
   return next;
