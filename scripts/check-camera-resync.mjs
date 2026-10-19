@@ -35,7 +35,7 @@ let effectRuns = 0;
 const engine = await mountEngine({
   provider: VoiceConfigProvider,
   runner: VoiceSingletonHooks,
-  read: () => {
+  useRead: () => {
     const sfu = useSFU();
     // Shaped like the client's camera effect, which listed getPeerConnection.
     useEffect(() => {
@@ -51,7 +51,7 @@ await settle(() => {
   engine.current.connect("chan-a").catch(() => {});
 });
 await advance(1_000);
-const pc = phone.peers.at(-1);
+const pc = phone.lastPeer();
 await settle(() => pc.reach("connected"));
 const sfu = () => engine.current;
 
@@ -88,7 +88,7 @@ assert.equal(sfu().getCameraSenderTrackId(), reopened.id, "the getter read a sta
 
 // A codec change on the same track still asks the SFU for a new offer, and replaces nothing.
 {
-  const socket = FakeSocket.all.at(-1);
+  const socket = FakeSocket.last();
   const offers = () => socket.sent.filter((message) => message.event === "renegotiate").length;
   const before = offers();
   await settle(() => sfu().addVideoTrack(reopened, fakeStream(reopened), "vp9"));

@@ -31,7 +31,7 @@ const room = fakeRoom("server-a");
 const engine = await mountEngine({
   provider: VoiceConfigProvider,
   runner: VoiceSingletonHooks,
-  read: () => useSFU(),
+  useRead: () => useSFU(),
   config: voiceConfig({ stunHosts: ["stun:a.test"] }),
   target: { id: "server-a", room },
 });
@@ -40,7 +40,7 @@ await settle(() => {
   engine.current.connect("chan-a").catch(() => {});
 });
 await advance(1_000);
-const pc = phone.peers.at(-1);
+const pc = phone.lastPeer();
 await settle(() => pc.reach("connected"));
 assert.equal(engine.current.connectionState, "connected", "the call never came up");
 
@@ -56,7 +56,7 @@ pc.removeTrack = (sender) => {
   removed.push(sender.track?.id ?? null);
   removeTrack(sender);
 };
-const renegotiations = () => FakeSocket.all.at(-1).sent.filter((message) => message.event === "renegotiate").length;
+const renegotiations = () => FakeSocket.last().sent.filter((message) => message.event === "renegotiate").length;
 
 const camera = () => pc.senders.find((sender) => sender.role === "camera");
 const cameraOn = (track) => settle(() => engine.current.addVideoTrack(track, fakeStream(track)));

@@ -4,6 +4,13 @@
 import { act, type ComponentType, createElement, type ReactNode } from "react";
 import TestRenderer, { type ReactTestRenderer } from "react-test-renderer";
 
+import type { AudioPipeline, AudioPipelineOptions, RoomAccess, VoiceConfig, VoicePlatform } from "../dist/types.js";
+
+/** Where a fake is handed to the engine as the browser type it stands in for. It implements only what the engine calls. */
+export function asReal<T>(fake: object): T {
+  return fake as T;
+}
+
 // Opts out of the renderer's deprecation warning; `unstable_isConcurrent` keeps createRoot.
 Object.assign(globalThis, { IS_REACT_NATIVE_TEST_ENVIRONMENT: true, IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -104,6 +111,13 @@ export class FakeSocket {
   static CLOSING = 2;
   static CLOSED = 3;
   static all: FakeSocket[] = [];
+
+  /** The socket the engine opened most recently. */
+  static last() {
+    const socket = FakeSocket.all.at(-1);
+    if (!socket) throw new Error("the engine hasn't opened an SFU socket yet");
+    return socket;
+  }
 
   url: string;
   readyState: number;
@@ -249,7 +263,7 @@ export interface FakeTransceiver {
  * mid null and never sends, which is how #67 passed here and failed through the SFU.
  */
 export class FakePeerConnection {
-  config: object;
+  config: RTCConfiguration;
   connectionState: string;
   iceConnectionState: string;
   signalingState: string;
@@ -260,7 +274,7 @@ export class FakePeerConnection {
   statsCalls: number;
   onconnectionstatechange?: () => void;
 
-  constructor(config: object) {
+  constructor(config: RTCConfiguration) {
     this.config = config;
     this.connectionState = "new";
     this.iceConnectionState = "new";
@@ -481,7 +495,12 @@ export interface MicrophoneRequest {
  * Shaped like `nativePlatform`: it builds its own audio pipeline and has no screen capture.
  * Microphone requests answer at once unless `microphone.manual` is set.
  */
-export function fakePhonePlatform() {
+export function fakePhonePlatform(): VoicePlatform & {
+  microphone: { manual: boolean; requests: MicrophoneRequest[] };
+  peers: FakePeerConnection[];
+  lastPeer(): FakePeerConnection;
+  createAudioPipeline(options: AudioPipelineOptions): AudioPipeline;
+} {
   const microphone: { manual: boolean; requests: MicrophoneRequest[] } = { manual: false, requests: [] };
   const peers: FakePeerConnection[] = [];
 
@@ -489,20 +508,25 @@ export function fakePhonePlatform() {
     microphone,
     peers,
     name: "react-native",
-    createPeerConnection(config: object) {
-      const pc = new FakePeerConnection(config);
-      peers.push(pc);
+    lastPeer() {
+      const pc = peers.at(-1);
+      if (!pc) throw new Error("the engine hasn't made a peer connection yet");
       return pc;
     },
-    getMicrophone(deviceId?: string) {
-      const { promise, resolve, reject } = Promise.withResolvers<FakeStream>();
+    createPeerConnection(config) {
+      const pc = new FakePeerConnection(config);
+      peers.push(pc);
+      return asReal<RTCPeerConnection>(pc);
+    },
+    getMicrophone(deviceId) {
+      const { promise, resolve, reject } = Promise.withResolvers<MediaStream>();
       const request: MicrophoneRequest = {
         deviceId,
         stream: null,
         resolve: () => {
           const stream = fakeStream(fakeTrack("audio", deviceId ?? "default"));
           request.stream = stream;
-          resolve(stream);
+          resolve(asReal<MediaStream>(stream));
         },
         reject,
       };
@@ -513,7 +537,7 @@ export function fakePhonePlatform() {
     getCamera() {
       return Promise.reject(new Error("No camera in this harness"));
     },
-    createAudioPipeline({ source }: { source: FakeStream }) {
+    createAudioPipeline({ source }) {
       return {
         output: source,
         getLevel: () => null,
@@ -524,6 +548,9 @@ export function fakePhonePlatform() {
     },
   };
 }
+
+export type FakePhone = ReturnType<typeof fakePhonePlatform>;
+export type FakeRoom = ReturnType<typeof fakeRoom>;
 
 /** One server's signalling, as the engine sees it through RoomCoordinator. */
 export function fakeRoom(id: string) {
@@ -536,8 +563,8 @@ export function fakeRoom(id: string) {
     // A refusal with retryAfterMs is one the engine asks again after; without, it stops.
     refusal,
     requests: [] as string[],
-    joined: [] as object[],
-    requestAccess(channelId: string) {
+    joined: [] as boolean[],
+    requestAccess(channelId: string): Promise<RoomAccess> {
       room.requests.push(channelId);
       if (room.refusals > 0) {
         room.refusals -= 1;
@@ -552,7 +579,7 @@ export function fakeRoom(id: string) {
       });
     },
     leave() {},
-    announceJoined(joined: object) {
+    announceJoined(joined: boolean) {
       room.joined.push(joined);
     },
     setLocalStream() {},
@@ -573,7 +600,7 @@ export function fakeRoom(id: string) {
   return room;
 }
 
-export function voiceConfig({ stunHosts = [], deviceId }: { stunHosts?: string[]; deviceId?: string } = {}) {
+export function voiceConfig({ stunHosts = [], deviceId }: { stunHosts?: string[]; deviceId?: string } = {}): VoiceConfig {
   return {
     audio: {
       deviceId,
@@ -600,28 +627,29 @@ export function voiceConfig({ stunHosts = [], deviceId }: { stunHosts?: string[]
 
 /**
  * Mounts the engine the way an app does: a provider, the singleton runner, and a probe
- * that stores what `read(probe)` returns. `update` changes any of the three props.
+ * that stores what `useRead(probe)` returns. `update` changes any of the three props.
  */
 export async function mountEngine<Config, Target, P, R>({
   provider,
   runner,
-  read,
+  useRead,
   config,
   target,
   probe,
 }: {
   provider: ComponentType<{ config: Config; target: Target; children?: ReactNode }>;
   runner: ComponentType;
-  read: (probe: P) => R;
+  useRead: (probe: P) => R;
   config: Config;
   target: Target;
-  probe: P;
+  probe?: P;
 }) {
   const seen: { current: R | null } = { current: null };
-  let props = { config, target, probe };
+  // A check that reads nothing leaves probe out, and its useRead ignores it.
+  let props = { config, target, probe: probe as P };
 
   function Probe({ probe: value }: { probe: P }) {
-    seen.current = read(value);
+    seen.current = useRead(value);
     return null;
   }
 
@@ -639,7 +667,8 @@ export async function mountEngine<Config, Target, P, R>({
   });
 
   return {
-    get current() {
+    get current(): R {
+      if (seen.current === null) throw new Error("the engine hasn't rendered yet");
       return seen.current;
     },
     async update(next: Partial<typeof props>) {

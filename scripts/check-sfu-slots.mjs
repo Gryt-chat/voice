@@ -32,7 +32,7 @@ async function call() {
   const engine = await mountEngine({
     provider: VoiceConfigProvider,
     runner: VoiceSingletonHooks,
-    read: () => useSFU(),
+    useRead: () => useSFU(),
     config: voiceConfig({ stunHosts: ["stun:a.test"] }),
     target: { id: "server-a", room: fakeRoom("server-a") },
   });
@@ -40,10 +40,10 @@ async function call() {
     engine.current.connect("chan-a").catch(() => {});
   });
   await advance(1_000);
-  const pc = phone.peers.at(-1);
+  const pc = phone.lastPeer();
   await settle(() => pc.reach("connected"));
   assert.equal(engine.current.connectionState, "connected", "the call never came up");
-  const socket = FakeSocket.all.at(-1);
+  const socket = FakeSocket.last();
   assert.equal(answered(socket).length, 4, "the SFU's first offer was never answered");
 
   const streams = new Map();

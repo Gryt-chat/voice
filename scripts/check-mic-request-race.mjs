@@ -190,7 +190,7 @@ async function microphoneWith({ deviceId, manual = false } = {}) {
   const engine = await mountEngine({
     provider: VoiceConfigProvider,
     runner: VoiceSingletonHooks,
-    read: (wanted) => useMicrophone(wanted),
+    useRead: (wanted) => useMicrophone(wanted),
     config: voiceConfig({ deviceId }),
     target: null,
     probe: false,
@@ -261,7 +261,7 @@ async function microphoneWith({ deviceId, manual = false } = {}) {
   const engine = await mountEngine({
     provider: VoiceConfigProvider,
     runner: VoiceSingletonHooks,
-    read: () => useSFU(),
+    useRead: () => useSFU(),
     config: voiceConfig({ stunHosts: ["stun:a.test"] }),
     target: { id: "server-a", room },
   });

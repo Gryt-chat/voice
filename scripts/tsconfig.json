@@ -12,5 +12,5 @@
     "noUnusedLocals": true,
     "skipLibCheck": true
   },
-  "include": ["add-esm-extensions.ts", "check-*.ts", "engine-harness.ts", "react-test-renderer.d.ts", "../eslint.config.ts"]
+  "include": ["."]
 }

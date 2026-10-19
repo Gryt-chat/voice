@@ -224,7 +224,7 @@ const room = fakeRoom("server-a");
 const engine = await mountEngine({
   provider: VoiceConfigProvider,
   runner: VoiceSingletonHooks,
-  read: () => useSFU(),
+  useRead: () => useSFU(),
   config: voiceConfig({ stunHosts: ["stun:a.test"] }),
   target: { id: "server-a", room },
 });
@@ -232,7 +232,7 @@ await settle(() => {
   engine.current.connect("chan-a").catch(() => {});
 });
 await wait(1_000);
-const pc = phone.peers.at(-1);
+const pc = phone.lastPeer();
 await settle(() => pc.reach("connected"));
 assert.equal(engine.current.connectionState, "connected", "the call never came up");
 
