@@ -27,6 +27,11 @@ export default tseslint.config(
       "@typescript-eslint/consistent-type-imports": ["error", { fixStyle: "inline-type-imports", disallowTypeAnnotations: false }],
     },
   },
+  // unknown: the engine harness's fake timers pass their callers' arguments through untouched.
+  {
+    files: ["scripts/engine-harness.ts"],
+    rules: { "@typescript-eslint/no-restricted-types": "off" },
+  },
   // unknown: caught errors are unknown until checked.
   {
     files: [

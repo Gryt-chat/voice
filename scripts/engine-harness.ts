@@ -1,18 +1,15 @@
-/* eslint-env node */
-
 // Runs the engine's hooks under a real React renderer, on a virtual clock, against a fake
 // phone platform, SFU socket and signalling server. Checks drive the code, not its text.
 
-import { act, createElement } from "react";
-import TestRenderer from "react-test-renderer";
+import { act, type ComponentType, createElement, type ReactNode } from "react";
+import TestRenderer, { type ReactTestRenderer } from "react-test-renderer";
 
 // Opts out of the renderer's deprecation warning; `unstable_isConcurrent` keeps createRoot.
-globalThis.IS_REACT_NATIVE_TEST_ENVIRONMENT = true;
-globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+Object.assign(globalThis, { IS_REACT_NATIVE_TEST_ENVIRONMENT: true, IS_REACT_ACT_ENVIRONMENT: true });
 
 // The engine logs every step. Errors are kept so a check can look at them.
 export const log = console.log.bind(console);
-export const consoleErrors = [];
+export const consoleErrors: string[] = [];
 console.log = () => {};
 console.info = () => {};
 console.debug = () => {};
@@ -21,23 +18,25 @@ console.error = (...args) => consoleErrors.push(args.map(String).join(" "));
 
 // ── Virtual clock ────────────────────────────────────────────────────────────
 
-const timers = new Map();
+const timers = new Map<number, { run: () => void; at: number; every: number }>();
 let now = 0;
 let nextTimerId = 1;
 
-globalThis.setTimeout = (fn, ms = 0, ...args) => {
-  const id = nextTimerId++;
-  timers.set(id, { fn, args, at: now + Math.max(0, Number(ms) || 0), every: 0 });
-  return id;
-};
-globalThis.setInterval = (fn, ms = 0, ...args) => {
-  const id = nextTimerId++;
-  const every = Math.max(1, Number(ms) || 0);
-  timers.set(id, { fn, args, at: now + every, every });
-  return id;
-};
-globalThis.clearTimeout = (id) => timers.delete(id);
-globalThis.clearInterval = (id) => timers.delete(id);
+Object.assign(globalThis, {
+  setTimeout: <A extends unknown[]>(fn: (...args: A) => void, ms = 0, ...args: A) => {
+    const id = nextTimerId++;
+    timers.set(id, { run: () => fn(...args), at: now + Math.max(0, Number(ms) || 0), every: 0 });
+    return id;
+  },
+  setInterval: <A extends unknown[]>(fn: (...args: A) => void, ms = 0, ...args: A) => {
+    const id = nextTimerId++;
+    const every = Math.max(1, Number(ms) || 0);
+    timers.set(id, { run: () => fn(...args), at: now + every, every });
+    return id;
+  },
+  clearTimeout: (id: number) => timers.delete(id),
+  clearInterval: (id: number) => timers.delete(id),
+});
 
 /** Runs `fn`, then lets every promise, render and effect it started finish. */
 export async function settle(fn = () => {}) {
@@ -47,11 +46,11 @@ export async function settle(fn = () => {}) {
 }
 
 /** Moves the clock, firing each timer in order and settling after every one. */
-export async function advance(ms) {
+export async function advance(ms: number) {
   const end = now + ms;
   await settle();
   for (;;) {
-    let due = null;
+    let due: { id: number; timer: { run: () => void; at: number; every: number } } | null = null;
     for (const [id, timer] of timers) {
       if (timer.at <= end && (!due || timer.at < due.timer.at)) due = { id, timer };
     }
@@ -60,7 +59,7 @@ export async function advance(ms) {
     now = due.timer.at;
     if (due.timer.every) due.timer.at = now + due.timer.every;
     else timers.delete(due.id);
-    await settle(() => due.timer.fn(...due.timer.args));
+    await settle(due.timer.run);
   }
   now = end;
 }
@@ -80,13 +79,20 @@ Object.defineProperty(globalThis.navigator, "mediaDevices", {
 export const SFU_SLOTS = ["audio", "video", "video", "audio"];
 
 /** An offer shaped like the SFU's: its receive slots, then one sendonly m-line per forwarded track. */
-export function sfuOffer(forwarded = []) {
+export function sfuOffer(forwarded: string[] = []): Description {
   const lines = ["v=0", "o=- 0 0 IN IP4 127.0.0.1", "s=-", "t=0 0"];
   [...SFU_SLOTS.map((kind) => [kind, "recvonly"]), ...forwarded.map((kind) => [kind, "sendonly"])].forEach(
     ([kind, direction], mid) => lines.push(`m=${kind} 9 UDP/TLS/RTP/SAVPF 96`, `a=mid:${mid}`, `a=${direction}`),
   );
   return { type: "offer", sdp: `${lines.join("\r\n")}\r\n` };
 }
+
+/** What goes over the SFU socket, both ways: an event name and its JSON payload. */
+export interface SocketMessage {
+  event: string;
+  data: string;
+}
+
 
 /**
  * The SFU's WebSocket. It answers `client_join` with `room_joined` and an offer, and every
@@ -97,9 +103,20 @@ export class FakeSocket {
   static OPEN = 1;
   static CLOSING = 2;
   static CLOSED = 3;
-  static all = [];
+  static all: FakeSocket[] = [];
 
-  constructor(url) {
+  url: string;
+  readyState: number;
+  sent: SocketMessage[];
+  answers: Description[];
+  forwarded: string[];
+  hold: boolean;
+  held: number;
+  onopen?: () => void;
+  onmessage?: (event: { data: string }) => void;
+  onclose?: (event: { code: number; reason: string; wasClean: boolean }) => void;
+
+  constructor(url: string) {
     this.url = url;
     this.readyState = FakeSocket.CONNECTING;
     this.sent = [];
@@ -116,7 +133,7 @@ export class FakeSocket {
     });
   }
 
-  deliver(event, data) {
+  deliver(event: string, data: object) {
     queueMicrotask(() => this.onmessage?.({ data: JSON.stringify({ event, data: JSON.stringify(data) }) }));
   }
 
@@ -131,8 +148,8 @@ export class FakeSocket {
     this.held = 0;
   }
 
-  send(text) {
-    const message = JSON.parse(text);
+  send(text: string) {
+    const message: SocketMessage = JSON.parse(text);
     this.sent.push(message);
     if (message.event === "answer") this.answers.push(JSON.parse(message.data));
     if (message.event === "renegotiate") {
@@ -155,21 +172,37 @@ export class FakeSocket {
   }
 }
 
-globalThis.WebSocket = FakeSocket;
+Object.assign(globalThis, { WebSocket: FakeSocket });
 
-globalThis.RTCSessionDescription ??= class {
-  constructor({ type, sdp }) {
-    this.type = type;
-    this.sdp = sdp;
-  }
-};
-globalThis.RTCIceCandidate ??= class {
-  constructor(init) {
-    Object.assign(this, init);
-  }
-};
+if (!("RTCSessionDescription" in globalThis)) {
+  Object.assign(globalThis, {
+    RTCSessionDescription: class {
+      type: string;
+      sdp: string;
+      constructor({ type, sdp }: Description) {
+        this.type = type;
+        this.sdp = sdp;
+      }
+    },
+  });
+}
+if (!("RTCIceCandidate" in globalThis)) {
+  Object.assign(globalThis, {
+    RTCIceCandidate: class {
+      constructor(init: object) {
+        Object.assign(this, init);
+      }
+    },
+  });
+}
 
-function parseSections(sdp) {
+/** An SDP offer or answer. */
+export interface Description {
+  type: string;
+  sdp: string;
+}
+
+function parseSections(sdp: string) {
   return sdp.split(/\r?\nm=/).slice(1).map((section) => ({
     kind: section.slice(0, section.indexOf(" ")),
     mid: /\na=mid:(\S+)/.exec(section)?.[1] ?? null,
@@ -177,16 +210,57 @@ function parseSections(sdp) {
   }));
 }
 
-const sends = (direction) => direction === "sendrecv" || direction === "sendonly";
-const receives = (direction) => direction === "sendrecv" || direction === "recvonly";
-const directionOf = (send, receive) => (send ? (receive ? "sendrecv" : "sendonly") : receive ? "recvonly" : "inactive");
+const sends = (direction: string) => direction === "sendrecv" || direction === "sendonly";
+const receives = (direction: string) => direction === "sendrecv" || direction === "recvonly";
+function directionOf(send: boolean, receive: boolean) {
+  if (send) return receive ? "sendrecv" : "sendonly";
+  return receive ? "recvonly" : "inactive";
+}
+
+export type FakeTrack = ReturnType<typeof fakeTrack>;
+export type FakeStream = ReturnType<typeof fakeStream>;
+
+export interface FakeSender {
+  track: FakeTrack | null;
+  streams: FakeStream[];
+  kind: string;
+  parameters: { encodings: RTCRtpEncodingParameters[] };
+  replaces: number;
+  getParameters(): { encodings: RTCRtpEncodingParameters[] };
+  setParameters(parameters: { encodings: RTCRtpEncodingParameters[] }): Promise<void>;
+  replaceTrack(next: FakeTrack | null): Promise<void>;
+  setStreams(...next: FakeStream[]): void;
+}
+
+export interface FakeTransceiver {
+  mid: string | null;
+  kind: string;
+  direction: string;
+  currentDirection: string | null;
+  remoteDirection: string | null;
+  everSent: boolean;
+  byAddTrack: boolean;
+  sender: FakeSender;
+  receiver: { track: { kind: string }; getParameters(): { codecs: object[] } };
+}
 
 /**
  * Answers an offer the way a browser does, so a transceiver the page adds itself stays at
  * mid null and never sends, which is how #67 passed here and failed through the SFU.
  */
 export class FakePeerConnection {
-  constructor(config) {
+  config: object;
+  connectionState: string;
+  iceConnectionState: string;
+  signalingState: string;
+  remoteDescription: Description | null;
+  localDescription: Description | null;
+  transceivers: FakeTransceiver[];
+  stats: Map<string, object>;
+  statsCalls: number;
+  onconnectionstatechange?: () => void;
+
+  constructor(config: object) {
     this.config = config;
     this.connectionState = "new";
     this.iceConnectionState = "new";
@@ -199,8 +273,17 @@ export class FakePeerConnection {
   }
 
   /** Keeps what was set and counts replaces, so a check can read both back. */
-  newTransceiver(kind, { track = null, streams = [], direction = "sendrecv", mid = null, byAddTrack = false } = {}) {
-    const sender = {
+  newTransceiver(
+    kind: string,
+    {
+      track = null,
+      streams = [],
+      direction = "sendrecv",
+      mid = null,
+      byAddTrack = false,
+    }: { track?: FakeTrack | null; streams?: FakeStream[]; direction?: string; mid?: string | null; byAddTrack?: boolean } = {},
+  ) {
+    const sender: FakeSender = {
       track,
       streams,
       kind,
@@ -220,7 +303,7 @@ export class FakePeerConnection {
         sender.streams = next;
       },
     };
-    const transceiver = {
+    const transceiver: FakeTransceiver = {
       mid,
       kind,
       direction,
@@ -236,7 +319,7 @@ export class FakePeerConnection {
   }
 
   /** The spec's reuse rule: a transceiver of this kind with no track that has never sent. */
-  addTrack(track, stream) {
+  addTrack(track: FakeTrack, stream?: FakeStream) {
     const free = this.transceivers.find(
       (t) => t.kind === track.kind && t.direction !== "stopped" && t.sender.track === null && !t.everSent,
     );
@@ -250,13 +333,13 @@ export class FakePeerConnection {
     return this.newTransceiver(track.kind, { track, streams: stream ? [stream] : [], byAddTrack: true }).sender;
   }
 
-  addTransceiver(trackOrKind, init = {}) {
+  addTransceiver(trackOrKind: FakeTrack | string, init: { streams?: FakeStream[]; direction?: string } = {}) {
     const track = typeof trackOrKind === "string" ? null : trackOrKind;
-    const kind = track ? track.kind : trackOrKind;
+    const kind = typeof trackOrKind === "string" ? trackOrKind : trackOrKind.kind;
     return this.newTransceiver(kind, { track, streams: init.streams ?? [], direction: init.direction ?? "sendrecv" });
   }
 
-  removeTrack(sender) {
+  removeTrack(sender: FakeSender) {
     const transceiver = this.transceivers.find((t) => t.sender === sender);
     if (!transceiver) return;
     sender.track = null;
@@ -276,7 +359,7 @@ export class FakePeerConnection {
     return this.transceivers;
   }
 
-  setRemoteDescription(description) {
+  setRemoteDescription(description: Description) {
     for (const section of parseSections(description.sdp)) {
       let transceiver = this.transceivers.find((t) => t.mid === section.mid);
       transceiver ??= this.transceivers.find((t) => t.mid === null && t.byAddTrack && t.kind === section.kind);
@@ -289,10 +372,12 @@ export class FakePeerConnection {
     return Promise.resolve();
   }
 
-  createAnswer() {
+  createAnswer(): Promise<Description> {
+    if (!this.remoteDescription) throw new Error("createAnswer before setRemoteDescription");
     const lines = ["v=0", "o=- 0 0 IN IP4 127.0.0.1", "s=-", "t=0 0"];
     for (const section of parseSections(this.remoteDescription.sdp)) {
       const t = this.transceivers.find((candidate) => candidate.mid === section.mid);
+      if (!t) throw new Error(`no transceiver for mid ${section.mid}`);
       const direction = directionOf(
         sends(t.direction) && receives(section.direction),
         receives(t.direction) && sends(section.direction),
@@ -303,9 +388,10 @@ export class FakePeerConnection {
     return Promise.resolve({ type: "answer", sdp: `${lines.join("\r\n")}\r\n` });
   }
 
-  setLocalDescription(description) {
+  setLocalDescription(description: Description) {
     for (const section of parseSections(description.sdp)) {
       const t = this.transceivers.find((candidate) => candidate.mid === section.mid);
+      if (!t) throw new Error(`no transceiver for mid ${section.mid}`);
       t.currentDirection = section.direction;
       if (sends(section.direction)) t.everSent = true;
     }
@@ -335,14 +421,14 @@ export class FakePeerConnection {
   }
 
   /** ICE and DTLS finishing, or failing, as the engine sees it. */
-  reach(state) {
+  reach(state: string) {
     this.connectionState = state;
     this.onconnectionstatechange?.();
   }
 }
 
 /** What the last answer says each mid carries: its direction and, when sending, its stream id. */
-export function answered(socket) {
+export function answered(socket: FakeSocket) {
   const answer = socket.answers.at(-1);
   if (!answer) return [];
   return answer.sdp.split(/\r?\nm=/).slice(1).map((section) => ({
@@ -371,7 +457,7 @@ export function fakeTrack(kind = "audio", deviceId = "default") {
   };
 }
 
-export function fakeStream(track) {
+export function fakeStream(track: FakeTrack) {
   return {
     id: `stream-${track.id}`,
     active: true,
@@ -382,40 +468,52 @@ export function fakeStream(track) {
   };
 }
 
+/** A microphone request the harness can answer by hand when `microphone.manual` is set. */
+export interface MicrophoneRequest {
+  deviceId?: string;
+  stream: FakeStream | null;
+  resolve: () => void;
+  reject: (error: Error) => void;
+}
+
+
 /**
  * Shaped like `nativePlatform`: it builds its own audio pipeline and has no screen capture.
  * Microphone requests answer at once unless `microphone.manual` is set.
  */
 export function fakePhonePlatform() {
-  const microphone = { manual: false, requests: [] };
-  const peers = [];
+  const microphone: { manual: boolean; requests: MicrophoneRequest[] } = { manual: false, requests: [] };
+  const peers: FakePeerConnection[] = [];
 
   return {
     microphone,
     peers,
     name: "react-native",
-    createPeerConnection(config) {
+    createPeerConnection(config: object) {
       const pc = new FakePeerConnection(config);
       peers.push(pc);
       return pc;
     },
-    getMicrophone(deviceId) {
-      const request = { deviceId, stream: null };
+    getMicrophone(deviceId?: string) {
+      const { promise, resolve, reject } = Promise.withResolvers<FakeStream>();
+      const request: MicrophoneRequest = {
+        deviceId,
+        stream: null,
+        resolve: () => {
+          const stream = fakeStream(fakeTrack("audio", deviceId ?? "default"));
+          request.stream = stream;
+          resolve(stream);
+        },
+        reject,
+      };
       microphone.requests.push(request);
-      const promise = new Promise((resolve, reject) => {
-        request.resolve = () => {
-          request.stream = fakeStream(fakeTrack("audio", deviceId ?? "default"));
-          resolve(request.stream);
-        };
-        request.reject = reject;
-      });
       if (!microphone.manual) request.resolve();
       return promise;
     },
     getCamera() {
       return Promise.reject(new Error("No camera in this harness"));
     },
-    createAudioPipeline({ source }) {
+    createAudioPipeline({ source }: { source: FakeStream }) {
       return {
         output: source,
         getLevel: () => null,
@@ -428,17 +526,18 @@ export function fakePhonePlatform() {
 }
 
 /** One server's signalling, as the engine sees it through RoomCoordinator. */
-export function fakeRoom(id) {
-  const listeners = new Set();
+export function fakeRoom(id: string) {
+  const listeners = new Set<() => void>();
+  const refusal: { reason: string; retryAfterMs?: number } = { reason: "refused by the fake", retryAfterMs: 2000 };
   const room = {
     id,
     connected: true,
     refusals: 0,
     // A refusal with retryAfterMs is one the engine asks again after; without, it stops.
-    refusal: { reason: "refused by the fake", retryAfterMs: 2000 },
-    requests: [],
-    joined: [],
-    requestAccess(channelId) {
+    refusal,
+    requests: [] as string[],
+    joined: [] as object[],
+    requestAccess(channelId: string) {
       room.requests.push(channelId);
       if (room.refusals > 0) {
         room.refusals -= 1;
@@ -453,12 +552,12 @@ export function fakeRoom(id) {
       });
     },
     leave() {},
-    announceJoined(joined) {
+    announceJoined(joined: object) {
       room.joined.push(joined);
     },
     setLocalStream() {},
     peerChanged() {},
-    onReconnected(handler) {
+    onReconnected(handler: () => void) {
       listeners.add(handler);
       return () => listeners.delete(handler);
     },
@@ -474,7 +573,7 @@ export function fakeRoom(id) {
   return room;
 }
 
-export function voiceConfig({ stunHosts = [], deviceId } = {}) {
+export function voiceConfig({ stunHosts = [], deviceId }: { stunHosts?: string[]; deviceId?: string } = {}) {
   return {
     audio: {
       deviceId,
@@ -503,11 +602,25 @@ export function voiceConfig({ stunHosts = [], deviceId } = {}) {
  * Mounts the engine the way an app does: a provider, the singleton runner, and a probe
  * that stores what `read(probe)` returns. `update` changes any of the three props.
  */
-export async function mountEngine({ provider, runner, read, config, target, probe }) {
-  const seen = { current: null };
+export async function mountEngine<Config, Target, P, R>({
+  provider,
+  runner,
+  read,
+  config,
+  target,
+  probe,
+}: {
+  provider: ComponentType<{ config: Config; target: Target; children?: ReactNode }>;
+  runner: ComponentType;
+  read: (probe: P) => R;
+  config: Config;
+  target: Target;
+  probe: P;
+}) {
+  const seen: { current: R | null } = { current: null };
   let props = { config, target, probe };
 
-  function Probe({ probe: value }) {
+  function Probe({ probe: value }: { probe: P }) {
     seen.current = read(value);
     return null;
   }
@@ -520,22 +633,22 @@ export async function mountEngine({ provider, runner, read, config, target, prob
       createElement(Probe, { probe: props.probe }),
     );
 
-  let renderer;
+  const mounted: { renderer?: ReactTestRenderer } = {};
   await settle(() => {
-    renderer = TestRenderer.create(tree(), { unstable_isConcurrent: true });
+    mounted.renderer = TestRenderer.create(tree(), { unstable_isConcurrent: true });
   });
 
   return {
     get current() {
       return seen.current;
     },
-    async update(next) {
+    async update(next: Partial<typeof props>) {
       props = { ...props, ...next };
-      await settle(() => renderer.update(tree()));
+      await settle(() => mounted.renderer?.update(tree()));
     },
     // Drops leftover timers too, so nothing from one scenario runs in the next.
     async unmount() {
-      await settle(() => renderer.unmount());
+      await settle(() => mounted.renderer?.unmount());
       timers.clear();
     },
   };

@@ -17,7 +17,7 @@ import {
   mountEngine,
   settle,
   voiceConfig,
-} from "./engine-harness.mjs";
+} from "./engine-harness.ts";
 
 import { VoiceConfigProvider } from "../dist/config/index.js";
 import { setVoicePlatform } from "../dist/platform/index.js";

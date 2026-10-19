@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Runs the two writes that decide whether a call reads as connected. Reported by
 // Sivert: an open microphone and no indicator anywhere after a reconnect. GRYT-1136.
 
