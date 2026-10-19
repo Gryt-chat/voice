@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022"],
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "types": ["node"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
@@ -12,5 +12,5 @@
     "noUnusedLocals": true,
     "skipLibCheck": true
   },
-  "include": ["add-esm-extensions.ts", "check-*.ts", "../eslint.config.ts"]
+  "include": ["add-esm-extensions.ts", "check-*.ts", "engine-harness.ts", "react-test-renderer.d.ts", "../eslint.config.ts"]
 }

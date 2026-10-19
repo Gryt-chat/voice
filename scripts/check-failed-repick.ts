@@ -1,5 +1,3 @@
-/* eslint-env node */
-
 // Runs startScreenShare's catch block. Cancelling the picker while already sharing
 // used to mark the share stopped and leave the old capture running (GRYT-1425).
 

@@ -14,7 +14,7 @@ import {
   mountEngine,
   settle,
   voiceConfig,
-} from "./engine-harness.mjs";
+} from "./engine-harness.ts";
 
 import { useVoiceLatency } from "../dist/audio/hooks/useVoiceLatency.js";
 import { VoiceConfigProvider } from "../dist/config/index.js";

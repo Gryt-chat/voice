@@ -15,7 +15,7 @@ import {
   mountEngine,
   settle,
   voiceConfig,
-} from "./engine-harness.mjs";
+} from "./engine-harness.ts";
 
 import { useMicrophone } from "../dist/audio/hooks/useMicrophone.js";
 import { VoiceConfigProvider } from "../dist/config/index.js";

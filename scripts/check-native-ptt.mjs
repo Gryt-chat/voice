@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 
 // First, so the fake timers and sockets are in place before any engine module loads.
-import { fakePhonePlatform, log, mountEngine, voiceConfig } from "./engine-harness.mjs";
+import { fakePhonePlatform, log, mountEngine, voiceConfig } from "./engine-harness.ts";
 
 import { useMicrophone } from "../dist/audio/hooks/useMicrophone.js";
 import { VoiceConfigProvider } from "../dist/config/index.js";
