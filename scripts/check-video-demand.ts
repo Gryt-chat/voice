@@ -6,6 +6,8 @@ import assert from "node:assert/strict";
 // First, so the fake timers and sockets are in place before any engine module loads.
 import {
   advance,
+  asReal,
+  type FakeTrack,
   FakeSocket,
   fakePhonePlatform,
   fakeRoom,
@@ -30,23 +32,36 @@ import {
   rungFor,
   screenBitrate,
 } from "../dist/webrtc/hooks/videoDemand.js";
+import type { VideoEncodingPlan, VideoPlanInput, VideoRole, VideoSendSettings, VideoWanted } from "../dist/webrtc/hooks/videoDemand.js";
 import { useSFU } from "../dist/webrtc/hooks/useSFU.js";
 
 // ── The rule ─────────────────────────────────────────────────────────────────
 
 const HD = { width: 1920, height: 1080 };
-const wanted = (width, height, { fps = 60, watchers = 1, unknown = 0 } = {}) => ({ width, height, fps, watchers, unknown });
+const wanted = (width: number, height: number, { fps = 60, watchers = 1, unknown = 0 } = {}): VideoWanted => ({ width, height, fps, watchers, unknown });
 
 /** Runs the plan from `start` over a list of [ms from start, wanted, framesEncoded] steps. */
-function run(steps, { role = "camera", settings = {}, source = HD } = {}) {
+type Step = [now: number, wanted: VideoWanted | null, framesEncoded?: number];
+
+function run(
+  steps: Step[],
+  { role = "camera", settings = {}, source = HD }: { role?: VideoRole; settings?: VideoSendSettings; source?: VideoPlanInput["source"] } = {},
+) {
   let state = INITIAL_PLAN_STATE;
-  const plans = [];
+  const plans: VideoEncodingPlan[] = [];
   for (const [now, w, frames = null] of steps) {
     const plan = planVideoEncoding({ role, source, settings, wanted: w, now, framesEncoded: frames }, state);
     state = plan.state;
     plans.push(plan);
   }
   return plans;
+}
+
+/** The plan after the last step. */
+function final(...args: Parameters<typeof run>) {
+  const plan = run(...args).at(-1);
+  assert.ok(plan, "no steps");
+  return plan;
 }
 
 // An SFU that never says anything leaves the encoding exactly as the settings ask.
@@ -58,7 +73,7 @@ function run(steps, { role = "camera", settings = {}, source = HD } = {}) {
     { active: true, scale: 1.5, maxBitrate: 3_000_000, maxFramerate: 30 },
     "with no video_wanted the encoding moved away from the settings",
   );
-  const later = run([[0, null], [60_000, null]], { settings: {} }).at(-1);
+  const later = final([[0, null], [60_000, null]], { settings: {} });
   assert.equal(later.active, true, "an old SFU's silence paused the stream");
   assert.equal(later.maxBitrate, undefined, "an old SFU's silence capped a camera that had no cap");
 }
@@ -87,7 +102,7 @@ assert.equal(rungFor(HD, { width: 320, height: 192 }), 6, "a 180p tile, rounded 
   const plans = run([[0, wanted(640, 360, { fps: 30 })], [HOLD_DOWN_MS, wanted(640, 360, { fps: 30 })]]);
   assert.equal(plans[0].maxBitrate, undefined, "a camera drawn at full size got a cap it doesn't have today");
   assert.equal(plans[1].maxBitrate, cameraBitrate(640, 360, 30));
-  const sixty = run([[0, wanted(640, 360)], [HOLD_DOWN_MS, wanted(640, 360)]], { source: { ...HD, frameRate: 30 } }).at(-1);
+  const sixty = final([[0, wanted(640, 360)], [HOLD_DOWN_MS, wanted(640, 360)]], { source: { ...HD, frameRate: 30 } });
   assert.equal(sixty.maxBitrate, cameraBitrate(640, 360, 30), "a 60 Hz viewer bought a 30 fps camera a 60 fps bitrate");
   assert.ok(Math.abs(cameraBitrate(640, 360, 30) - 500_000) < 20_000, `360p camera at ${cameraBitrate(640, 360, 30)} bps`);
   const share = run([[0, wanted(1280, 720, { fps: 30 })], [HOLD_DOWN_MS, wanted(1280, 720, { fps: 30 })]], { role: "screen", settings: { maxBitrate: 50_000_000, maxFramerate: 30 } });
@@ -101,18 +116,18 @@ assert.equal(rungFor(HD, { width: 320, height: 192 }), 6, "a 180p tile, rounded 
   assert.equal(big.scaleResolutionDownBy, 1.5, "demand pushed the size above the user's ceiling");
   assert.equal(big.maxFramerate, 30, "demand pushed the frame rate above the user's pick");
   assert.equal(big.maxBitrate, 400_000, "the user's own bitrate was lifted");
-  const small = run([[0, wanted(320, 180)], [HOLD_DOWN_MS, wanted(320, 180)]], { settings }).at(-1);
+  const small = final([[0, wanted(320, 180)], [HOLD_DOWN_MS, wanted(320, 180)]], { settings });
   assert.equal(small.scaleResolutionDownBy, 6);
-  assert.ok(small.maxBitrate <= 400_000, "a smaller rung raised the bitrate over the user's");
+  assert.ok((small.maxBitrate ?? Infinity) <= 400_000, "a smaller rung raised the bitrate over the user's");
   const display = run([[0, wanted(1920, 1080, { fps: 60 })], [HOLD_DOWN_MS, wanted(1920, 1080, { fps: 60 })]], { settings: { maxFramerate: 144 } });
   assert.deepEqual(display.map((p) => p.maxFramerate), [144, 60], "sending faster than any viewer's display");
 }
 
 // A viewer that never reported wants everything, and one of them is enough.
 {
-  const plan = run([[0, wanted(320, 180, { unknown: 1 })], [HOLD_DOWN_MS * 3, wanted(320, 180, { unknown: 1 })]]).at(-1);
+  const plan = final([[0, wanted(320, 180, { unknown: 1 })], [HOLD_DOWN_MS * 3, wanted(320, 180, { unknown: 1 })]]);
   assert.equal(plan.scaleResolutionDownBy, 1, "an old client got a shrunk stream");
-  const idle = run([[0, wanted(0, 0, { watchers: 0, unknown: 1 })], [PAUSE_AFTER_MS * 2, wanted(0, 0, { watchers: 0, unknown: 1 })]]).at(-1);
+  const idle = final([[0, wanted(0, 0, { watchers: 0, unknown: 1 })], [PAUSE_AFTER_MS * 2, wanted(0, 0, { watchers: 0, unknown: 1 })]]);
   assert.equal(idle.active, true, "an old client got a paused stream");
 }
 
@@ -131,7 +146,7 @@ assert.equal(rungFor(HD, { width: 320, height: 192 }), 6, "a 180p tile, rounded 
   assert.deepEqual(plans.map((p) => p.active), [true, true, false, true, true, true, true], "pause or resume at the wrong time");
   assert.deepEqual(plans.map((p) => p.rekick), [false, false, false, false, true, false, false], "the watchdog didn't re-kick exactly the frozen resume");
 
-  const frozen = [[0, nobody], [PAUSE_AFTER_MS, nobody, 9], [20_000, wanted(640, 360), 9]];
+  const frozen: Step[] = [[0, nobody], [PAUSE_AFTER_MS, nobody, 9], [20_000, wanted(640, 360), 9]];
   for (let i = 1; i <= MAX_REKICKS + 2; i++) frozen.push([20_000 + i * RESUME_CHECK_MS, wanted(640, 360), 9]);
   const kicks = run(frozen).filter((p) => p.rekick).length;
   assert.equal(kicks, MAX_REKICKS, "the watchdog gave up too early or never");
@@ -140,14 +155,14 @@ assert.equal(rungFor(HD, { width: 320, height: 192 }), 6, "a 180p tile, rounded 
   const once = run([[0, nobody], [PAUSE_AFTER_MS, nobody, 9], [20_000, wanted(640, 360), 9], [21_000, wanted(640, 360), 10], [22_000, wanted(640, 360), 40]]);
   assert.deepEqual(once.map((p) => p.rekick), [false, false, false, true, false], "a resume that froze after its first frame wasn't re-kicked");
   const quiet = run([[0, nobody], [PAUSE_AFTER_MS, nobody, 9], [20_000, wanted(640, 360), 9], [21_000, wanted(640, 360), 40], [30_000, wanted(640, 360), 40]]);
-  assert.equal(quiet.at(-1).rekick, false, "the watchdog still re-kicked long after the resume");
+  assert.equal(quiet.at(-1)?.rekick, false, "the watchdog still re-kicked long after the resume");
 }
 
 // An encoder setParameters can't reach, like the native H.264 share: settings only, never paused.
 {
-  const plan = run([[0, wanted(0, 0, { watchers: 0 })], [PAUSE_AFTER_MS * 2, wanted(0, 0, { watchers: 0 })]], {
+  const plan = final([[0, wanted(0, 0, { watchers: 0 })], [PAUSE_AFTER_MS * 2, wanted(0, 0, { watchers: 0 })]], {
     role: "screen", settings: { followDemand: false, maxBitrate: 8_000_000 },
-  }).at(-1);
+  });
   assert.equal(plan.active, true);
   assert.equal(plan.scaleResolutionDownBy, 1);
   assert.equal(plan.maxBitrate, 8_000_000);
@@ -157,7 +172,7 @@ assert.equal(rungFor(HD, { width: 320, height: 192 }), 6, "a 180p tile, rounded 
 
 let clock = 1_000_000;
 Date.now = () => clock;
-async function wait(ms) {
+async function wait(ms: number) {
   for (let left = ms; left > 0; left -= 500) {
     clock += Math.min(500, left);
     await advance(Math.min(500, left));
@@ -183,14 +198,14 @@ await settle(() => pc.reach("connected"));
 assert.equal(engine.current.connectionState, "connected", "the call never came up");
 const socket = FakeSocket.last();
 
-const track = { ...fakeTrack("video", "camera"), getSettings: () => ({ width: 1280, height: 720 }) };
-await settle(() => engine.current.addVideoTrack(track, fakeStream(track)));
-await settle(() => engine.current.setVideoSendSettings("camera", { priority: "medium", degradationPreference: "maintain-framerate" }));
+const track: FakeTrack = { ...fakeTrack("video", "camera"), getSettings: () => ({ deviceId: "camera", width: 1280, height: 720 }) };
+await settle(() => engine.current.addVideoTrack(asReal<MediaStreamTrack>(track), asReal<MediaStream>(fakeStream(track))));
+await settle(() => engine.current.setVideoSendSettings?.("camera", { priority: "medium", degradationPreference: "maintain-framerate" }));
 await wait(1_000);
 const sender = pc.getSenders().find((candidate) => candidate.track === track);
 assert.ok(sender, "the camera has no sender");
-const mid = pc.getTransceivers().find((t) => t.sender === sender).mid;
-const writes = [];
+const mid = pc.getTransceivers().find((t) => t.sender === sender)?.mid;
+const writes: (boolean | undefined)[] = [];
 const setParameters = sender.setParameters;
 sender.setParameters = (parameters) => {
   writes.push(parameters.encodings[0].active);
@@ -206,7 +221,7 @@ assert.equal(encoding().maxBitrate, undefined, "the camera got a cap with no SFU
 assert.equal(encoding().priority, "medium", "the embedder's priority didn't reach the sender");
 assert.equal(sender.parameters.degradationPreference, "maintain-framerate");
 
-const say = (w) => settle(() => socket.deliver("video_wanted", { mid, ...w }));
+const say = (w: VideoWanted) => settle(() => socket.deliver("video_wanted", { mid, ...w }));
 
 await say(wanted(320, 180, { fps: 30 }));
 await wait(HOLD_DOWN_MS + 1_000);
@@ -230,22 +245,22 @@ assert.equal(encoding().scaleResolutionDownBy, 1);
 
 // What this viewer draws goes out once per change, increases fast and decreases slow.
 const demands = () => socket.sent.filter((m) => m.event === "video_demand").map((m) => JSON.parse(m.data));
-await settle(() => engine.current.reportVideoDemand("their-camera-stream", { width: 631, height: 355, fps: 60 }));
+await settle(() => engine.current.reportVideoDemand?.("their-camera-stream", { width: 631, height: 355, fps: 60 }));
 await wait(500);
 assert.deepEqual(demands(), [{ stream_id: "their-camera-stream", width: 640, height: 368, fps: 60 }]);
-await settle(() => engine.current.reportVideoDemand("their-camera-stream", { width: 640, height: 360, fps: 60 }));
+await settle(() => engine.current.reportVideoDemand?.("their-camera-stream", { width: 640, height: 360, fps: 60 }));
 await wait(1_500);
 assert.equal(demands().length, 1, "the same size went out twice");
-await settle(() => engine.current.reportVideoDemand("their-camera-stream", { width: 0, height: 0, fps: 60 }));
+await settle(() => engine.current.reportVideoDemand?.("their-camera-stream", { width: 0, height: 0, fps: 60 }));
 await wait(500);
 assert.equal(demands().length, 1, "a decrease went out before a second had passed");
 await wait(1_000);
 assert.deepEqual(demands().at(-1), { stream_id: "their-camera-stream", width: 0, height: 0, fps: 60 });
 
 // A stream first reported hidden waits like any decrease, so a tile that mounts a moment later wins.
-await settle(() => engine.current.reportVideoDemand("late-tile", { width: 0, height: 0, fps: 60 }));
+await settle(() => engine.current.reportVideoDemand?.("late-tile", { width: 0, height: 0, fps: 60 }));
 await wait(500);
-await settle(() => engine.current.reportVideoDemand("late-tile", { width: 640, height: 360, fps: 60 }));
+await settle(() => engine.current.reportVideoDemand?.("late-tile", { width: 640, height: 360, fps: 60 }));
 await wait(1_500);
 assert.deepEqual(demands().filter((d) => d.stream_id === "late-tile"), [{ stream_id: "late-tile", width: 640, height: 368, fps: 60 }], "a hidden first report went out before the tile mounted");
 

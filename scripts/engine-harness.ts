@@ -234,14 +234,19 @@ function directionOf(send: boolean, receive: boolean) {
 export type FakeTrack = ReturnType<typeof fakeTrack>;
 export type FakeStream = ReturnType<typeof fakeStream>;
 
+export interface SendParameters {
+  encodings: RTCRtpEncodingParameters[];
+  degradationPreference?: string;
+}
+
 export interface FakeSender {
   track: FakeTrack | null;
   streams: FakeStream[];
   kind: string;
-  parameters: { encodings: RTCRtpEncodingParameters[] };
+  parameters: SendParameters;
   replaces: number;
-  getParameters(): { encodings: RTCRtpEncodingParameters[] };
-  setParameters(parameters: { encodings: RTCRtpEncodingParameters[] }): Promise<void>;
+  getParameters(): SendParameters;
+  setParameters(parameters: SendParameters): Promise<void>;
   replaceTrack(next: FakeTrack | null): Promise<void>;
   setStreams(...next: FakeStream[]): void;
   /** Set by a check that wants to find this sender again, such as "camera". */

@@ -13,7 +13,7 @@ const source = readFileSync(
 );
 
 /** The effect body, from its arrow's brace to the brace that closes it. */
-function effectBody(text, marker) {
+function effectBody(text: string, marker: string) {
   const anchor = text.indexOf(marker);
   assert.notEqual(anchor, -1, `${SOURCE} no longer has "${marker}". Move this check with it.`);
 
@@ -31,7 +31,13 @@ function effectBody(text, marker) {
 // Plain JavaScript already — the effect carries no type annotations.
 const body = effectBody(source, "Monitor processedStream changes");
 
-function fakeTrack(id, kind = "audio") {
+interface Track {
+  id: string;
+  kind: string;
+}
+type StreamsState = Record<string, { isLocal: boolean; stream: { id: string; getAudioTracks(): Track[] } }>;
+
+function fakeTrack(id: string, kind = "audio"): Track {
   return { id, kind };
 }
 
@@ -39,9 +45,14 @@ function fakeTrack(id, kind = "audio") {
  * One audio sender, and a stream that has already moved on. `localTrack` is what
  * the streams state still holds, which is not always what the sender holds.
  */
-function harness({ senderTrack, newTrack, localStreamId, localTrack }) {
-  const replaced = [];
-  const sender = {
+function harness({
+  senderTrack,
+  newTrack,
+  localStreamId,
+  localTrack,
+}: { senderTrack: Track; newTrack: Track; localStreamId: string; localTrack?: Track }) {
+  const replaced: { from: string | null; to: string | null }[] = [];
+  const sender: { track: Track | null; replaceTrack(t: Track | null): Promise<void> } = {
     track: senderTrack,
     replaceTrack(t) {
       replaced.push({ from: sender.track?.id ?? null, to: t?.id ?? null });
@@ -51,7 +62,7 @@ function harness({ senderTrack, newTrack, localStreamId, localTrack }) {
   };
 
   const newStream = { id: "stream-new", getAudioTracks: () => [newTrack] };
-  const streams = {
+  const streams: StreamsState = {
     [localStreamId]: {
       isLocal: true,
       stream: { id: localStreamId, getAudioTracks: () => [localTrack ?? senderTrack] },
@@ -59,7 +70,7 @@ function harness({ senderTrack, newTrack, localStreamId, localTrack }) {
     remote: { isLocal: false, stream: { id: "remote", getAudioTracks: () => [] } },
   };
 
-  let wrote = null;
+  let wrote: StreamsState | null = null;
   const run = new Function(
     "isConnected",
     "peerConnectionRef",
@@ -77,7 +88,7 @@ function harness({ senderTrack, newTrack, localStreamId, localTrack }) {
     { current: [sender] },
     { processedStream: newStream, mediaStream: newStream },
     streams,
-    (fn) => (wrote = fn(streams)),
+    (fn: (state: StreamsState) => StreamsState) => (wrote = fn(streams)),
     { error: () => {} },
   );
 
@@ -97,7 +108,7 @@ function harness({ senderTrack, newTrack, localStreamId, localTrack }) {
     [{ from: "old", to: "new" }],
     "the rebuilt track is not sent, or is sent more than once",
   );
-  assert.equal(sender.track.id, "new", "the sender kept the old track");
+  assert.equal(sender.track?.id, "new", "the sender kept the old track");
 
   // The replace resolves a microtask later, and the state write is in its then.
   await new Promise((resolve) => setImmediate(resolve));
@@ -146,10 +157,10 @@ function harness({ senderTrack, newTrack, localStreamId, localTrack }) {
 {
   const audio = fakeTrack("old");
   const video = fakeTrack("cam", "video");
-  const replaced = [];
+  const replaced: { on: string; to: string }[] = [];
   const senders = [
-    { track: video, replaceTrack: (t) => (replaced.push({ on: "video", to: t.id }), Promise.resolve()) },
-    { track: audio, replaceTrack(t) { replaced.push({ on: "audio", to: t.id }); this.track = t; return Promise.resolve(); } },
+    { track: video, replaceTrack: (t: Track) => (replaced.push({ on: "video", to: t.id }), Promise.resolve()) },
+    { track: audio, replaceTrack(t: Track) { replaced.push({ on: "audio", to: t.id }); this.track = t; return Promise.resolve(); } },
   ];
   const next = fakeTrack("new");
   const newStream = { id: "stream-new", getAudioTracks: () => [next] };
@@ -176,7 +187,7 @@ function harness({ senderTrack, newTrack, localStreamId, localTrack }) {
 // Nothing happens while disconnected.
 {
   const body2 = body;
-  const replaced = [];
+  const replaced: string[] = [];
   new Function(
     "isConnected", "peerConnectionRef", "registeredTracksRef",
     "microphoneBuffer", "streams", "setStreams", "console",
@@ -184,7 +195,7 @@ function harness({ senderTrack, newTrack, localStreamId, localTrack }) {
   )(
     false,
     { current: {} },
-    { current: [{ track: fakeTrack("old"), replaceTrack: (t) => (replaced.push(t.id), Promise.resolve()) }] },
+    { current: [{ track: fakeTrack("old"), replaceTrack: (t: Track) => (replaced.push(t.id), Promise.resolve()) }] },
     { processedStream: { id: "s", getAudioTracks: () => [fakeTrack("new")] } },
     {},
     () => {},
