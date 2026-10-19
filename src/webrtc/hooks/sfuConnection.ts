@@ -310,13 +310,14 @@ export async function connectToSfuWebSocket(
 
           throw new Error("Peer connection closed during offer processing");
         })
-        .then((answer) => {
-          if (eSportsModeEnabled && answer.sdp) {
+        .then((created) => {
+          let answer = created;
+          if (eSportsModeEnabled && created.sdp) {
             voiceLog.info(
               "SFU-WS",
               "eSports mode — optimizing SDP for low latency (ptime=10)",
             );
-            answer = { ...answer, sdp: optimizeSdpForLowLatency(answer.sdp) };
+            answer = { ...created, sdp: optimizeSdpForLowLatency(created.sdp) };
           }
 
           voiceLog.ok(

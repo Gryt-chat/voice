@@ -71,31 +71,6 @@ export default tseslint.config(
     ],
     rules: { "@typescript-eslint/no-restricted-types": "off" },
   },
-  // @typescript-eslint/no-unused-vars: from before ESLint ran here.
-  {
-    files: [
-      "src/audio/hooks/useDeviceEnumeration.ts",
-    ],
-    rules: { "@typescript-eslint/no-unused-vars": "off" },
-  },
-  // Non-null assertions from before the rule.
-  {
-    files: [
-      "src/audio/hooks/useNativeAudioCapture.ts",
-      "src/audio/hooks/useNativeScreenCapture.ts",
-      "src/audio/processors/rnnoiseProcessor.ts",
-      "src/audio/utils/flipVideoStream.ts",
-    ],
-    rules: { "@typescript-eslint/no-non-null-assertion": "off" },
-  },
-  // Nested ternaries from before the rule.
-  {
-    files: [
-      "src/audio/hooks/useVoiceLatency.ts",
-      "src/webrtc/hooks/sfuConnectFlow.ts",
-    ],
-    rules: { "no-nested-ternary": "off" },
-  },
   // A library's types differ from the DOM ones the SDK speaks: react-native-webrtc's, and MediaPipe's detector.
   {
     files: [
@@ -103,13 +78,5 @@ export default tseslint.config(
       "src/platform/native.ts",
     ],
     rules: { "no-restricted-syntax": "off" },
-  },
-  // Reassigned parameters from before the rule.
-  {
-    files: [
-      "src/webrtc/hooks/selectBestSfuUrl.ts",
-      "src/webrtc/hooks/sfuConnection.ts",
-    ],
-    rules: { "no-param-reassign": "off" },
   },
 );

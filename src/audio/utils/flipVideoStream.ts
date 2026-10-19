@@ -21,7 +21,8 @@ export function createFlippedStream(source: MediaStream): FlippedStream {
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext("2d")!;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No 2D canvas context");
 
   const video = document.createElement("video");
   video.srcObject = source;
