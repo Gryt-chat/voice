@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useVoiceConfig } from "../../config";
 import { useSFU } from "../../webrtc/hooks/useSFU";
 
+import { type ReceiveCounters, type ReceiveStream, readReceiveStreams, total, worst } from "../receiveStats";
+
 import { useMicrophone } from "./useMicrophone";
 
 export interface LatencyBreakdown {
@@ -19,6 +21,8 @@ export interface LatencyBreakdown {
   packetsLost: number | null;
   packetsSent: number | null;
   packetsReceived: number | null;
+  /** Each incoming audio stream on its own (gh-53). The fields above are the worst, or the sum. */
+  receiveStreams: ReceiveStream[];
 
   // Codec info
   codec: string | null;
@@ -35,6 +39,10 @@ export interface LatencyBreakdown {
   localPipelineMs: number | null;
   estimatedOneWayMs: number | null;
   estimatedRoundTripMs: number | null;
+  /** One-way plus the worst receive jitter buffer and this device's output latency (gh-53). */
+  estimatedMouthToEarMs: number | null;
+  /** How long this connection has been up, so long-call growth can be read against it. */
+  callAgeMs: number | null;
 }
 
 const EMPTY: LatencyBreakdown = {
@@ -48,6 +56,7 @@ const EMPTY: LatencyBreakdown = {
   packetsLost: null,
   packetsSent: null,
   packetsReceived: null,
+  receiveStreams: [],
   codec: null,
   bitrateKbps: null,
   availableOutKbps: null,
@@ -58,6 +67,8 @@ const EMPTY: LatencyBreakdown = {
   localPipelineMs: null,
   estimatedOneWayMs: null,
   estimatedRoundTripMs: null,
+  estimatedMouthToEarMs: null,
+  callAgeMs: null,
 };
 
 export function useVoiceLatency(enabled: boolean) {
@@ -70,7 +81,8 @@ export function useVoiceLatency(enabled: boolean) {
 
   const [latency, setLatency] = useState<LatencyBreakdown>(EMPTY);
   const prevBytesRef = useRef<{ bytes: number; ts: number } | null>(null);
-  const prevJitterBufRef = useRef<{ delay: number; count: number } | null>(null);
+  // Per stream: one shared accumulator mixed participants' counters in a group call (gh-53).
+  const prevReceiveRef = useRef(new Map<string, ReceiveCounters>());
 
   const computeLocalPipeline = useCallback(() => {
     if (!audioContext) return { baseMs: null, outputMs: null, rnnoiseMs: null, totalMs: null };
@@ -107,11 +119,13 @@ export function useVoiceLatency(enabled: boolean) {
     if (!enabled) {
       setLatency(EMPTY);
       prevBytesRef.current = null;
-      prevJitterBufRef.current = null;
+      prevReceiveRef.current.clear();
       return;
     }
 
     let cancelled = false;
+    const connectedAt = isConnected ? performance.now() : null;
+    const counters = prevReceiveRef.current;
 
     const poll = async () => {
       if (cancelled) return;
@@ -125,6 +139,7 @@ export function useVoiceLatency(enabled: boolean) {
       let packetsLost: number | null = null;
       let packetsSent: number | null = null;
       let packetsReceived: number | null = null;
+      let receiveStreams: ReceiveStream[] = [];
       let codec: string | null = null;
       let bitrateKbps: number | null = null;
       let availableOutKbps: number | null = null;
@@ -173,31 +188,8 @@ export function useVoiceLatency(enabled: boolean) {
             }
 
             if (stat.type === "inbound-rtp" && stat.kind === "audio") {
-              if (typeof stat.jitter === "number") {
-                jitterMs = stat.jitter * 1000;
-              }
-              if (typeof stat.packetsLost === "number") {
-                packetsLost = stat.packetsLost;
-              }
-              if (typeof stat.packetsReceived === "number") {
-                packetsReceived = stat.packetsReceived;
-              }
               if (stat.codecId && codecMap.has(stat.codecId)) {
                 codec = codecMap.get(stat.codecId) || null;
-              }
-              if (typeof stat.jitterBufferDelay === "number" &&
-                  typeof stat.jitterBufferEmittedCount === "number" &&
-                  stat.jitterBufferEmittedCount > 0) {
-                const prev = prevJitterBufRef.current;
-                if (prev && stat.jitterBufferEmittedCount > prev.count) {
-                  const dDelay = stat.jitterBufferDelay - prev.delay;
-                  const dCount = stat.jitterBufferEmittedCount - prev.count;
-                  jitterBufferMs = (dDelay / dCount) * 1000;
-                }
-                prevJitterBufRef.current = {
-                  delay: stat.jitterBufferDelay,
-                  count: stat.jitterBufferEmittedCount,
-                };
               }
             }
 
@@ -221,6 +213,12 @@ export function useVoiceLatency(enabled: boolean) {
               }
             }
           });
+
+          receiveStreams = readReceiveStreams(report.values(), counters);
+          jitterMs = worst(receiveStreams.map((r) => r.jitterMs));
+          jitterBufferMs = worst(receiveStreams.map((r) => r.jitterBufferMs));
+          packetsLost = total(receiveStreams.map((r) => r.packetsLost));
+          packetsReceived = total(receiveStreams.map((r) => r.packetsReceived));
         } catch {
           // getStats can throw if pc is closing
         }
@@ -238,6 +236,9 @@ export function useVoiceLatency(enabled: boolean) {
       }
 
       const estimatedRoundTripMs = estimatedOneWayMs !== null ? estimatedOneWayMs * 2 : null;
+      const estimatedMouthToEarMs = estimatedOneWayMs === null
+        ? null
+        : estimatedOneWayMs + (jitterBufferMs ?? 0) + (local.outputMs ?? 0);
 
       if (!cancelled) {
         setLatency({
@@ -251,6 +252,7 @@ export function useVoiceLatency(enabled: boolean) {
           packetsLost,
           packetsSent,
           packetsReceived,
+          receiveStreams,
           codec,
           bitrateKbps,
           availableOutKbps,
@@ -261,6 +263,8 @@ export function useVoiceLatency(enabled: boolean) {
           localPipelineMs: local.totalMs,
           estimatedOneWayMs,
           estimatedRoundTripMs,
+          estimatedMouthToEarMs,
+          callAgeMs: connectedAt === null ? null : performance.now() - connectedAt,
         });
       }
     };
@@ -272,7 +276,7 @@ export function useVoiceLatency(enabled: boolean) {
       cancelled = true;
       clearInterval(interval);
       prevBytesRef.current = null;
-      prevJitterBufRef.current = null;
+      counters.clear();
     };
   }, [enabled, isConnected]);
 

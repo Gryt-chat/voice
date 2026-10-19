@@ -48,6 +48,25 @@ await engine.update({ probe: true });
 await advance(1_000);
 assert.equal(engine.current.latency.networkRttMs, 42, "the poll did not read the connection");
 
+// Each incoming stream against its own counters: one shared one mixed two speakers up (gh-53).
+{
+  const inbound = (id: string, delay: number, emitted: number, extra = {}) =>
+    [id, { id, type: "inbound-rtp", kind: "audio", jitterBufferDelay: delay, jitterBufferEmittedCount: emitted, packetsReceived: 100, ...extra }];
+  const cp = ["CP1", { id: "CP1", type: "candidate-pair", state: "succeeded", nominated: true, currentRoundTripTime: 0.042 }];
+  pc.stats = new Map([cp, inbound("A", 400, 10_000), inbound("B", 1_200, 10_000, { jitterBufferTargetDelay: 1_000 })]);
+  await advance(1_000);
+  pc.stats = new Map([cp, inbound("A", 800, 20_000), inbound("B", 2_400, 20_000, { jitterBufferTargetDelay: 2_000 })]);
+  await advance(1_000);
+  const l = engine.current.latency;
+  assert.deepEqual(l.receiveStreams.map((r) => [r.id, r.jitterBufferMs]), [["A", 40], ["B", 120]], "a stream was measured against another's counters");
+  assert.equal(l.receiveStreams[1].jitterBufferTargetMs, 100);
+  assert.equal(l.jitterBufferMs, 120, "the headline is not the worst stream");
+  assert.equal(l.packetsReceived, 200, "packets are not summed across streams");
+  assert.ok(l.estimatedMouthToEarMs !== null && l.estimatedOneWayMs !== null && l.estimatedMouthToEarMs >= l.estimatedOneWayMs + 120);
+  assert.ok(l.callAgeMs !== null && l.callAgeMs > 0, "no call age");
+  pc.stats = new Map([cp]);
+}
+
 /** A config that renders the engine again. Noise suppression also rebuilds a callback the poll reads. */
 function config(i: number) {
   const next = voiceConfig({ stunHosts: ["stun:a.test"] });

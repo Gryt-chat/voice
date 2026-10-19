@@ -25,6 +25,7 @@ export {
 export { useMicrophone } from "./hooks/useMicrophone";
 export { useSpeakers } from "./hooks/useSpeakers";
 export { type LatencyBreakdown, useVoiceLatency } from "./hooks/useVoiceLatency";
+export type { ReceiveStream } from "./receiveStats";
 export { type PushToTalkGate, usePushToTalkGate } from "./hooks/usePushToTalkGate";
 export {
   estimateBitrate,
