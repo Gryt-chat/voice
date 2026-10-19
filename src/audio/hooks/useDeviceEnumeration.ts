@@ -40,7 +40,7 @@ export function useDeviceEnumeration() {
           // Re-enumerate to get device labels
           allDevices = await navigator.mediaDevices.enumerateDevices();
           audioDevices = allDevices.filter((d) => d.kind === "audioinput") as InputDeviceInfo[];
-        } catch (permissionError) {
+        } catch {
           // Continue with devices without labels
         }
       }

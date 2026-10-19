@@ -276,11 +276,8 @@ export function useVoiceLatency(enabled: boolean) {
     };
   }, [enabled, isConnected]);
 
-  const modeLabel = eSportsModeEnabled
-    ? "eSports"
-    : inputMode === "push_to_talk"
-      ? "Push to Talk"
-      : "Voice Activity";
+  const inputLabel = inputMode === "push_to_talk" ? "Push to Talk" : "Voice Activity";
+  const modeLabel = eSportsModeEnabled ? "eSports" : inputLabel;
 
   return { latency, modeLabel };
 }

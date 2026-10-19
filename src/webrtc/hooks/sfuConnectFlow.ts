@@ -950,11 +950,9 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     // estimate and the camera 30 (GRYT-1332). Voice needs tens of kbps.
     const DEFAULT_MAX_BITRATE_BPS = 64_000;
     const ESPORTS_MAX_BITRATE_BPS = 128_000;
-    const effectiveBitrate = eSportsModeEnabled
-      ? ESPORTS_MAX_BITRATE_BPS
-      : typeof channelMaxBitrateBps === "number" && channelMaxBitrateBps > 0
-        ? channelMaxBitrateBps
-        : DEFAULT_MAX_BITRATE_BPS;
+    const channelBitrate =
+      typeof channelMaxBitrateBps === "number" && channelMaxBitrateBps > 0 ? channelMaxBitrateBps : DEFAULT_MAX_BITRATE_BPS;
+    const effectiveBitrate = eSportsModeEnabled ? ESPORTS_MAX_BITRATE_BPS : channelBitrate;
 
     voiceLog.info(
       "CONNECT",

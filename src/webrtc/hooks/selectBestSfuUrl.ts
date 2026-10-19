@@ -148,11 +148,11 @@ function setCachedSfuUrl(host: string, url: string) {
  * answered fastest. Falls back to the first URL if every ping fails or times out.
  */
 export async function selectBestSfuUrl(
-  wsUrls: string[],
+  requestedUrls: string[],
   host?: string,
 ): Promise<string> {
-  const originalUrls = wsUrls.map(normalizeSfuWsUrl);
-  wsUrls = filterWsUrlsForPage(originalUrls);
+  const originalUrls = requestedUrls.map(normalizeSfuWsUrl);
+  let wsUrls = filterWsUrlsForPage(originalUrls);
 
   if (wsUrls.length === 0) {
     voiceLog.warn(

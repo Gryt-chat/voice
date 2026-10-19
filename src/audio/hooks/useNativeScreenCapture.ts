@@ -102,9 +102,9 @@ export function useNativeScreenCapture(): NativeScreenCaptureState {
 
     let cancelled = false;
 
-    async function probe(attempt: number) {
+    const probe = async (attempt: number) => {
       try {
-        const v = await api!.isNativeScreenCaptureAvailable();
+        const v = await api.isNativeScreenCaptureAvailable();
         if (!cancelled) {
           console.log(`[NativeScreenCapture] availability: ${v}`);
           setAvailable(v);
@@ -117,7 +117,7 @@ export function useNativeScreenCapture(): NativeScreenCaptureState {
           console.error("[NativeScreenCapture] probe failed", err);
         }
       }
-    }
+    };
 
     probe(1);
     return () => {
@@ -411,7 +411,8 @@ export function useNativeScreenCapture(): NativeScreenCaptureState {
               cb(nalData, keyframe, timestampUs);
             }
 
-            const decoder = decoderRef.current!;
+            const decoder = decoderRef.current;
+            if (!decoder) return;
             const queueDepth = decoder.decodeQueueSize ?? 0;
             if (!keyframe && queueDepth > 3) {
               framesDropped++;

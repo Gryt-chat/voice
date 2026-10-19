@@ -107,17 +107,18 @@ export class RNNoiseProcessor {
 
     // .js, not .ts, because this string survives compilation unchanged. A .ts path points at
     // nothing in dist, and the consumer's bundler fails after publish has already passed.
-    this.worker = new Worker(
+    const worker = new Worker(
       new URL('./rnnoiseWorker.js', import.meta.url),
       { type: 'module' },
     );
+    this.worker = worker;
 
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(
         () => reject(new Error('RNNoise worker init timeout')),
         15_000,
       );
-      this.worker!.onmessage = (e) => {
+      worker.onmessage = (e) => {
         if (e.data.type === 'ready') {
           clearTimeout(timeout);
           resolve();
@@ -126,7 +127,7 @@ export class RNNoiseProcessor {
           reject(new Error(e.data.message));
         }
       };
-      this.worker!.postMessage({ type: 'init' });
+      worker.postMessage({ type: 'init' });
     });
 
     // Direct worklet↔worker channel so audio frames never touch the main thread

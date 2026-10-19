@@ -39,9 +39,9 @@ export function useNativeAudioCapture(): NativeAudioCaptureState {
 
     let cancelled = false;
 
-    async function probe(attempt: number) {
+    const probe = async (attempt: number) => {
       try {
-        const v = await api!.isNativeAudioCaptureAvailable();
+        const v = await api.isNativeAudioCaptureAvailable();
         if (!cancelled) {
           console.log(`[NativeAudioCapture] availability probe: ${v}`);
           setAvailable(v);
@@ -55,7 +55,7 @@ export function useNativeAudioCapture(): NativeAudioCaptureState {
           console.error("[NativeAudioCapture] probe failed after retries", err);
         }
       }
-    }
+    };
 
     probe(1);
 
