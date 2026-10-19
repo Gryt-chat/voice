@@ -87,16 +87,17 @@ export function sfuOffer(forwarded: string[] = []): Description {
   return { type: "offer", sdp: `${lines.join("\r\n")}\r\n` };
 }
 
-/**
- * The SFU's WebSocket. It answers `client_join` with `room_joined` and an offer, and every
- * `renegotiate` with a new one, unless `hold` is set, which queues them for `release`.
- */
 /** What goes over the SFU socket, both ways: an event name and its JSON payload. */
 export interface SocketMessage {
   event: string;
   data: string;
 }
 
+
+/**
+ * The SFU's WebSocket. It answers `client_join` with `room_joined` and an offer, and every
+ * `renegotiate` with a new one, unless `hold` is set, which queues them for `release`.
+ */
 export class FakeSocket {
   static CONNECTING = 0;
   static OPEN = 1;
@@ -467,10 +468,6 @@ export function fakeStream(track: FakeTrack) {
   };
 }
 
-/**
- * Shaped like `nativePlatform`: it builds its own audio pipeline and has no screen capture.
- * Microphone requests answer at once unless `microphone.manual` is set.
- */
 /** A microphone request the harness can answer by hand when `microphone.manual` is set. */
 export interface MicrophoneRequest {
   deviceId?: string;
@@ -479,6 +476,11 @@ export interface MicrophoneRequest {
   reject: (error: Error) => void;
 }
 
+
+/**
+ * Shaped like `nativePlatform`: it builds its own audio pipeline and has no screen capture.
+ * Microphone requests answer at once unless `microphone.manual` is set.
+ */
 export function fakePhonePlatform() {
   const microphone: { manual: boolean; requests: MicrophoneRequest[] } = { manual: false, requests: [] };
   const peers: FakePeerConnection[] = [];
