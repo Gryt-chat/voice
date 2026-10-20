@@ -37,13 +37,14 @@ const settings = { volume: 100, gateThreshold: 0, gateReleaseMs: 200, gateSmooth
 const SendProcessor = registered.get(SEND_PROCESSOR);
 const ReceiveProcessor = registered.get(RECEIVE_PROCESSOR);
 assert.ok(SendProcessor && ReceiveProcessor, "the worklet source didn't register both processors");
-const send = new SendProcessor({ processorOptions: { wasm: wasm.buffer.slice(0), frame: FRAME, bitrate: 64000, settings } });
+const send = new SendProcessor({ processorOptions: { wasm: wasm.buffer.slice(0), frame: FRAME, bitrate: 64000, stereoBitrate: 256000, settings } });
 const receive = new ReceiveProcessor({ processorOptions: { wasm: wasm.buffer.slice(0), frame: FRAME } });
 await new Promise((r) => setTimeout(r, 100)); // both load Opus asynchronously
 
 /** Runs `seconds` with a beep starting at `beepAt`; packets go straight across, as a perfect network. */
-function run(seconds: number, beepAt: number) {
+function run(seconds: number, beepAt: number, stereo = false) {
   const out = new Float32Array(Math.round(seconds * SR));
+  const outRight = new Float32Array(out.length);
   const onsetIn = Math.round(beepAt * SR);
   for (let pos = 0; pos + QUANTUM <= out.length; pos += QUANTUM) {
     const mic = new Float32Array(QUANTUM);
@@ -51,7 +52,8 @@ function run(seconds: number, beepAt: number) {
       const n = pos + i - onsetIn;
       mic[i] = n >= 0 && n < 0.08 * SR ? 0.5 * Math.sin((2 * Math.PI * 1000 * n) / SR) : 0;
     }
-    send.process([[mic]], [[new Float32Array(QUANTUM)]]);
+    // Stereo: the beep on the left only, so the sides differ and the sender switches to stereo.
+    send.process([stereo ? [mic, new Float32Array(QUANTUM)] : [mic]], [[new Float32Array(QUANTUM)]]);
     for (const bytes of send.port.sent.splice(0)) {
       const forwarded = new Uint8Array(4 + bytes.length);
       new DataView(forwarded.buffer).setUint32(0, 7);
@@ -59,11 +61,13 @@ function run(seconds: number, beepAt: number) {
       receive.port.onmessage?.({ data: forwarded });
     }
     const block = new Float32Array(QUANTUM);
-    receive.process([], [[block]]);
+    const blockRight = new Float32Array(QUANTUM);
+    receive.process([], [[block, blockRight]]);
     out.set(block, pos);
+    outRight.set(blockRight, pos);
     clock += QUANTUM / SR;
   }
-  return { out, onsetIn };
+  return { out, outRight, onsetIn };
 }
 
 const { out, onsetIn } = run(1, 0.5);
@@ -74,6 +78,13 @@ assert.ok(delayMs > 0 && delayMs < 15, `the pipeline alone took ${delayMs.toFixe
 const peak = Math.max(...out.subarray(onsetOut, onsetOut + 0.05 * SR).map(Math.abs));
 assert.ok(peak > 0.4 && peak < 0.6, `the beep came out at a peak of ${peak.toFixed(2)}, in at 0.5`);
 
+// A stereo mic: the left-only beep comes out on the left, and the right stays quiet.
+const stereoRun = run(1, 0.5, true);
+const leftPeak = Math.max(...stereoRun.out.subarray(stereoRun.onsetIn, stereoRun.onsetIn + 0.1 * SR).map(Math.abs));
+const rightPeak = Math.max(...stereoRun.outRight.subarray(stereoRun.onsetIn, stereoRun.onsetIn + 0.1 * SR).map(Math.abs));
+assert.ok(leftPeak > 0.4 && leftPeak < 0.6, `the left beep came out at ${leftPeak.toFixed(2)}`);
+assert.ok(rightPeak < 0.02, `the right side, silent going in, came out at ${rightPeak.toFixed(3)}`);
+
 // Muted: the timestamp keeps moving, but nothing is sent.
 send.port.onmessage?.({ data: { type: "sending", on: false } });
 const before = send.port.sent.length;
@@ -81,4 +92,4 @@ send.process([[new Float32Array(QUANTUM).fill(0.3)]], [[new Float32Array(QUANTUM
 send.process([[new Float32Array(QUANTUM).fill(0.3)]], [[new Float32Array(QUANTUM)]]);
 assert.equal(send.port.sent.length, before, "a muted sender sent packets");
 
-console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; muted sends nothing`);
+console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; muted sends nothing`);

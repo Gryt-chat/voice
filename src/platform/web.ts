@@ -18,7 +18,8 @@ const MIC_CONSTRAINTS: MediaTrackConstraints = {
   autoGainControl: false,
   echoCancellation: false,
   noiseSuppression: false,
-  channelCount: 1,
+  // A stereo mic stays stereo for the own transport; the WebRTC path mixes it down as before.
+  channelCount: { ideal: 2 },
   sampleRate: 48000,
   sampleSize: 16,
 };

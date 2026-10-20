@@ -34,6 +34,8 @@ export interface AudioTransportSession {
 const FRAME = 120;
 // Sivert's listening test: 96 kbps is the least that holds up, 192 sounds the same as the original.
 const BITRATE = 192_000;
+// 256 sounded like the original song in stereo. Only used while the mic's two sides really differ.
+const STEREO_BITRATE = 256_000;
 // For a stream the microphone pipeline already processed.
 export const PASS_THROUGH: VoiceEffectSettings = {
   volume: 100, gateThreshold: 0, gateReleaseMs: 200, gateSmoothing: 0.8, autoGain: false,
@@ -107,10 +109,10 @@ export async function startAudioTransport(o: {
   });
   for (const a of attempts) a.then((t) => t !== wt && t.close(), () => undefined);
 
-  const sendOptions: SendOptions = { wasm: o.wasm.slice(0), frame: FRAME, bitrate: BITRATE, settings: o.effects };
+  const sendOptions: SendOptions = { wasm: o.wasm.slice(0), frame: FRAME, bitrate: BITRATE, stereoBitrate: STEREO_BITRATE, settings: o.effects };
   const receiveOptions: ReceiveOptions = { wasm: o.wasm.slice(0), frame: FRAME };
   const send = new AudioWorkletNode(o.context, SEND_PROCESSOR, { processorOptions: sendOptions });
-  const receive = new AudioWorkletNode(o.context, RECEIVE_PROCESSOR, { numberOfInputs: 0, processorOptions: receiveOptions });
+  const receive = new AudioWorkletNode(o.context, RECEIVE_PROCESSOR, { numberOfInputs: 0, outputChannelCount: [2], processorOptions: receiveOptions });
   // A node nothing pulls from never runs, so the send worklet ends in a silent gain.
   const sink = o.context.createGain();
   sink.gain.value = 0;
