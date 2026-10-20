@@ -474,6 +474,10 @@ export function fakeTrack(kind = "audio", deviceId = "default") {
       this.readyState = "ended";
     },
     getSettings: () => ({ deviceId }),
+    /** A new track from the same source, which is what the engine sends since voice#53. */
+    clone() {
+      return { ...fakeTrack(kind, deviceId), clonedFrom: this };
+    },
   };
 }
 

@@ -3,6 +3,7 @@ import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { Streams, StreamSources } from "../types/SFU";
 import type { RoomCoordinator } from "../../types";
 import { voiceLog } from "./voiceLogger";
+import { sentClones } from "./sentClones";
 
 export interface CleanupRefs {
   peerConnectionRef: MutableRefObject<RTCPeerConnection | null>;
@@ -67,13 +68,16 @@ export async function performSfuCleanup(
 
   voiceLog.step("DISCONNECT", 1, `Removing ${tracksToRemove.length} registered tracks`);
   for (const sender of tracksToRemove) {
+    const track = sender.track;
     try {
-      if (peerConnectionRef.current && sender.track) {
+      if (peerConnectionRef.current && track) {
         peerConnectionRef.current.removeTrack(sender);
       }
     } catch (error) {
       voiceLog.fail("DISCONNECT", 1, "Error removing track", error);
     }
+    // Ours from connect; the pipeline's own track keeps running for the next call.
+    if (track && sentClones.has(track)) track.stop();
   }
 
   // Step 2: Close peer connection

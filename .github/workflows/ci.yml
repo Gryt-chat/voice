@@ -126,6 +126,10 @@ jobs:
       - name: Check the latency poll reads once a second
         run: npm run check-voice-latency
 
+      # A reconnect re-added the same Web Audio track and the call stayed ~10 ms slower (voice#53).
+      - name: Each connection sends its own microphone clone
+        run: npm run check-fresh-send-track
+
       # eSports mode said no processing and still ran 16 ms of compressor, limiter and clipper (voice#53).
       - name: eSports mode builds no processing
         run: npm run check-esports-pipeline
