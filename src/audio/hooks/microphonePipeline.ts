@@ -116,8 +116,8 @@ export function createMicrophoneBuffer({
 
   let agcAnalyser: AnalyserNode | undefined;
   let agcGain: GainNode | undefined;
-  // eSports mode promises no processing. Compressor and limiter each add 6 ms of lookahead, the clipper 4 ms.
-  const lean = eSportsModeEnabled;
+  // Nothing processing the voice means nothing in the chain: limiter and compressor are 6 ms each, the clipper 4.
+  const lean = eSportsModeEnabled || (!rnnoiseNode && !autoGainEnabled && !compressorEnabled);
 
   if (autoGainEnabled && !lean) {
     agcAnalyser = audioContext.createAnalyser();
