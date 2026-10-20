@@ -4,6 +4,7 @@
 #define GRYT_VOICE_ENGINE_H
 
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -24,6 +25,8 @@ typedef struct {
   uint32_t id;
   int used;
   double last_heard_ms;
+  /* When a packet played last carried the speaking flag (GRYT-1830). */
+  double last_speaking_ms;
   gv_jitter jitter;
   OpusDecoder *decoder;
   float pending[GV_FRAME * 2 * 2];
@@ -35,13 +38,26 @@ typedef struct {
   OpusEncoder *mono, *stereo;
   float frame[GV_FRAME], stereo_frame[GV_FRAME * 2];
   size_t filled;
-  int stereo_for, sending;
+  int stereo_for;
+  /* Set from the host's thread, read on the audio thread. */
+  atomic_int sending;
+  _Atomic float output_gain;
+  gv_effect_settings pending_effects;
+  atomic_bool effects_changed;
   uint16_t seq;
   uint32_t timestamp;
   gv_send_fn send;
   void *user;
   double now_ms;
   gv_sender senders[GV_MAX_SENDERS];
+  /* Who is heard speaking, one sender id or 0 per slot, for another thread to read. */
+  atomic_uint speaking[GV_MAX_SENDERS];
+  /* Each slot's sender and how loud it was in the last render, in dBFS, for the halo. */
+  atomic_uint slot_id[GV_MAX_SENDERS];
+  _Atomic float level_db[GV_MAX_SENDERS];
+  /* The mic as sent, after the effects: silent when muted or gated. */
+  _Atomic float mic_db;
+  atomic_bool mic_speaking;
   /* One producer (the network thread), one consumer (render, on the audio thread). */
   uint8_t queue[GV_QUEUE_SLOTS][GV_QUEUE_BYTES];
   uint16_t queue_len[GV_QUEUE_SLOTS];
@@ -60,5 +76,13 @@ int gv_engine_queue(gv_engine *e, const uint8_t *bytes, size_t len);
 /* Everyone mixed, interleaved stereo. Also moves the engine's clock on. */
 void gv_engine_render(gv_engine *e, float *out, size_t frames);
 void gv_engine_set_sending(gv_engine *e, int on);
+/* What everyone is heard at: 0 when deafened, 1 as sent. */
+void gv_engine_set_output_gain(gv_engine *e, float gain);
+/* Taken at the next capture, so the audio thread never reads half a change. */
+void gv_engine_set_effects(gv_engine *e, const gv_effect_settings *s);
+/* The sender ids heard speaking in the last 250 ms, up to max. Safe from any thread. */
+int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max);
+/* Every sender heard and its level in dBFS, up to max, plus the mic's (GRYT-1830). Safe from any thread. */
+int gv_engine_levels(gv_engine *e, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking);
 
 #endif

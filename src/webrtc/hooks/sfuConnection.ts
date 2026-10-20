@@ -2,7 +2,7 @@ import type { MutableRefObject } from "react";
 
 import { parseVideoWanted, type VideoWanted } from "./videoDemand";
 import { voiceLog } from "./voiceLogger";
-import type { AudioTransportOffer } from "../../transport/session";
+import type { AudioTransportOffer, AudioUDPOffer } from "../../transport/session";
 
 /**
  * Reduce Opus packetization time from the default 20ms to 10ms.
@@ -84,7 +84,19 @@ function parseAudioTransport(value: unknown): AudioTransportOffer | null {
   const { urls, certHash, ticket } = value as Record<string, unknown>;
   if (!Array.isArray(urls) || typeof certHash !== "string" || typeof ticket !== "string") return null;
   const https = urls.filter((u): u is string => typeof u === "string" && u.startsWith("https://"));
-  return https.length > 0 ? { urls: https, certHash, ticket } : null;
+  if (https.length === 0) return null;
+  const udp = parseUdp((value as Record<string, unknown>).udp);
+  return udp ? { urls: https, certHash, ticket, udp } : { urls: https, certHash, ticket };
+}
+
+/** The native engine's part of the offer (GRYT-1822): host:port addresses, a u32 session, a 32-byte base64 key. */
+function parseUdp(value: unknown): AudioUDPOffer | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const { addrs, session, key } = value as Record<string, unknown>;
+  if (!Array.isArray(addrs) || typeof session !== "number" || typeof key !== "string") return undefined;
+  if (!Number.isInteger(session) || session <= 0 || session > 0xffffffff || !/^[A-Za-z0-9+/]{43}=$/.test(key)) return undefined;
+  const hosts = addrs.filter((a): a is string => typeof a === "string" && /:\d+$/.test(a));
+  return hosts.length > 0 ? { addrs: hosts, session, key } : undefined;
 }
 
 /**

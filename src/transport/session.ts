@@ -13,6 +13,15 @@ export interface AudioTransportOffer {
   urls: string[];
   certHash: string;
   ticket: string;
+  /** The native engine's plain UDP (GRYT-1822), when the SFU runs it. */
+  udp?: AudioUDPOffer;
+}
+
+/** A session id and its key; a packet that opens with the key is the only proof the SFU needs. */
+export interface AudioUDPOffer {
+  addrs: string[];
+  session: number;
+  key: string;
 }
 
 export interface AudioTransportSession {

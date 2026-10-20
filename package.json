@@ -21,10 +21,17 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "GrytVoice.podspec",
+    "expo-module.config.json",
+    "ios",
+    "native/core",
+    "native/vendor",
+    "native/build/opus-src",
+    "codec/opus/shim.c"
   ],
   "scripts": {
-    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.ts && node -e \"fs.cpSync('src/codec/opus.wasm','dist/codec/opus.wasm')\" && node scripts/build-worklet-source.ts",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.ts && node -e \"fs.cpSync('src/codec/opus.wasm','dist/codec/opus.wasm')\" && node scripts/build-worklet-source.ts && sh native/opus/source.sh",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:scripts": "tsc -p scripts",
     "lint": "eslint --flag unstable_native_nodejs_ts_config .",

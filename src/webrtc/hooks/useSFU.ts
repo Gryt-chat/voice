@@ -3,8 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMicrophone } from "../../audio/hooks/useMicrophone";
 import { useSpeakers } from "../../audio/hooks/useSpeakers";
 import type { MicrophoneBufferType } from "../../audio/types/Microphone";
+import type { NativeAudioSession } from "../../types";
 import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
 import { sliderToOutputGain } from "../../shared/audioVolume";
+import { getVoicePlatform } from "../../platform/index";
 import { singletonHook } from "../../shared/singletonHook";
 import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, PASS_THROUGH, startAudioTransport, transportEffects } from "../../transport/session";
 
@@ -19,6 +21,9 @@ import { createVideoSendController } from "./videoSender";
 import { type Phase, voiceLog } from "./voiceLogger";
 
 /** The raw microphone when the worklet can do all the processing; RNNoise still needs the graph. */
+// How often the phone asks the native engine who is speaking: fast enough for a ring.
+const SPEAKING_POLL_MS = 100;
+
 function transportInput(buffer: MicrophoneBufferType, { audio }: { audio: { noiseSuppression: boolean } }) {
   const raw = !audio.noiseSuppression && !!buffer.mediaStream?.getAudioTracks().length;
   return { input: raw ? buffer.mediaStream : buffer.processedStream, raw };
@@ -189,11 +194,26 @@ function useSfuHook(): SFUInterface {
   // server map, which is the thing the engine is deliberately kept out of.
 
   // The own voice transport (GRYT-1818): voice over WebTransport instead of the WebRTC audio track.
-  const { audioTransportWasm } = config.connection;
+  const { audioTransportWasm, nativeAudio } = config.connection;
   // Refs, because the connect that calls this was set up before the audio context existed.
   // Who is heard speaking over the transport: sender ids from the receive worklet, users from the SFU.
   const [speakingSenders, setSpeakingSenders] = useState<number[]>([]);
   const [senderUsers, setSenderUsers] = useState<Map<number, string>>(() => new Map());
+  const senderUsersRef = useRef(senderUsers);
+  senderUsersRef.current = senderUsers;
+  const nativeAudioRef = useRef<NativeAudioSession | null>(null);
+  // Asked for rather than kept in state: levels change ten times a second, and state would re-render every user of this hook.
+  const getTransportLevels = useCallback(() => {
+    const native = nativeAudioRef.current;
+    if (!native) return null;
+    const { ids, db, mic, micSpeaking } = native.levels();
+    const users = new Map<string, number>();
+    ids.forEach((id, i) => {
+      const user = senderUsersRef.current.get(id);
+      if (user) users.set(user, db[i]);
+    });
+    return { users, mic, micSpeaking };
+  }, []);
   const transportSpeaking = useMemo(
     () => new Set(speakingSenders.flatMap((id) => senderUsers.get(id) ?? [])),
     [speakingSenders, senderUsers],
@@ -201,6 +221,47 @@ function useSfuHook(): SFUInterface {
   const speakersRef = useRef({ audioContext, remoteBusNode });
   speakersRef.current = { audioContext, remoteBusNode };
   const startTransport = useCallback(async (offer: AudioTransportOffer) => {
+    // The phone: the native engine owns the mic and speaker, so WebRTC sends no audio at all (GRYT-1822).
+    const platform = getVoicePlatform();
+    if (nativeAudio && offer.udp && platform.startNativeAudio) {
+      const native = platform.startNativeAudio(offer.udp, transportEffects(audioRef.current.audio, audioRef.current.eSports));
+      if (!native) {
+        voiceLog.warn("TRANSPORT", "Native engine didn't start, staying on WebRTC audio");
+        return;
+      }
+      nativeAudioRef.current = native;
+      let ended = () => {};
+      // The engine can't call into JavaScript from the audio thread, so who's speaking is asked for.
+      let heard = "";
+      const poll = setInterval(() => {
+        const ids = native.speaking();
+        if (ids.join() !== heard) {
+          heard = ids.join();
+          setSpeakingSenders(ids);
+        }
+      }, SPEAKING_POLL_MS);
+      const session: AudioTransportSession = {
+        url: offer.udp.addrs[0],
+        setInput: () => {},
+        setSending: native.setSending,
+        setEffects: native.setEffects,
+        setOutputGain: native.setOutputGain,
+        close: () => {
+          clearInterval(poll);
+          setSpeakingSenders([]);
+          nativeAudioRef.current = null;
+          native.close();
+          ended();
+        },
+        closed: new Promise<void>((resolve) => (ended = resolve)),
+      };
+      audioTransportRef.current?.close();
+      audioTransportRef.current = session;
+      session.setOutputGain(outputGainRef.current);
+      await registeredTracksRef.current.find((s) => s.track?.kind === "audio")?.replaceTrack(null);
+      voiceLog.ok("TRANSPORT", "start", "Voice on the native engine", { offered: offer.udp.addrs });
+      return;
+    }
     const { input } = transportInput(microphoneBufferRef.current, audioRef.current);
     const { audioContext, remoteBusNode } = speakersRef.current;
     if (!audioTransportWasm || !audioTransportSupported() || !audioContext || !remoteBusNode || !input) {
@@ -229,11 +290,11 @@ function useSfuHook(): SFUInterface {
     } catch (error) {
       voiceLog.warn("TRANSPORT", "Own transport failed, staying on WebRTC audio", error);
     }
-  }, [audioTransportWasm, feedTransport]);
+  }, [audioTransportWasm, nativeAudio, feedTransport]);
 
   useEffect(() => {
     const session = audioTransportRef.current;
-    if (session && transportInput(microphoneBufferRef.current, audioRef.current).raw) {
+    if (session && (getVoicePlatform().startNativeAudio || transportInput(microphoneBufferRef.current, audioRef.current).raw)) {
       session.setEffects(transportEffects(config.audio, eSportsModeEnabled));
     }
   }, [config.audio, eSportsModeEnabled]);
@@ -997,6 +1058,7 @@ function useSfuHook(): SFUInterface {
     setVideoSendSettings,
     reportVideoDemand,
     transportSpeaking,
+    getTransportLevels,
   };
 }
 

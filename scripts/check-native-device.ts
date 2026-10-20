@@ -8,7 +8,7 @@ const libs = process.platform === "darwin"
   : ["-lpthread", "-ldl"];
 execFileSync("cc", [
   "-std=c11", "-O2", "-Wall", "-Wextra", "-D_DEFAULT_SOURCE", "-Inative/build/opus/include/opus", "-o", "native/build/voice_tool",
-  "native/tools/voice_tool.c", "native/core/device.c", "native/core/engine.c", "native/core/effects.c", "native/core/jitter.c",
+  "native/tools/voice_tool.c", "native/core/voice.c", "native/core/net.c", "native/core/seal.c", "native/vendor/monocypher/monocypher.c", "native/core/device.c", "native/core/engine.c", "native/core/effects.c", "native/core/jitter.c",
   "native/core/packet.c", "codec/opus/shim.c", "native/build/opus/lib/libopus.a", "-lm", ...libs,
 ], { stdio: "inherit" });
 console.log(`native device ok: the engine and miniaudio build on ${process.platform}`);
