@@ -61,7 +61,8 @@
     "check-video-demand": "node scripts/check-video-demand.ts",
     "check-video-budget": "node scripts/check-video-budget.ts",
     "check-room-refusals": "node scripts/check-room-refusals.ts",
-    "check-native-ptt": "node scripts/check-native-ptt.ts"
+    "check-native-ptt": "node scripts/check-native-ptt.ts",
+    "check-native-core": "node scripts/check-native-core.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

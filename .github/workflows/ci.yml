@@ -139,6 +139,10 @@ jobs:
       - name: Check the transport worklets end to end
         run: npm run check-transport-worklets
 
+      # The native engine's C core: packets as the TypeScript writes them, sealing as OpenSSL does it (GRYT-1822).
+      - name: Check the native core against TypeScript and OpenSSL
+        run: npm run check-native-core
+
       # The own transport's effects run sample by sample: none may delay a sound (GRYT-1819).
       - name: Check the microphone effects add no delay
         run: npm run check-voice-effects
