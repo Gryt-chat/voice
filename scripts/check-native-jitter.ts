@@ -47,7 +47,8 @@ function viaTs(lines: string[]): string[] {
     if (op === "push") jb.push({ flags: 0, seq: Number(seq), timestamp: Number(ts), opus: new Uint8Array(2) }, Number(at));
     else {
       const p = jb.pull();
-      out.push(p.kind === "packet" ? `P ${p.packet.seq}` : p.kind === "lost" ? "L" : "S");
+      const short = { lost: "L", silence: "S" } as const;
+      out.push(p.kind === "packet" ? `P ${p.packet.seq}` : short[p.kind]);
     }
   }
   const s = jb.stats;
