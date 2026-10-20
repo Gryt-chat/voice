@@ -491,6 +491,7 @@ export interface ConnectParams {
     microphoneBufferRef: MutableRefObject<{
       processedStream?: MediaStream;
       mediaStream?: MediaStream;
+      directTrack?: MediaStreamTrack;
     }>;
     /** True while a `getUserMedia` is out. See `MIC_BUSY_WAIT_MS`. */
     micAcquiringRef: MutableRefObject<boolean>;
@@ -933,7 +934,9 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     const tracks: RTCRtpSender[] = [];
     localStream.getTracks().forEach((track) => {
       // The Web Audio track, re-added after a reconnect, came with ~10 ms it never lost; a clone starts clean (voice#53).
-      const sent = track.kind === "audio" ? track.clone() : track;
+      // The raw track on the direct path has no Web Audio behind it, and mute switches that very track.
+      const direct = track === microphoneBufferRef.current.directTrack;
+      const sent = track.kind === "audio" && !direct ? track.clone() : track;
       if (sent !== track) sentClones.add(sent);
       const sender = peerConnection.addTrack(sent, localStream);
       tracks.push(sender);
