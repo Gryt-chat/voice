@@ -6,3 +6,4 @@ setDefaultVoicePlatform(webPlatform);
 
 export { webPlatform };
 export * from "./engine.js";
+export { opusWasmUrl } from "./codec/opusUrl.js";

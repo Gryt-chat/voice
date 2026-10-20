@@ -1,5 +1,6 @@
 export { VoiceSingletonHooks } from "./shared/SingletonHooks.js";
 export * from "./audio/index.js";
+export { loadOpus, type OpusCodec, type OpusDecoder, type OpusEncoder } from "./codec/opus.js";
 export * from "./webrtc/index.js";
 export {
   useVoiceCallbacks,
