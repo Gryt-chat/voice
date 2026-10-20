@@ -7,7 +7,7 @@ const libs = process.platform === "darwin"
   ? ["-framework", "CoreAudio", "-framework", "AudioToolbox", "-framework", "CoreFoundation"]
   : ["-lpthread", "-ldl"];
 execFileSync("cc", [
-  "-std=c99", "-O2", "-Wall", "-Wextra", "-D_DEFAULT_SOURCE", "-Inative/build/opus/include/opus", "-o", "native/build/voice_tool",
+  "-std=c11", "-O2", "-Wall", "-Wextra", "-D_DEFAULT_SOURCE", "-Inative/build/opus/include/opus", "-o", "native/build/voice_tool",
   "native/tools/voice_tool.c", "native/core/device.c", "native/core/engine.c", "native/core/effects.c", "native/core/jitter.c",
   "native/core/packet.c", "codec/opus/shim.c", "native/build/opus/lib/libopus.a", "-lm", ...libs,
 ], { stdio: "inherit" });

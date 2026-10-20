@@ -108,7 +108,22 @@ static void pull_frame(gv_sender *s) {
   s->pending_frames += GV_FRAME;
 }
 
+int gv_engine_queue(gv_engine *e, const uint8_t *bytes, size_t len) {
+  unsigned head = atomic_load_explicit(&e->queue_head, memory_order_relaxed);
+  unsigned tail = atomic_load_explicit(&e->queue_tail, memory_order_acquire);
+  if (len > GV_QUEUE_BYTES || head - tail >= GV_QUEUE_SLOTS) return -1;
+  memcpy(e->queue[head % GV_QUEUE_SLOTS], bytes, len);
+  e->queue_len[head % GV_QUEUE_SLOTS] = (uint16_t)len;
+  atomic_store_explicit(&e->queue_head, head + 1, memory_order_release);
+  return 0;
+}
+
 void gv_engine_render(gv_engine *e, float *out, size_t frames) {
+  unsigned head = atomic_load_explicit(&e->queue_head, memory_order_acquire);
+  for (unsigned t = atomic_load_explicit(&e->queue_tail, memory_order_relaxed); t != head; t++) {
+    gv_engine_receive(e, e->queue[t % GV_QUEUE_SLOTS], e->queue_len[t % GV_QUEUE_SLOTS]);
+    atomic_store_explicit(&e->queue_tail, t + 1, memory_order_release);
+  }
   memset(out, 0, frames * 2 * sizeof(float));
   for (int i = 0; i < GV_MAX_SENDERS; i++) {
     gv_sender *s = &e->senders[i];

@@ -8,7 +8,7 @@ import { join } from "node:path";
 execFileSync("sh", ["native/opus/build.sh"], { stdio: "inherit" });
 const bin = join(mkdtempSync(join(tmpdir(), "gv-engine-")), "engine_test");
 execFileSync("cc", [
-  "-std=c99", "-O2", "-Wall", "-Wextra", "-Werror", "-D_DEFAULT_SOURCE", "-Inative/build/opus/include/opus", "-o", bin,
+  "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-D_DEFAULT_SOURCE", "-Inative/build/opus/include/opus", "-o", bin,
   "native/test/engine_test.c", "native/core/engine.c", "native/core/effects.c", "native/core/jitter.c", "native/core/packet.c",
   "codec/opus/shim.c", "native/build/opus/lib/libopus.a", "-lm",
 ]);
