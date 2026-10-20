@@ -71,6 +71,8 @@ export interface VoiceConfig {
     /** Lower latency, fewer niceties. */
     eSportsMode: boolean;
     maxBitrate?: number | null;
+    /** Loads opus.wasm. Set it to try the own voice transport when the SFU offers one (GRYT-1818). */
+    audioTransportWasm?: () => Promise<ArrayBuffer>;
   };
 }
 

@@ -14,6 +14,7 @@ import { iceFailureReport } from "./iceReport";
 import { RoomRefusal, type SFUConnectionStateInternal } from "./sfuTypes";
 import { sentClones } from "./sentClones";
 import { voiceLog } from "./voiceLogger";
+import type { AudioTransportOffer } from "../../transport/session";
 
 /** How often the connect flow looks for the microphone while it waits. */
 const MIC_POLL_MS = 200;
@@ -526,6 +527,7 @@ export interface ConnectParams {
   performCleanup: (skipServerUpdate?: boolean) => Promise<void>;
   onVideoWanted?: (wanted: VideoWanted & { mid: string }) => void;
   onIngestCap?: (bps: number | null) => void;
+  onAudioTransport?: (offer: AudioTransportOffer) => void;
 }
 
 /* The SFU rejects explicit nulls where it accepts an absent key. */
@@ -555,6 +557,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     connectSeqRef,
     onVideoWanted,
     onIngestCap,
+    onAudioTransport,
   } = params;
   const {
     isConnectingRef,
@@ -1030,6 +1033,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
           onRoomJoined: (info) => {
             callAloneTimeoutSeconds = info.callAloneTimeoutSeconds;
             if (!isStale()) onIngestCap?.(info.maxIngestKbps === null ? null : info.maxIngestKbps * 1000);
+            if (!isStale() && info.audioTransport) onAudioTransport?.(info.audioTransport);
           },
           onVideoWanted: (wanted) => {
             if (!isStale()) onVideoWanted?.(wanted);

@@ -2,6 +2,7 @@ import type { MutableRefObject } from "react";
 
 import { parseVideoWanted, type VideoWanted } from "./videoDemand";
 import { voiceLog } from "./voiceLogger";
+import type { AudioTransportOffer } from "../../transport/session";
 
 /**
  * Reduce Opus packetization time from the default 20ms to 10ms.
@@ -54,6 +55,16 @@ export interface RoomJoinedInfo {
   callAloneTimeoutSeconds: number | null;
   /** SFU_MAX_INGEST_KBPS: the most this peer should send the SFU, or null for no cap. */
   maxIngestKbps: number | null;
+  /** The own voice transport's offer, or null when the SFU has none (GRYT-1818). */
+  audioTransport: AudioTransportOffer | null;
+}
+
+function parseAudioTransport(value: unknown): AudioTransportOffer | null {
+  if (typeof value !== "object" || value === null) return null;
+  const { urls, certHash, ticket } = value as Record<string, unknown>;
+  if (!Array.isArray(urls) || typeof certHash !== "string" || typeof ticket !== "string") return null;
+  const https = urls.filter((u): u is string => typeof u === "string" && u.startsWith("https://"));
+  return https.length > 0 ? { urls: https, certHash, ticket } : null;
 }
 
 /**
@@ -61,7 +72,7 @@ export interface RoomJoinedInfo {
  * parses and falls back rather than switching on a version, so an older SFU gives nulls.
  */
 export function parseRoomJoined(data: unknown): RoomJoinedInfo {
-  const nothing: RoomJoinedInfo = { callAloneTimeoutSeconds: null, maxIngestKbps: null };
+  const nothing: RoomJoinedInfo = { callAloneTimeoutSeconds: null, maxIngestKbps: null, audioTransport: null };
   if (typeof data !== "string") return nothing;
 
   let parsed: unknown;
@@ -77,14 +88,15 @@ export function parseRoomJoined(data: unknown): RoomJoinedInfo {
     .call_alone_timeout_seconds;
   const ingest = (parsed as Record<string, unknown>).max_ingest_kbps;
   const maxIngestKbps = typeof ingest === "number" && Number.isFinite(ingest) && ingest > 0 ? ingest : null;
+  const audioTransport = parseAudioTransport((parsed as Record<string, unknown>).audio_transport);
 
   // A negative number is not a shorter timeout, it is an SFU we do not understand. Same for
   // a string, which is what a hand-rolled proxy in the middle would produce.
   if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
-    return { ...nothing, maxIngestKbps };
+    return { ...nothing, maxIngestKbps, audioTransport };
   }
 
-  return { callAloneTimeoutSeconds: Math.floor(seconds), maxIngestKbps };
+  return { callAloneTimeoutSeconds: Math.floor(seconds), maxIngestKbps, audioTransport };
 }
 
 export async function connectToSfuWebSocket(

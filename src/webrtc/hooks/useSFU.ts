@@ -3,7 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMicrophone } from "../../audio/hooks/useMicrophone";
 import { useSpeakers } from "../../audio/hooks/useSpeakers";
 import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
+import { sliderToOutputGain } from "../../shared/audioVolume";
 import { singletonHook } from "../../shared/singletonHook";
+import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, startAudioTransport } from "../../transport/session";
 
 import { SFUConnectionState, type SFUInterface, type Streams, type StreamSources, type VideoStreams } from "../types/SFU";
 import { type CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
@@ -98,6 +100,7 @@ function useSfuHook(): SFUInterface {
   // Access shared microphone buffer
   const { microphoneBuffer, isAcquiring } = useMicrophone(isConnecting || isConnected);
   const microphoneBufferRef = useRef(microphoneBuffer);
+  const audioTransportRef = useRef<AudioTransportSession | null>(null);
   useEffect(() => { microphoneBufferRef.current = microphoneBuffer; }, [microphoneBuffer]);
   /* Read live by the connect flow while it waits, which is why it is a ref and
      not the value: the wait outlives the render it started in. */
@@ -110,6 +113,10 @@ function useSfuHook(): SFUInterface {
   useEffect(() => {
     const track = microphoneBuffer.processedStream?.getAudioTracks()[0];
     if (!track) return;
+    if (audioTransportRef.current) {
+      audioTransportRef.current.setInput(new MediaStream([track]));
+      return;
+    }
 
     const sender = registeredTracksRef.current.find(
       (candidate) => candidate.track?.kind === "audio",
@@ -137,6 +144,8 @@ function useSfuHook(): SFUInterface {
   }), []);
 
   const performCleanup = useCallback(async (skipServerUpdate = false) => {
+    audioTransportRef.current?.close();
+    audioTransportRef.current = null;
     await performSfuCleanup(cleanupRefs, {
       room,
       setStreamSources,
@@ -161,6 +170,36 @@ function useSfuHook(): SFUInterface {
 
   // Ending a call when its server is removed is the embedder's: noticing takes the whole
   // server map, which is the thing the engine is deliberately kept out of.
+
+  // The own voice transport (GRYT-1818): voice over WebTransport instead of the WebRTC audio track.
+  const { audioTransportWasm } = config.connection;
+  const startTransport = useCallback(async (offer: AudioTransportOffer) => {
+    const input = microphoneBufferRef.current.processedStream;
+    if (!audioTransportWasm || !audioTransportSupported() || !audioContext || !remoteBusNode || !input) return;
+    try {
+      const session = await startAudioTransport({
+        offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(),
+      });
+      audioTransportRef.current?.close();
+      audioTransportRef.current = session;
+      session.setOutputGain(outputGainRef.current);
+      // shortcut: a peer without the transport hears nothing from this one; fine until it's the default.
+      await registeredTracksRef.current.find((s) => s.track?.kind === "audio")?.replaceTrack(null);
+      void session.closed.then(() => {
+        if (audioTransportRef.current === session) audioTransportRef.current = null;
+      });
+      voiceLog.ok("TRANSPORT", "start", "Voice on the own transport", { url: offer.urls[0] });
+    } catch (error) {
+      voiceLog.warn("TRANSPORT", "Own transport failed, staying on WebRTC audio", error);
+    }
+  }, [audioTransportWasm, audioContext, remoteBusNode]);
+
+  const outputGain = effectiveDeafened ? 0 : sliderToOutputGain(outputVolume);
+  const outputGainRef = useRef(outputGain);
+  useEffect(() => {
+    outputGainRef.current = outputGain;
+    audioTransportRef.current?.setOutputGain(outputGain);
+  }, [outputGain]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -254,6 +293,7 @@ function useSfuHook(): SFUInterface {
       performCleanup,
       onVideoWanted: videoSend.onWanted,
       onIngestCap: videoSend.setIngestCap,
+      onAudioTransport: (offer) => void startTransport(offer),
     }).catch((error: unknown) => {
       // Refused is ended on purpose, or signalling coming back asks for the room again.
       if (error instanceof RoomRefusal) intentionalDisconnectRef.current = true;
@@ -268,6 +308,7 @@ function useSfuHook(): SFUInterface {
     sfuConnectionRefs,
     performCleanup,
     eSportsModeEnabled,
+    startTransport,
   ]);
 
   // Optimistic, with cleanup in the background. `recovering` tears down for a reconnect, and
