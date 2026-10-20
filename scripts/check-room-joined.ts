@@ -73,4 +73,11 @@ for (const bad of [null, "x", {}, { ...offer, urls: [] }, { ...offer, urls: ["ws
   assert.equal(parseRoomJoined(JSON.stringify({ audio_transport: bad })).audioTransport, null, `offer ${JSON.stringify(bad)} was accepted`);
 }
 
-console.log("room_joined ok: the timeout and the ingest cap survive the wire, and an SFU that says nothing says null");
+
+// audio_senders (GRYT-1830): sender id to user id, and nothing that isn't one.
+const { parseAudioSenders } = await import("../dist/webrtc/hooks/sfuConnection.js");
+assert.deepEqual([...parseAudioSenders('{"senders":{"3":"user_a","12":"user_b"}}')], [[3, "user_a"], [12, "user_b"]]);
+assert.deepEqual([...parseAudioSenders('{"senders":{"x":"u","4":7,"5":"","-1":"u"}}')], []);
+for (const bad of ["", "null", "{", '{"senders":null}', '{"senders":"3"}']) assert.equal(parseAudioSenders(bad).size, 0, bad);
+
+console.log("room_joined ok: the timeout and the ingest cap survive the wire, and an SFU that says nothing says null; audio_senders parsed");

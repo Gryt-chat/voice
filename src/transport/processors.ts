@@ -97,12 +97,18 @@ interface Sender {
   decoder: OpusDecoder;
   pending: Float32Array<ArrayBufferLike>;
   lastHeard: number;
+  /** When a packet played last carried the speaking flag (GRYT-1830). */
+  lastSpeaking: number;
 }
+
+// A muted sender stops sending, so a ring goes out this long after the last speaking packet.
+const SPEAKING_HOLD_S = 0.25;
 
 /** Forwarded packets in on the port, everyone mixed out: a jitter buffer and a decoder per sender. */
 class ReceiveProcessor extends AudioWorkletProcessor {
   private readonly frameSize: number;
   private readonly senders = new Map<number, Sender>();
+  private speakingKey = "";
   private opus: Awaited<ReturnType<typeof loadOpus>> | null = null;
 
   constructor(options: { processorOptions: ReceiveOptions }) {
@@ -123,6 +129,7 @@ class ReceiveProcessor extends AudioWorkletProcessor {
         decoder: this.opus.decoder(this.frameSize, 2),
         pending: new Float32Array(0),
         lastHeard: currentTime,
+        lastSpeaking: -Infinity,
       };
       this.senders.set(forwarded.sender, s);
     }
@@ -147,7 +154,10 @@ class ReceiveProcessor extends AudioWorkletProcessor {
       while (s.pending.length < out.length * 2) {
         const next = s.jitter.pull();
         let pcm: Float32Array<ArrayBufferLike> = new Float32Array(this.frameSize * 2);
-        if (next.kind === "packet") pcm = s.decoder.decode(next.packet.opus);
+        if (next.kind === "packet") {
+          pcm = s.decoder.decode(next.packet.opus);
+          if (next.packet.flags & FLAG_SPEAKING) s.lastSpeaking = currentTime;
+        }
         else if (next.kind === "lost") pcm = s.decoder.decode(null);
         const joined = new Float32Array(s.pending.length + pcm.length);
         joined.set(s.pending);
@@ -159,6 +169,13 @@ class ReceiveProcessor extends AudioWorkletProcessor {
         if (outRight !== out) outRight[i] += s.pending[2 * i + 1];
       }
       s.pending = s.pending.subarray(out.length * 2);
+    }
+    // Who is speaking as heard, so a ring lights with the voice; sent only when it changes.
+    const speaking = [...this.senders].filter(([, s]) => currentTime - s.lastSpeaking < SPEAKING_HOLD_S).map(([id]) => id);
+    const key = speaking.join(",");
+    if (key !== this.speakingKey) {
+      this.speakingKey = key;
+      this.port.postMessage(speaking);
     }
     return true;
   }

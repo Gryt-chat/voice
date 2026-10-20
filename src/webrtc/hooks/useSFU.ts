@@ -191,6 +191,13 @@ function useSfuHook(): SFUInterface {
   // The own voice transport (GRYT-1818): voice over WebTransport instead of the WebRTC audio track.
   const { audioTransportWasm } = config.connection;
   // Refs, because the connect that calls this was set up before the audio context existed.
+  // Who is heard speaking over the transport: sender ids from the receive worklet, users from the SFU.
+  const [speakingSenders, setSpeakingSenders] = useState<number[]>([]);
+  const [senderUsers, setSenderUsers] = useState<Map<number, string>>(() => new Map());
+  const transportSpeaking = useMemo(
+    () => new Set(speakingSenders.flatMap((id) => senderUsers.get(id) ?? [])),
+    [speakingSenders, senderUsers],
+  );
   const speakersRef = useRef({ audioContext, remoteBusNode });
   speakersRef.current = { audioContext, remoteBusNode };
   const startTransport = useCallback(async (offer: AudioTransportOffer) => {
@@ -207,6 +214,7 @@ function useSfuHook(): SFUInterface {
     try {
       const session = await startAudioTransport({
         offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(), effects: PASS_THROUGH,
+        onSpeaking: setSpeakingSenders,
       });
       audioTransportRef.current?.close();
       audioTransportRef.current = session;
@@ -330,6 +338,7 @@ function useSfuHook(): SFUInterface {
       onVideoWanted: videoSend.onWanted,
       onIngestCap: videoSend.setIngestCap,
       onAudioTransport: (offer) => void startTransport(offer),
+      onAudioSenders: setSenderUsers,
     }).catch((error: unknown) => {
       // Refused is ended on purpose, or signalling coming back asks for the room again.
       if (error instanceof RoomRefusal) intentionalDisconnectRef.current = true;
@@ -987,6 +996,7 @@ function useSfuHook(): SFUInterface {
     stillHere,
     setVideoSendSettings,
     reportVideoDemand,
+    transportSpeaking,
   };
 }
 

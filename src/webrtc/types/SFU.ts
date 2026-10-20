@@ -79,4 +79,6 @@ export interface SFUInterface {
    * see it, or null once it's gone. Keyed by stream id: a receiver's track id can differ from the sender's.
    */
   reportVideoDemand?: (streamId: string, size: VideoDemand | null) => void;
+  /** User ids heard speaking over the own voice transport, which has no WebRTC track to watch (GRYT-1830). */
+  transportSpeaking?: ReadonlySet<string>;
 }

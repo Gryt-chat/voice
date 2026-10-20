@@ -45,6 +45,26 @@ interface SFUConnectionOptions {
 
   /** What viewers want of one of our streams, from an SFU that says (GRYT-1432). */
   onVideoWanted?: (wanted: VideoWanted & { mid: string }) => void;
+
+  /** Which own-transport sender id is which user, each time someone joins or leaves it (GRYT-1830). */
+  onAudioSenders?: (senders: Map<number, string>) => void;
+}
+
+/** The SFU's audio_senders: decimal sender id to user id. Anything else in it is dropped. */
+export function parseAudioSenders(data: unknown): Map<number, string> {
+  const out = new Map<number, string>();
+  let parsed: unknown = data;
+  try {
+    if (typeof data === "string") parsed = JSON.parse(data);
+  } catch {
+    return out;
+  }
+  const senders = (parsed as { senders?: unknown } | null)?.senders;
+  if (!senders || typeof senders !== "object") return out;
+  for (const [id, user] of Object.entries(senders)) {
+    if (/^\d{1,10}$/.test(id) && typeof user === "string" && user.length > 0 && user.length <= 256) out.set(Number(id), user);
+  }
+  return out;
 }
 
 export interface RoomJoinedInfo {
@@ -482,6 +502,11 @@ export async function connectToSfuWebSocket(
               resolve(ws);
             }
 
+            break;
+          }
+
+          case "audio_senders": {
+            options.onAudioSenders?.(parseAudioSenders(message.data));
             break;
           }
 
