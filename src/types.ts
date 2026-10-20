@@ -182,6 +182,8 @@ export interface NativeAudioSession {
   setEffects(effects: VoiceEffectSettings): void;
   /** The sender ids heard speaking, for the SFU's audio_senders to name (GRYT-1830). */
   speaking(): number[];
+  /** Volume per sender id, 1 = as sent; anyone not named plays at 1 (GRYT-1831). */
+  setGains(gains: Map<number, number>): void;
   /** Each sender heard and its level in dBFS, and the mic's, for the halo. Silence is -120. */
   levels(): { ids: number[]; db: number[]; mic: number; micSpeaking: boolean };
   close(): void;

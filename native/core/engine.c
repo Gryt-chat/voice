@@ -21,6 +21,7 @@ int gv_engine_init(gv_engine *e, const gv_effect_settings *s, int bitrate, int s
   atomic_init(&e->sending, 1);
   atomic_init(&e->output_gain, 1.0f);
   atomic_init(&e->effects_changed, false);
+  atomic_init(&e->gains_changed, false);
   for (int i = 0; i < GV_MAX_SENDERS; i++) {
     atomic_init(&e->speaking[i], 0);
     atomic_init(&e->slot_id[i], 0);
@@ -69,6 +70,22 @@ int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max) {
 void gv_engine_set_output_gain(gv_engine *e, float gain) { atomic_store(&e->output_gain, gain); }
 
 /* shortcut: two changes within one audio block can tear; settings move by hand, so that's a few ms of odd gate. */
+void gv_engine_set_gains(gv_engine *e, const uint32_t *ids, const float *gains, int n) {
+  if (n > GV_MAX_SENDERS) n = GV_MAX_SENDERS;
+  for (int i = 0; i < n; i++) {
+    e->pending_gain_ids[i] = ids[i];
+    e->pending_gains[i] = gains[i];
+  }
+  e->pending_n_gains = n;
+  atomic_store(&e->gains_changed, true);
+}
+
+static float gain_for(const gv_engine *e, uint32_t id) {
+  for (int i = 0; i < e->n_gains; i++)
+    if (e->gain_ids[i] == id) return e->gains[i];
+  return 1.0f;
+}
+
 void gv_engine_set_effects(gv_engine *e, const gv_effect_settings *s) {
   e->pending_effects = *s;
   atomic_store(&e->effects_changed, true);
@@ -175,6 +192,12 @@ void gv_engine_render(gv_engine *e, float *out, size_t frames) {
     atomic_store_explicit(&e->queue_tail, t + 1, memory_order_release);
   }
   memset(out, 0, frames * 2 * sizeof(float));
+  /* shortcut: a change landing mid-copy can mix two lists for one block; volumes move by hand, so that's inaudible. */
+  if (atomic_exchange(&e->gains_changed, false)) {
+    e->n_gains = e->pending_n_gains;
+    memcpy(e->gain_ids, e->pending_gain_ids, sizeof e->gain_ids);
+    memcpy(e->gains, e->pending_gains, sizeof e->gains);
+  }
   for (int i = 0; i < GV_MAX_SENDERS; i++) {
     gv_sender *s = &e->senders[i];
     if (!s->used || e->now_ms - s->last_heard_ms > SENDER_TIMEOUT_MS) {
@@ -184,11 +207,12 @@ void gv_engine_render(gv_engine *e, float *out, size_t frames) {
       continue;
     }
     double sum = 0;
+    float gain = gain_for(e, s->id);
     for (size_t done = 0; done < frames;) {
       if (s->pending_frames == 0) pull_frame(s, e->now_ms);
       size_t take = frames - done < s->pending_frames ? frames - done : s->pending_frames;
       for (size_t k = 0; k < take * 2; k++) {
-        out[done * 2 + k] += s->pending[k];
+        out[done * 2 + k] += s->pending[k] * gain;
         sum += s->pending[k] * s->pending[k];
       }
       memmove(s->pending, s->pending + take * 2, (s->pending_frames - take) * 2 * sizeof(float));
