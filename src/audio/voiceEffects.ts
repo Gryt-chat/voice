@@ -74,15 +74,18 @@ export class VoiceEffects {
     return this.gateOpen;
   }
 
-  /** In place. Every output sample depends only on samples up to it. */
-  process(block: Float32Array): void {
+  /** In place. Every output sample depends only on samples up to it. With `right`, both sides get one gain. */
+  process(block: Float32Array, right?: Float32Array): void {
     const s = this.settings;
     const sr = this.sampleRate;
     const volume = Math.max(0, s.volume) / 100;
 
     // The gate decides once a block on the block's level, measured after the volume, as the graph does.
     let sum = 0;
-    for (let i = 0; i < block.length; i++) sum += block[i] * volume * (block[i] * volume);
+    for (let i = 0; i < block.length; i++) {
+      const v = Math.max(Math.abs(block[i]), right ? Math.abs(right[i]) : 0) * volume;
+      sum += v * v;
+    }
     const rms = Math.sqrt(sum / Math.max(1, block.length));
     const db = rms > 0 ? 20 * Math.log10(rms) : METER_MIN_DB;
     const clamped = Math.min(METER_MAX_DB, Math.max(METER_MIN_DB, db));
@@ -113,16 +116,21 @@ export class VoiceEffects {
     const agcWanted = dbToGain(s.autoGainTargetDb);
 
     for (let i = 0; i < block.length; i++) {
+      // The louder side drives the gain, so the gate and compressor never move one side without the other.
+      const r = right ? right[i] * volume : 0;
       let x = block[i] * volume;
+      let gain = 1;
+      const loud = () => (Math.abs(r * gain) > Math.abs(x) ? r * gain : x);
 
       if (s.autoGain) {
         // Measured on what comes in, applied with a glide, so a word never waits for its own level.
-        this.agcSum += x * x;
-        this.agcPeak = Math.max(this.agcPeak, Math.abs(x));
+        const d = loud();
+        this.agcSum += d * d;
+        this.agcPeak = Math.max(this.agcPeak, Math.abs(d));
         if (++this.agcCount >= agcStep) {
-          const r = Math.sqrt(this.agcSum / this.agcCount);
-          if (r > AGC_SILENCE) {
-            const desired = Math.min(agcWanted / r, AGC_PEAK_CEILING / Math.max(this.agcPeak, 1e-6));
+          const level = Math.sqrt(this.agcSum / this.agcCount);
+          if (level > AGC_SILENCE) {
+            const desired = Math.min(agcWanted / level, AGC_PEAK_CEILING / Math.max(this.agcPeak, 1e-6));
             const want = Math.max(AGC_MIN_GAIN, Math.min(AGC_MAX_GAIN, desired));
             this.agcTarget += (want - this.agcTarget) * (want > this.agcTarget ? AGC_SMOOTH_UP : AGC_SMOOTH_DOWN);
           }
@@ -132,15 +140,17 @@ export class VoiceEffects {
         }
         this.agcGain += (this.agcTarget - this.agcGain) * agcGlide;
         x *= this.agcGain;
+        gain *= this.agcGain;
       }
 
       if (s.compressor) {
-        const a = Math.abs(x);
+        const a = Math.abs(loud());
         this.compEnv = a > this.compEnv ? attack * this.compEnv + (1 - attack) * a : release * this.compEnv + (1 - release) * a;
         const envDb = 20 * Math.log10(this.compEnv + 1e-9);
         const over = envDb - threshold;
-        if (over > 0) x *= dbToGain(-over * (1 - 1 / ratio));
-        x *= makeup;
+        const g = (over > 0 ? dbToGain(-over * (1 - 1 / ratio)) : 1) * makeup;
+        x *= g;
+        gain *= g;
       }
 
       if (s.limiter) x = CEILING * Math.tanh(x / CEILING);
@@ -148,6 +158,7 @@ export class VoiceEffects {
       if (this.gateGain < gateTarget) this.gateGain = Math.min(gateTarget, this.gateGain + gateStep);
       else if (this.gateGain > gateTarget) this.gateGain = Math.max(gateTarget, this.gateGain - gateStep);
       block[i] = x * this.gateGain;
+      if (right) right[i] = (s.limiter ? CEILING * Math.tanh((r * gain) / CEILING) : r * gain) * this.gateGain;
     }
   }
 }
