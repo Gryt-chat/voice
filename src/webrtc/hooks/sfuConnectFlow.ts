@@ -12,6 +12,7 @@ import { connectToSfuWebSocket } from "./sfuConnection";
 import type { VideoWanted } from "./videoDemand";
 import { iceFailureReport } from "./iceReport";
 import { RoomRefusal, type SFUConnectionStateInternal } from "./sfuTypes";
+import { sentClones } from "./sentClones";
 import { voiceLog } from "./voiceLogger";
 
 /** How often the connect flow looks for the microphone while it waits. */
@@ -931,7 +932,10 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     const localStream = streamToUse;
     const tracks: RTCRtpSender[] = [];
     localStream.getTracks().forEach((track) => {
-      const sender = peerConnection.addTrack(track, localStream);
+      // The Web Audio track, re-added after a reconnect, came with ~10 ms it never lost; a clone starts clean (voice#53).
+      const sent = track.kind === "audio" ? track.clone() : track;
+      if (sent !== track) sentClones.add(sent);
+      const sender = peerConnection.addTrack(sent, localStream);
       tracks.push(sender);
     });
     registeredTracksRef.current = tracks;

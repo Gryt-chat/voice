@@ -48,6 +48,7 @@
     "check-mic-bitrate": "node scripts/check-mic-bitrate.ts",
     "check-camera-resync": "node scripts/check-camera-resync.ts",
     "check-voice-latency": "node scripts/check-voice-latency.ts",
+    "check-fresh-send-track": "node scripts/check-fresh-send-track.ts",
     "check-esports-pipeline": "node scripts/check-esports-pipeline.ts",
     "check-going-away": "node scripts/check-going-away.ts",
     "check-recovery-disconnect": "node scripts/check-recovery-disconnect.ts",
