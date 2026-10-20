@@ -146,6 +146,8 @@ jobs:
         run: npm run check-native-jitter
       - name: Check the native mic effects against the TypeScript ones
         run: npm run check-native-effects
+      - name: Check the native Opus build against the WASM one
+        run: npm run check-native-opus
 
       # The own transport's effects run sample by sample: none may delay a sound (GRYT-1819).
       - name: Check the microphone effects add no delay
