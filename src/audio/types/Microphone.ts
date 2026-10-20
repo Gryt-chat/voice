@@ -25,6 +25,10 @@ export type MicrophoneBufferType = {
   compressorMakeup?: GainNode;
   /** Last stage before the gate, always on: nothing leaves above OUTPUT_CEILING_DB (GRYT-1679). */
   limiter?: DynamicsCompressorNode;
+  /** Whether the voice goes out, as setSending last said. The own transport reads it (GRYT-1818). */
+  sending?: boolean;
+  /** Told whenever setSending is, so the own transport's worklet mutes with the pipeline. */
+  onSending?: (on: boolean) => void;
 };
 
 /**

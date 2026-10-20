@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useMicrophone } from "../../audio/hooks/useMicrophone";
 import { useSpeakers } from "../../audio/hooks/useSpeakers";
+import type { MicrophoneBufferType } from "../../audio/types/Microphone";
 import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
+import { sliderToOutputGain } from "../../shared/audioVolume";
 import { singletonHook } from "../../shared/singletonHook";
+import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, PASS_THROUGH, startAudioTransport, transportEffects } from "../../transport/session";
 
 import { SFUConnectionState, type SFUInterface, type Streams, type StreamSources, type VideoStreams } from "../types/SFU";
 import { type CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
@@ -14,6 +17,12 @@ import { useSFUStreams } from "./useSFUStreams";
 import { createDemandReporter, type VideoDemand, type VideoRole, type VideoSendSettings } from "./videoDemand";
 import { createVideoSendController } from "./videoSender";
 import { type Phase, voiceLog } from "./voiceLogger";
+
+/** The raw microphone when the worklet can do all the processing; RNNoise still needs the graph. */
+function transportInput(buffer: MicrophoneBufferType, { audio }: { audio: { noiseSuppression: boolean } }) {
+  const raw = !audio.noiseSuppression && !!buffer.mediaStream?.getAudioTracks().length;
+  return { input: raw ? buffer.mediaStream : buffer.processedStream, raw };
+}
 
 /**
  * How long to wait between re-announce attempts, and how many. A server that has just come
@@ -98,6 +107,17 @@ function useSfuHook(): SFUInterface {
   // Access shared microphone buffer
   const { microphoneBuffer, isAcquiring } = useMicrophone(isConnecting || isConnected);
   const microphoneBufferRef = useRef(microphoneBuffer);
+  const audioTransportRef = useRef<AudioTransportSession | null>(null);
+  // Read when the transport starts or the pipeline is rebuilt, which can be before a render.
+  const audioRef = useRef({ audio: config.audio, eSports: eSportsModeEnabled });
+  audioRef.current = { audio: config.audio, eSports: eSportsModeEnabled };
+  const feedTransport = useCallback((session: AudioTransportSession, buffer: MicrophoneBufferType) => {
+    const { input, raw } = transportInput(buffer, audioRef.current);
+    if (input) session.setInput(input);
+    session.setEffects(raw ? transportEffects(audioRef.current.audio, audioRef.current.eSports) : PASS_THROUGH);
+    buffer.onSending = session.setSending;
+    session.setSending(buffer.sending ?? true);
+  }, []);
   useEffect(() => { microphoneBufferRef.current = microphoneBuffer; }, [microphoneBuffer]);
   /* Read live by the connect flow while it waits, which is why it is a ref and
      not the value: the wait outlives the render it started in. */
@@ -110,6 +130,10 @@ function useSfuHook(): SFUInterface {
   useEffect(() => {
     const track = microphoneBuffer.processedStream?.getAudioTracks()[0];
     if (!track) return;
+    if (audioTransportRef.current) {
+      feedTransport(audioTransportRef.current, microphoneBuffer);
+      return;
+    }
 
     const sender = registeredTracksRef.current.find(
       (candidate) => candidate.track?.kind === "audio",
@@ -127,7 +151,7 @@ function useSfuHook(): SFUInterface {
       .catch((error) =>
         voiceLog.fail("MIC", "replace", "replaceTrack failed", error),
       );
-  }, [microphoneBuffer.processedStream]);
+  }, [microphoneBuffer, feedTransport]);
 
   const cleanupRefs: CleanupRefs = useMemo(() => ({
     peerConnectionRef, sfuWebSocketRef, registeredTracksRef,
@@ -137,6 +161,8 @@ function useSfuHook(): SFUInterface {
   }), []);
 
   const performCleanup = useCallback(async (skipServerUpdate = false) => {
+    audioTransportRef.current?.close();
+    audioTransportRef.current = null;
     await performSfuCleanup(cleanupRefs, {
       room,
       setStreamSources,
@@ -161,6 +187,55 @@ function useSfuHook(): SFUInterface {
 
   // Ending a call when its server is removed is the embedder's: noticing takes the whole
   // server map, which is the thing the engine is deliberately kept out of.
+
+  // The own voice transport (GRYT-1818): voice over WebTransport instead of the WebRTC audio track.
+  const { audioTransportWasm } = config.connection;
+  // Refs, because the connect that calls this was set up before the audio context existed.
+  const speakersRef = useRef({ audioContext, remoteBusNode });
+  speakersRef.current = { audioContext, remoteBusNode };
+  const startTransport = useCallback(async (offer: AudioTransportOffer) => {
+    const { input } = transportInput(microphoneBufferRef.current, audioRef.current);
+    const { audioContext, remoteBusNode } = speakersRef.current;
+    if (!audioTransportWasm || !audioTransportSupported() || !audioContext || !remoteBusNode || !input) {
+      const missing = [
+        !audioTransportWasm && "not enabled", !audioTransportSupported() && "no WebTransport",
+        !audioContext && "no audio context", !remoteBusNode && "no speaker bus", !input && "no microphone",
+      ].filter(Boolean);
+      voiceLog.info("TRANSPORT", `Own transport offered, staying on WebRTC: ${missing.join(", ")}`);
+      return;
+    }
+    try {
+      const session = await startAudioTransport({
+        offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(), effects: PASS_THROUGH,
+      });
+      audioTransportRef.current?.close();
+      audioTransportRef.current = session;
+      session.setOutputGain(outputGainRef.current);
+      feedTransport(session, microphoneBufferRef.current);
+      // shortcut: a peer without the transport hears nothing from this one; fine until it's the default.
+      await registeredTracksRef.current.find((s) => s.track?.kind === "audio")?.replaceTrack(null);
+      void session.closed.then(() => {
+        if (audioTransportRef.current === session) audioTransportRef.current = null;
+      });
+      voiceLog.ok("TRANSPORT", "start", "Voice on the own transport", { url: session.url, offered: offer.urls });
+    } catch (error) {
+      voiceLog.warn("TRANSPORT", "Own transport failed, staying on WebRTC audio", error);
+    }
+  }, [audioTransportWasm, feedTransport]);
+
+  useEffect(() => {
+    const session = audioTransportRef.current;
+    if (session && transportInput(microphoneBufferRef.current, audioRef.current).raw) {
+      session.setEffects(transportEffects(config.audio, eSportsModeEnabled));
+    }
+  }, [config.audio, eSportsModeEnabled]);
+
+  const outputGain = effectiveDeafened ? 0 : sliderToOutputGain(outputVolume);
+  const outputGainRef = useRef(outputGain);
+  useEffect(() => {
+    outputGainRef.current = outputGain;
+    audioTransportRef.current?.setOutputGain(outputGain);
+  }, [outputGain]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -254,6 +329,7 @@ function useSfuHook(): SFUInterface {
       performCleanup,
       onVideoWanted: videoSend.onWanted,
       onIngestCap: videoSend.setIngestCap,
+      onAudioTransport: (offer) => void startTransport(offer),
     }).catch((error: unknown) => {
       // Refused is ended on purpose, or signalling coming back asks for the room again.
       if (error instanceof RoomRefusal) intentionalDisconnectRef.current = true;
@@ -268,6 +344,7 @@ function useSfuHook(): SFUInterface {
     sfuConnectionRefs,
     performCleanup,
     eSportsModeEnabled,
+    startTransport,
   ]);
 
   // Optimistic, with cleanup in the background. `recovering` tears down for a reconnect, and

@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 
 import { type VoiceEffectSettings, VoiceEffects } from "../dist/audio/voiceEffects.js";
+import { transportEffects } from "../dist/transport/session.js";
 
 const SR = 48000;
 const BLOCK = 128;
@@ -72,6 +73,37 @@ const firstLoud = (x: Float32Array, over: number) => x.findIndex((v) => Math.abs
 {
   const out = run({ ...off, volume: 200, limiter: true }, tone(0.2, 1));
   assert.ok(Math.max(...out.map(Math.abs)) <= Math.pow(10, -1 / 20) + 1e-6, "the limiter let a peak past -1 dBFS");
+}
+
+// Stereo: one gain for both sides, so left and right keep their balance through auto gain and the compressor.
+{
+  const fx = new VoiceEffects(SR, { ...off, autoGain: true, compressor: true, compressorAmount: 80 });
+  let worst = 0;
+  for (let b = 0; b < 200; b++) {
+    const left = new Float32Array(BLOCK), right = new Float32Array(BLOCK);
+    for (let i = 0; i < BLOCK; i++) {
+      const v = Math.sin((2 * Math.PI * 440 * (b * BLOCK + i)) / SR);
+      left[i] = 0.8 * v;
+      right[i] = 0.2 * v;
+    }
+    fx.process(left, right);
+    for (let i = 0; i < BLOCK; i++) if (Math.abs(right[i]) > 1e-4) worst = Math.max(worst, Math.abs(left[i] / right[i] - 4));
+  }
+  assert.ok(worst < 1e-3, `left and right drifted apart: the 4:1 ratio was off by ${worst}`);
+}
+
+// The user's settings, chosen the way the graph chooses: eSports and everything-off drop the dynamics.
+{
+  const audio = { volume: 80, noiseGate: 12, noiseGateRelease: 300, autoGain: { enabled: true, targetDb: -18 }, compressorEnabled: true, compressorAmount: 40 };
+  const normal = transportEffects(audio, false);
+  assert.deepEqual(
+    [normal.volume, normal.gateThreshold, normal.gateReleaseMs, normal.autoGain, normal.compressor, normal.limiter, normal.gateSmoothing],
+    [80, 12, 300, true, true, true, 0.8],
+  );
+  const esports = transportEffects(audio, true);
+  assert.deepEqual([esports.autoGain, esports.compressor, esports.limiter, esports.gateSmoothing, esports.gateThreshold], [false, false, false, 0.3, 12]);
+  const bare = transportEffects({ ...audio, autoGain: { enabled: false, targetDb: -18 }, compressorEnabled: false }, false);
+  assert.equal(bare.limiter, false, "everything off still ran the limiter");
 }
 
 // Stereo: one gain for both sides, so left and right keep their balance through auto gain and the compressor.

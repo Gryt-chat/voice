@@ -7,7 +7,7 @@ const COLORS = {
   info: "color:#adb5bd",                     // grey — supplementary info
 } as const;
 
-export type Phase = "CONNECT" | "DISCONNECT" | "MIC" | "PIPELINE" | "LOOPBACK" | "SFU-WS" | "SFU-SELECT" | "WEBRTC" | "SERVER" | "CAMERA" | "SCREEN";
+export type Phase = "CONNECT" | "DISCONNECT" | "MIC" | "PIPELINE" | "LOOPBACK" | "SFU-WS" | "SFU-SELECT" | "WEBRTC" | "SERVER" | "CAMERA" | "SCREEN" | "TRANSPORT";
 
 function ts(): string {
   return new Date().toISOString().slice(11, 23);

@@ -60,6 +60,8 @@ export interface CreateMicrophoneBufferParams {
 export function setSending(buffer: MicrophoneBufferType, audioContext: AudioContext, on: boolean): void {
   buffer.muteGain?.gain.setValueAtTime(on ? 1 : 0, audioContext.currentTime);
   if (buffer.directTrack) buffer.directTrack.enabled = on;
+  buffer.sending = on;
+  buffer.onSending?.(on);
 }
 
 export function createMicrophoneBuffer({
