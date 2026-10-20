@@ -32,7 +32,8 @@ export interface AudioTransportSession {
 
 // 2.5 ms CELT frames; the transport exists for the latency.
 const FRAME = 120;
-const BITRATE = 64_000;
+// Sivert's listening test: 96 kbps is the least that holds up, 192 sounds the same as the original.
+const BITRATE = 192_000;
 // For a stream the microphone pipeline already processed.
 export const PASS_THROUGH: VoiceEffectSettings = {
   volume: 100, gateThreshold: 0, gateReleaseMs: 200, gateSmoothing: 0.8, autoGain: false,
