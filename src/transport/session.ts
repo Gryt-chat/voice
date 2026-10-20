@@ -87,23 +87,25 @@ function loadWorklets(context: AudioContext): Promise<void> {
 
 export const audioTransportSupported = (): boolean => typeof WebTransport === "function";
 
-/** Dial the SFU and start sending `input` and playing into `output`. Rejects if the handshake fails. */
-export async function startAudioTransport(o: {
-  offer: AudioTransportOffer;
-  context: AudioContext;
-  input: MediaStream;
-  output: AudioNode;
-  wasm: ArrayBuffer;
-  effects: VoiceEffectSettings;
-  /** The sender ids heard speaking, each time that changes (GRYT-1830). */
-  onSpeaking?: (senders: number[]) => void;
-  /** Each sender's level in dBFS, about twenty times a second, for a halo (GRYT-1830). */
-  onLevels?: (levels: Map<number, number>) => void;
-}): Promise<AudioTransportSession> {
-  const value = Uint8Array.from(atob(o.offer.certHash), (c) => c.charCodeAt(0));
+/** How long WebTransport gets before the WebSocket fallback is tried: blocked UDP fails by timing out. */
+const WEBTRANSPORT_WAIT_MS = 3000;
+/** Past this much unsent, a WebSocket packet is dropped: TCP would queue it, and late audio is useless. */
+const WS_MAX_BUFFERED = 16 * 1024;
+
+/** Packets both ways to the SFU, over WebTransport datagrams or the WebSocket fallback (GRYT-1831). */
+interface Pipe {
+  url: string;
+  send(packet: Uint8Array): void;
+  listen(onPacket: (packet: Uint8Array) => void): void;
+  close(): void;
+  closed: Promise<void>;
+}
+
+async function dialWebTransport(offer: AudioTransportOffer): Promise<Pipe> {
+  const value = Uint8Array.from(atob(offer.certHash), (c) => c.charCodeAt(0));
   const dialed = new Map<WebTransport, string>();
   const dial = (url: string) => {
-    const t = new WebTransport(`${url}?ticket=${encodeURIComponent(o.offer.ticket)}`, {
+    const t = new WebTransport(`${url}?ticket=${encodeURIComponent(offer.ticket)}`, {
       serverCertificateHashes: [{ algorithm: "sha-256", value }],
     });
     dialed.set(t, url);
@@ -113,16 +115,87 @@ export async function startAudioTransport(o: {
     });
   };
   // Every address at once, like ICE: the LAN one wins on the SFU's own network. The ticket is single use, so the rest get a 401.
-  const attempts = o.offer.urls.map(dial);
+  const attempts = offer.urls.map(dial);
+  const giveUp = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("WebTransport timed out")), WEBTRANSPORT_WAIT_MS));
   const first = new Promise<WebTransport>((resolve, reject) => {
     let left = attempts.length;
     for (const a of attempts) a.then(resolve, (error: Error) => --left === 0 && reject(error));
   });
-  const wt = await Promise.all([first, loadWorklets(o.context)]).then(([t]) => t, (error: Error) => {
+  const wt = await Promise.race([first, giveUp]).catch((error: Error) => {
     for (const a of attempts) a.then((t) => t.close(), () => undefined);
     throw error;
   });
   for (const a of attempts) a.then((t) => t !== wt && t.close(), () => undefined);
+  const writer = wt.datagrams.writable.getWriter();
+  return {
+    url: dialed.get(wt) ?? offer.urls[0],
+    // A full queue or a closed session loses the packet; audio doesn't wait.
+    send: (packet) => void writer.write(packet).catch(() => undefined),
+    listen(onPacket) {
+      const reader = wt.datagrams.readable.getReader();
+      void (async () => {
+        for (;;) {
+          const { value: d, done } = await reader.read().catch(() => ({ value: undefined, done: true }));
+          if (done || !d) return;
+          onPacket(d);
+        }
+      })();
+    },
+    close: () => wt.close(),
+    closed: wt.closed.then(() => undefined, () => undefined),
+  };
+}
+
+function dialWebSocket(url: string, ticket: string): Promise<Pipe> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`${url}?ticket=${encodeURIComponent(ticket)}`);
+    ws.binaryType = "arraybuffer";
+    const closed = new Promise<void>((done) => ws.addEventListener("close", () => done()));
+    ws.addEventListener("error", () => reject(new Error("audio WebSocket failed")), { once: true });
+    ws.addEventListener("close", () => reject(new Error("audio WebSocket closed")), { once: true });
+    ws.addEventListener("open", () => resolve({
+      url,
+      send(packet) {
+        if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < WS_MAX_BUFFERED) ws.send(packet);
+      },
+      listen(onPacket) {
+        ws.addEventListener("message", (e: MessageEvent<ArrayBuffer>) => onPacket(new Uint8Array(e.data)));
+      },
+      close: () => ws.close(),
+      closed,
+    }), { once: true });
+  });
+}
+
+/** WebTransport where it works, else the WebSocket fallback at `wsUrl` when there is one. */
+async function dialPipe(offer: AudioTransportOffer, wsUrl: string | undefined): Promise<Pipe> {
+  if (audioTransportSupported()) {
+    try {
+      return await dialWebTransport(offer);
+    } catch (error) {
+      if (!wsUrl) throw error;
+    }
+  }
+  if (!wsUrl) throw new Error("no WebTransport and no WebSocket fallback");
+  return dialWebSocket(wsUrl, offer.ticket);
+}
+
+/** Dial the SFU and start sending `input` and playing into `output`. Rejects if the handshake fails. */
+export async function startAudioTransport(o: {
+  offer: AudioTransportOffer;
+  context: AudioContext;
+  input: MediaStream;
+  output: AudioNode;
+  wasm: ArrayBuffer;
+  effects: VoiceEffectSettings;
+  /** The SFU's /audio-ws, for when WebTransport is missing or blocked (GRYT-1831). */
+  wsUrl?: string;
+  /** The sender ids heard speaking, each time that changes (GRYT-1830). */
+  onSpeaking?: (senders: number[]) => void;
+  /** Each sender's level in dBFS, about twenty times a second, for a halo (GRYT-1830). */
+  onLevels?: (levels: Map<number, number>) => void;
+}): Promise<AudioTransportSession> {
+  const [pipe] = await Promise.all([dialPipe(o.offer, o.wsUrl), loadWorklets(o.context)]);
 
   const sendOptions: SendOptions = { wasm: o.wasm.slice(0), frame: FRAME, bitrate: BITRATE, stereoBitrate: STEREO_BITRATE, settings: o.effects };
   const receiveOptions: ReceiveOptions = { wasm: o.wasm.slice(0), frame: FRAME };
@@ -138,23 +211,14 @@ export async function startAudioTransport(o: {
   let source = o.context.createMediaStreamSource(o.input);
   source.connect(send);
 
-  const writer = wt.datagrams.writable.getWriter();
-  // A full queue or a closed session loses the packet; audio doesn't wait.
-  send.port.onmessage = (e: MessageEvent<Uint8Array>) => void writer.write(e.data).catch(() => undefined);
+  send.port.onmessage = (e: MessageEvent<Uint8Array>) => pipe.send(e.data);
   receive.port.onmessage = (e: MessageEvent<ReceiveReport>) => {
     if ("speaking" in e.data) o.onSpeaking?.(e.data.speaking);
     else o.onLevels?.(new Map(e.data.levels));
   };
-  const reader = wt.datagrams.readable.getReader();
-  void (async () => {
-    for (;;) {
-      const { value: d, done } = await reader.read().catch(() => ({ value: undefined, done: true }));
-      if (done || !d) return;
-      receive.port.postMessage(d, [d.buffer]);
-    }
-  })();
+  pipe.listen((d) => receive.port.postMessage(d, [d.buffer]));
 
-  const closed = wt.closed.then(() => undefined, () => undefined).finally(() => {
+  const closed = pipe.closed.finally(() => {
     send.port.onmessage = null;
     receive.port.onmessage = null;
     o.onSpeaking?.([]);
@@ -167,7 +231,7 @@ export async function startAudioTransport(o: {
   });
 
   return {
-    url: dialed.get(wt) ?? o.offer.urls[0],
+    url: pipe.url,
     setInput(stream) {
       source.disconnect();
       source = o.context.createMediaStreamSource(stream);
@@ -186,7 +250,7 @@ export async function startAudioTransport(o: {
       receive.port.postMessage({ gains: [...gains] });
     },
     close() {
-      wt.close();
+      pipe.close();
     },
     closed,
   };
