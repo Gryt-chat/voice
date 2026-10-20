@@ -218,6 +218,12 @@ function useSfuHook(): SFUInterface {
     // A browser's own mic has an analyser of its own, so only the engine says.
     return { users, mic: heard?.mic ?? -120, micSpeaking: heard?.micSpeaking ?? false };
   }, []);
+  // Whether this client is on the own transport right now: only then is a WebRTC copy of someone a duplicate.
+  const [onTransport, setOnTransport] = useState(false);
+  const transportUsers = useMemo(
+    () => (onTransport ? new Set(senderUsers.values()) : new Set<string>()),
+    [onTransport, senderUsers],
+  );
   const transportSpeaking = useMemo(
     () => new Set(speakingSenders.flatMap((id) => senderUsers.get(id) ?? [])),
     [speakingSenders, senderUsers],
@@ -234,6 +240,7 @@ function useSfuHook(): SFUInterface {
         return;
       }
       nativeAudioRef.current = native;
+      setOnTransport(true);
       let ended = () => {};
       // The engine can't call into JavaScript from the audio thread, so who's speaking is asked for.
       let heard = "";
@@ -254,6 +261,7 @@ function useSfuHook(): SFUInterface {
           clearInterval(poll);
           setSpeakingSenders([]);
           nativeAudioRef.current = null;
+          setOnTransport(false);
           native.close();
           ended();
         },
@@ -286,10 +294,13 @@ function useSfuHook(): SFUInterface {
       audioTransportRef.current = session;
       session.setOutputGain(outputGainRef.current);
       feedTransport(session, microphoneBufferRef.current);
-      // shortcut: a peer without the transport hears nothing from this one; fine until it's the default.
-      await registeredTracksRef.current.find((s) => s.track?.kind === "audio")?.replaceTrack(null);
+      // The WebRTC copy keeps going until WebRTC audio is gone (GRYT-1831): peers without the transport hear only that one.
+      setOnTransport(true);
       void session.closed.then(() => {
-        if (audioTransportRef.current === session) audioTransportRef.current = null;
+        if (audioTransportRef.current === session) {
+          audioTransportRef.current = null;
+          setOnTransport(false);
+        }
       });
       voiceLog.ok("TRANSPORT", "start", "Voice on the own transport", { url: session.url, offered: offer.urls });
     } catch (error) {
@@ -1063,6 +1074,7 @@ function useSfuHook(): SFUInterface {
     setVideoSendSettings,
     reportVideoDemand,
     transportSpeaking,
+    transportUsers,
     getTransportLevels,
   };
 }
