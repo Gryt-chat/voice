@@ -11,6 +11,8 @@ export type MicrophoneBufferType = {
   monitorTap?: GainNode; // Fully processed audio, tapped before muteGain, for the microphone test
   monitorAnalyser?: AnalyserNode; // Level of that same tap, for the settings meter
   muteGain?: GainNode; // Dedicated gain node for muting
+  /** The raw microphone, sent as is when nothing would change it. Mute switches it off (voice#53). */
+  directTrack?: MediaStreamTrack;
   volumeGain?: GainNode; // Dedicated gain node for volume control
   noiseGate?: GainNode; // Fallback gain node, used only when the gate worklet is unavailable
   noiseGateWorklet?: AudioWorkletNode; // Noise gate running on the audio thread

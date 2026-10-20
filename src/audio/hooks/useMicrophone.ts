@@ -331,6 +331,13 @@ function useCreateMicrophoneHook() {
     ownPipeline?.setGain(micVolume);
   }, [ownPipeline, micVolume]);
 
+  /* Nothing would change the voice, so the raw track goes out (voice#53). A boolean, so the
+     pipeline rebuilds when it flips rather than on every slider drag. */
+  const direct =
+    (eSportsModeEnabled || (!rnnoiseNode && !autoGainEnabled && !compressorEnabled)) &&
+    (inputMode === "push_to_talk" || noiseGate <= 0) &&
+    micVolume === 100;
+
   const microphoneBuffer = useMemo<MicrophoneBufferType>(() => {
     if (platformPipeline) {
       // Two fields out of eighteen; the rest stay undefined because they are AudioNodes and
@@ -346,6 +353,7 @@ function useCreateMicrophoneHook() {
     }
 
     voiceLog.step("PIPELINE", 1, "Creating audio processing pipeline", {
+      direct,
       hasMicStream: !!micStream,
       micStreamTracks: micStream?.getAudioTracks().length ?? 0,
       rnnoiseActive: !!rnnoiseNode,
@@ -359,6 +367,7 @@ function useCreateMicrophoneHook() {
       eSportsModeEnabled,
       autoGainEnabled,
       compressorEnabled,
+      direct,
     });
 
     voiceLog.ok("PIPELINE", 1, "Audio pipeline created", {
@@ -377,7 +386,11 @@ function useCreateMicrophoneHook() {
     eSportsModeEnabled,
     autoGainEnabled,
     compressorEnabled,
+    direct,
   ]);
+
+  // The clone is ours to stop; the source track belongs to the capture.
+  useEffect(() => () => microphoneBuffer.directTrack?.stop(), [microphoneBuffer]);
 
   const { getVisualizerData } = usePipelineControls({
     microphoneBuffer,

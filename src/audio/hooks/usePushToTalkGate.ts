@@ -5,6 +5,8 @@ import { useVoiceConfig } from "../../config";
 import type { AudioPipeline } from "../../types";
 import type { MicrophoneBufferType } from "../types/Microphone";
 
+import { setSending } from "./microphonePipeline";
+
 /* The embedder owns the trigger and this owns the gate. Being muted does not stop the gate
    tracking, so unmuting mid-press does not leave the microphone open. */
 export interface PushToTalkGate {
@@ -40,13 +42,13 @@ export function usePushToTalkGate(
   useEffect(() => {
     if (inputMode !== "push_to_talk" || !microphoneBuffer.muteGain || !audioContext) return;
     if (!effectiveMuted) {
-      microphoneBuffer.muteGain.gain.setValueAtTime(0, audioContext.currentTime);
+      setSending(microphoneBuffer, audioContext, false);
     }
     // effectiveMuted is deliberately not a dependency: this is about entering the mode, and
     // re-running on every mute toggle would close the gate underneath a held key.
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inputMode, microphoneBuffer.muteGain, audioContext]);
+  }, [inputMode, microphoneBuffer, audioContext]);
 
   const setActive = useCallback(
     (active: boolean) => {
@@ -67,16 +69,13 @@ export function usePushToTalkGate(
       // Opening while muted would transmit something the person has said not
       // to. Closing always applies.
       if (active && effectiveMuted) return;
-      microphoneBuffer.muteGain.gain.setValueAtTime(
-        active ? 1 : 0,
-        audioContext.currentTime,
-      );
+      setSending(microphoneBuffer, audioContext, active);
     },
     [
       inputMode,
       ownPipeline,
       applyToOwnPipeline,
-      microphoneBuffer.muteGain,
+      microphoneBuffer,
       audioContext,
       effectiveMuted,
     ],
