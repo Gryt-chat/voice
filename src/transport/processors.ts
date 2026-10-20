@@ -99,16 +99,24 @@ interface Sender {
   lastHeard: number;
   /** When a packet played last carried the speaking flag (GRYT-1830). */
   lastSpeaking: number;
+  /** Mean square of what played from them in the last block, for the halo. */
+  power: number;
 }
 
 // A muted sender stops sending, so a ring goes out this long after the last speaking packet.
 const SPEAKING_HOLD_S = 0.25;
+// Levels go out about twenty times a second: often enough for a halo, rarely enough to cost nothing.
+const LEVELS_EVERY_S = 0.05;
+
+/** What the receive worklet tells the page: who is speaking when that changes, and levels in dBFS by sender. */
+export type ReceiveReport = { speaking: number[] } | { levels: [number, number][] };
 
 /** Forwarded packets in on the port, everyone mixed out: a jitter buffer and a decoder per sender. */
 class ReceiveProcessor extends AudioWorkletProcessor {
   private readonly frameSize: number;
   private readonly senders = new Map<number, Sender>();
   private speakingKey = "";
+  private levelsAt = 0;
   private opus: Awaited<ReturnType<typeof loadOpus>> | null = null;
 
   constructor(options: { processorOptions: ReceiveOptions }) {
@@ -130,6 +138,7 @@ class ReceiveProcessor extends AudioWorkletProcessor {
         pending: new Float32Array(0),
         lastHeard: currentTime,
         lastSpeaking: -Infinity,
+        power: 0,
       };
       this.senders.set(forwarded.sender, s);
     }
@@ -164,10 +173,13 @@ class ReceiveProcessor extends AudioWorkletProcessor {
         joined.set(pcm, s.pending.length);
         s.pending = joined;
       }
+      let sum = 0;
       for (let i = 0; i < out.length; i++) {
         out[i] += s.pending[2 * i];
         if (outRight !== out) outRight[i] += s.pending[2 * i + 1];
+        sum += s.pending[2 * i] ** 2 + s.pending[2 * i + 1] ** 2;
       }
+      s.power = sum / (out.length * 2);
       s.pending = s.pending.subarray(out.length * 2);
     }
     // Who is speaking as heard, so a ring lights with the voice; sent only when it changes.
@@ -175,7 +187,12 @@ class ReceiveProcessor extends AudioWorkletProcessor {
     const key = speaking.join(",");
     if (key !== this.speakingKey) {
       this.speakingKey = key;
-      this.port.postMessage(speaking);
+      this.port.postMessage({ speaking } satisfies ReceiveReport);
+    }
+    if (currentTime - this.levelsAt >= LEVELS_EVERY_S) {
+      this.levelsAt = currentTime;
+      const levels = [...this.senders].map(([id, s]): [number, number] => [id, s.power > 0 ? 10 * Math.log10(s.power) : -120]);
+      this.port.postMessage({ levels } satisfies ReceiveReport);
     }
     return true;
   }
