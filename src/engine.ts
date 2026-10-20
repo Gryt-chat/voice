@@ -1,6 +1,9 @@
 export { VoiceSingletonHooks } from "./shared/SingletonHooks.js";
 export * from "./audio/index.js";
 export { loadOpus, type OpusCodec, type OpusDecoder, type OpusEncoder } from "./codec/opus.js";
+export { TRANSPORT_WORKLET_SOURCE } from "./transport/workletSource.js";
+export { RECEIVE_PROCESSOR, SEND_PROCESSOR } from "./transport/workletNames.js";
+export type { ReceiveOptions, SendOptions } from "./transport/processors.js";
 export * from "./webrtc/index.js";
 export {
   useVoiceCallbacks,

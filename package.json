@@ -24,7 +24,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.ts && node -e \"fs.cpSync('src/codec/opus.wasm','dist/codec/opus.wasm')\"",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.ts && node -e \"fs.cpSync('src/codec/opus.wasm','dist/codec/opus.wasm')\" && node scripts/build-worklet-source.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:scripts": "tsc -p scripts",
     "lint": "eslint --flag unstable_native_nodejs_ts_config .",
@@ -51,6 +51,7 @@
     "check-opus-wasm": "node scripts/check-opus-wasm.ts",
     "check-transport-packet": "node scripts/check-transport-packet.ts",
     "check-jitter-buffer": "node scripts/check-jitter-buffer.ts",
+    "check-transport-worklets": "node scripts/check-transport-worklets.ts",
     "check-voice-effects": "node scripts/check-voice-effects.ts",
     "check-fresh-send-track": "node scripts/check-fresh-send-track.ts",
     "check-esports-pipeline": "node scripts/check-esports-pipeline.ts",
