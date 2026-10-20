@@ -289,7 +289,9 @@ export async function connectToSfuWebSocket(
       offerProcessingInProgress = true;
       const pc = peerConnectionRef.current;
 
-      pc.setRemoteDescription(new RTCSessionDescription(offer))
+      // Chrome sizes its Opus frames from the remote ptime, so the answer alone never got 10 ms frames (voice#53).
+      const remote = eSportsModeEnabled && offer.sdp ? { type: offer.type, sdp: optimizeSdpForLowLatency(offer.sdp) } : offer;
+      pc.setRemoteDescription(new RTCSessionDescription(remote))
         .then(() => {
           voiceLog.ok(
             "SFU-WS",
