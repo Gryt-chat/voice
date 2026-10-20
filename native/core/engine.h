@@ -52,6 +52,12 @@ typedef struct {
   gv_sender senders[GV_MAX_SENDERS];
   /* Who is heard speaking, one sender id or 0 per slot, for another thread to read. */
   atomic_uint speaking[GV_MAX_SENDERS];
+  /* Each slot's sender and how loud it was in the last render, in dBFS, for the halo. */
+  atomic_uint slot_id[GV_MAX_SENDERS];
+  _Atomic float level_db[GV_MAX_SENDERS];
+  /* The mic as sent, after the effects: silent when muted or gated. */
+  _Atomic float mic_db;
+  atomic_bool mic_speaking;
   /* One producer (the network thread), one consumer (render, on the audio thread). */
   uint8_t queue[GV_QUEUE_SLOTS][GV_QUEUE_BYTES];
   uint16_t queue_len[GV_QUEUE_SLOTS];
@@ -76,5 +82,7 @@ void gv_engine_set_output_gain(gv_engine *e, float gain);
 void gv_engine_set_effects(gv_engine *e, const gv_effect_settings *s);
 /* The sender ids heard speaking in the last 250 ms, up to max. Safe from any thread. */
 int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max);
+/* Every sender heard and its level in dBFS, up to max, plus the mic's (GRYT-1830). Safe from any thread. */
+int gv_engine_levels(gv_engine *e, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking);
 
 #endif

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMicrophone } from "../../audio/hooks/useMicrophone";
 import { useSpeakers } from "../../audio/hooks/useSpeakers";
 import type { MicrophoneBufferType } from "../../audio/types/Microphone";
+import type { NativeAudioSession } from "../../types";
 import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
 import { sliderToOutputGain } from "../../shared/audioVolume";
 import { getVoicePlatform } from "../../platform/index";
@@ -198,6 +199,21 @@ function useSfuHook(): SFUInterface {
   // Who is heard speaking over the transport: sender ids from the receive worklet, users from the SFU.
   const [speakingSenders, setSpeakingSenders] = useState<number[]>([]);
   const [senderUsers, setSenderUsers] = useState<Map<number, string>>(() => new Map());
+  const senderUsersRef = useRef(senderUsers);
+  senderUsersRef.current = senderUsers;
+  const nativeAudioRef = useRef<NativeAudioSession | null>(null);
+  // Asked for rather than kept in state: levels change ten times a second, and state would re-render every user of this hook.
+  const getTransportLevels = useCallback(() => {
+    const native = nativeAudioRef.current;
+    if (!native) return null;
+    const { ids, db, mic, micSpeaking } = native.levels();
+    const users = new Map<string, number>();
+    ids.forEach((id, i) => {
+      const user = senderUsersRef.current.get(id);
+      if (user) users.set(user, db[i]);
+    });
+    return { users, mic, micSpeaking };
+  }, []);
   const transportSpeaking = useMemo(
     () => new Set(speakingSenders.flatMap((id) => senderUsers.get(id) ?? [])),
     [speakingSenders, senderUsers],
@@ -213,6 +229,7 @@ function useSfuHook(): SFUInterface {
         voiceLog.warn("TRANSPORT", "Native engine didn't start, staying on WebRTC audio");
         return;
       }
+      nativeAudioRef.current = native;
       let ended = () => {};
       // The engine can't call into JavaScript from the audio thread, so who's speaking is asked for.
       let heard = "";
@@ -232,6 +249,7 @@ function useSfuHook(): SFUInterface {
         close: () => {
           clearInterval(poll);
           setSpeakingSenders([]);
+          nativeAudioRef.current = null;
           native.close();
           ended();
         },
@@ -1040,6 +1058,7 @@ function useSfuHook(): SFUInterface {
     setVideoSendSettings,
     reportVideoDemand,
     transportSpeaking,
+    getTransportLevels,
   };
 }
 

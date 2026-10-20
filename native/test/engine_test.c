@@ -73,6 +73,21 @@ int main(void) {
   /* Speaking (GRYT-1830): the gate is open with no threshold, so sender 7 is heard speaking. */
   uint32_t ids[GV_MAX_SENDERS];
   assert(gv_engine_speaking(&engine, ids, GV_MAX_SENDERS) == 1 && ids[0] == 7);
+  /* Levels: sender 7 is heard, and the beep's tail has gone quiet by the end of the run. */
+  float db[GV_MAX_SENDERS], mic_db;
+  int mic_speaking;
+  assert(gv_engine_levels(&engine, ids, db, GV_MAX_SENDERS, &mic_db, &mic_speaking) == 1 && ids[0] == 7);
+  assert(db[0] < -40 && mic_speaking);
+  /* A beep at 0.5 is about -9 dBFS as it's sent and as it's heard. */
+  static float tone[BLOCK], out2[BLOCK * 2];
+  for (int t = 0; t < SR / 10; t += BLOCK) {
+    for (int i = 0; i < BLOCK; i++) tone[i] = 0.5f * sinf(2 * (float)M_PI * 1000 * (t + i) / SR);
+    gv_engine_capture(&engine, tone, BLOCK, 1);
+    gv_engine_render(&engine, out2, BLOCK);
+  }
+  gv_engine_levels(&engine, ids, db, GV_MAX_SENDERS, &mic_db, &mic_speaking);
+  assert(mic_db > -11 && mic_db < -7);
+  assert(db[0] > -12 && db[0] < -7);
 
   /* Muted: the timestamp keeps moving, but nothing is sent. */
   gv_engine_set_sending(&engine, 0);
@@ -82,13 +97,15 @@ int main(void) {
   gv_engine_capture(&engine, noise, BLOCK, 1);
   gv_engine_capture(&engine, noise, BLOCK, 1);
   assert(sent == before);
+  gv_engine_levels(&engine, ids, db, GV_MAX_SENDERS, &mic_db, &mic_speaking);
+  assert(isinf(mic_db) && !mic_speaking);
   /* Nothing more arrives, so after the hold nobody is speaking. */
   static float silent[BLOCK * 2];
   for (int t = 0; t < SR * 3 / 10; t += BLOCK) gv_engine_render(&engine, silent, BLOCK);
   assert(gv_engine_speaking(&engine, ids, GV_MAX_SENDERS) == 0);
 
   gv_engine_destroy(&engine);
-  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; stereo kept apart (right %.3f); muted sends nothing; speaking named and cleared\n",
+  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; stereo kept apart (right %.3f); muted sends nothing; speaking named and cleared; levels about -9 dB for a 0.5 beep, the mic silent when muted\n",
          delay_ms, peak, right);
   return 0;
 }

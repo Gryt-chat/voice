@@ -57,6 +57,18 @@ public final class GrytVoiceModule: Module {
       return ids.prefix(n).map { Int($0) }
     }
 
+    /// How loud each sender and the mic are, in dBFS (-120 for silence), for the halo (GRYT-1830).
+    Function("levels") { () -> [String: Any] in
+      guard let voice = self.voice else { return ["ids": [Int](), "db": [Double](), "mic": -120.0, "micSpeaking": false] }
+      var ids = [UInt32](repeating: 0, count: 16)
+      var db = [Float](repeating: 0, count: 16)
+      var mic: Float = 0
+      var micSpeaking: Int32 = 0
+      let n = Int(gv_voice_levels(voice, &ids, &db, Int32(ids.count), &mic, &micSpeaking))
+      let floor = { (x: Float) in x.isFinite ? Double(x) : -120 }
+      return ["ids": ids.prefix(n).map { Int($0) }, "db": db.prefix(n).map(floor), "mic": floor(mic), "micSpeaking": micSpeaking != 0]
+    }
+
     OnDestroy { self.stopVoice() }
   }
 

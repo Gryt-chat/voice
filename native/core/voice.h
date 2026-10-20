@@ -20,5 +20,7 @@ void gv_voice_set_effects(gv_voice *v, const gv_effect_settings *effects);
 int gv_voice_route(const gv_voice *v);
 /* The sender ids heard speaking, up to max (GRYT-1830). */
 int gv_voice_speaking(gv_voice *v, uint32_t *ids, int max);
+/* Every sender heard with its level in dBFS, and the mic's, for the halo (GRYT-1830). */
+int gv_voice_levels(gv_voice *v, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking);
 
 #endif

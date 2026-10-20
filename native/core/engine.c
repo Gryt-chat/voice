@@ -21,7 +21,13 @@ int gv_engine_init(gv_engine *e, const gv_effect_settings *s, int bitrate, int s
   atomic_init(&e->sending, 1);
   atomic_init(&e->output_gain, 1.0f);
   atomic_init(&e->effects_changed, false);
-  for (int i = 0; i < GV_MAX_SENDERS; i++) atomic_init(&e->speaking[i], 0);
+  for (int i = 0; i < GV_MAX_SENDERS; i++) {
+    atomic_init(&e->speaking[i], 0);
+    atomic_init(&e->slot_id[i], 0);
+    atomic_init(&e->level_db[i], -INFINITY);
+  }
+  atomic_init(&e->mic_db, -INFINITY);
+  atomic_init(&e->mic_speaking, false);
   return e->mono && e->stereo ? 0 : -1;
 }
 
@@ -37,6 +43,19 @@ void gv_engine_destroy(gv_engine *e) {
 }
 
 void gv_engine_set_sending(gv_engine *e, int on) { atomic_store(&e->sending, on); }
+
+int gv_engine_levels(gv_engine *e, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking) {
+  int n = 0;
+  for (int i = 0; i < GV_MAX_SENDERS && n < max; i++) {
+    uint32_t id = atomic_load(&e->slot_id[i]);
+    if (!id) continue;
+    ids[n] = id;
+    db[n++] = atomic_load(&e->level_db[i]);
+  }
+  *mic_db = atomic_load(&e->mic_db);
+  *mic_speaking = atomic_load(&e->mic_speaking);
+  return n;
+}
 
 int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max) {
   int n = 0;
@@ -69,6 +88,11 @@ void gv_engine_capture(gv_engine *e, const float *in, size_t frames, int channel
     }
     if (differ) e->stereo_for = STEREO_HOLD_FRAMES;
     gv_effects_process(&e->effects, left, channels == 2 ? right : NULL, n);
+    int on = atomic_load(&e->sending);
+    double sum = 0;
+    for (size_t i = 0; i < n; i++) sum += left[i] * left[i];
+    atomic_store(&e->mic_db, on && sum > 0 ? (float)(10 * log10(sum / (double)n)) : -INFINITY);
+    atomic_store(&e->mic_speaking, on && e->effects.gate_open);
     for (size_t i = 0; i < n; i++) {
       float r = channels == 2 ? right[i] : left[i];
       e->stereo_frame[2 * e->filled] = left[i];
@@ -153,25 +177,28 @@ void gv_engine_render(gv_engine *e, float *out, size_t frames) {
   memset(out, 0, frames * 2 * sizeof(float));
   for (int i = 0; i < GV_MAX_SENDERS; i++) {
     gv_sender *s = &e->senders[i];
-    if (!s->used) {
+    if (!s->used || e->now_ms - s->last_heard_ms > SENDER_TIMEOUT_MS) {
+      if (s->used) drop_sender(s);
       atomic_store(&e->speaking[i], 0);
+      atomic_store(&e->slot_id[i], 0);
       continue;
     }
-    if (e->now_ms - s->last_heard_ms > SENDER_TIMEOUT_MS) {
-      drop_sender(s);
-      atomic_store(&e->speaking[i], 0);
-      continue;
-    }
-    /* A muted sender stops sending, so the ring goes out this long after its last speaking packet. */
-    atomic_store(&e->speaking[i], e->now_ms - s->last_speaking_ms < SPEAKING_HOLD_MS ? s->id : 0);
+    double sum = 0;
     for (size_t done = 0; done < frames;) {
       if (s->pending_frames == 0) pull_frame(s, e->now_ms);
       size_t take = frames - done < s->pending_frames ? frames - done : s->pending_frames;
-      for (size_t k = 0; k < take * 2; k++) out[done * 2 + k] += s->pending[k];
+      for (size_t k = 0; k < take * 2; k++) {
+        out[done * 2 + k] += s->pending[k];
+        sum += s->pending[k] * s->pending[k];
+      }
       memmove(s->pending, s->pending + take * 2, (s->pending_frames - take) * 2 * sizeof(float));
       s->pending_frames -= take;
       done += take;
     }
+    /* A muted sender stops sending, so the ring goes out this long after its last speaking packet. */
+    atomic_store(&e->speaking[i], e->now_ms - s->last_speaking_ms < SPEAKING_HOLD_MS ? s->id : 0);
+    atomic_store(&e->level_db[i], sum > 0 ? (float)(10 * log10(sum / (double)(frames * 2))) : -INFINITY);
+    atomic_store(&e->slot_id[i], s->id);
   }
   float gain = atomic_load(&e->output_gain);
   if (gain != 1.0f)
