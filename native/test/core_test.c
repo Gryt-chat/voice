@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../core/jitter.h"
 #include "../core/packet.h"
 #include "../core/seal.h"
 
@@ -78,6 +79,28 @@ int main(int argc, char **argv) {
     gv_replay r = {0};
     if (gv_open(c, (uint8_t)atoi(argv[3]), a, len, (size_t)atoi(argv[4]), &r, &session, &out, &out_len)) printf("reject\n");
     else hex(out, out_len);
+  } else if (argc == 2 && !strcmp(argv[1], "jitter")) {
+    /* Stdin: "push seq timestamp arrival_ms" and "pull" lines. Stdout: one line per pull, then the stats. */
+    static gv_jitter j;
+    gv_jitter_init(&j, 2.5, 5, 60);
+    char op[8];
+    while (scanf("%7s", op) == 1) {
+      if (!strcmp(op, "push")) {
+        unsigned seq;
+        unsigned long ts;
+        double at;
+        if (scanf("%u %lu %lf", &seq, &ts, &at) != 3) return 2;
+        uint8_t opus[2] = {(uint8_t)seq, (uint8_t)(seq >> 8)};
+        gv_packet p = {0, (uint16_t)seq, (uint32_t)ts, opus, 2};
+        gv_jitter_push(&j, &p, at);
+      } else {
+        gv_packet out;
+        gv_pull_kind k = gv_jitter_pull(&j, &out);
+        if (k == GV_PULL_PACKET) printf("P %u\n", out.seq);
+        else printf(k == GV_PULL_LOST ? "L\n" : "S\n");
+      }
+    }
+    printf("stats %u %u %u %u %u\n", j.stats.late, j.stats.duplicate, j.stats.lost, j.stats.drained, j.stats.rebuffered);
   } else return 2;
   return 0;
 }

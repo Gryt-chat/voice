@@ -142,6 +142,8 @@ jobs:
       # The native engine's C core: packets as the TypeScript writes them, sealing as OpenSSL does it (GRYT-1822).
       - name: Check the native core against TypeScript and OpenSSL
         run: npm run check-native-core
+      - name: Check the native jitter buffer against the TypeScript one
+        run: npm run check-native-jitter
 
       # The own transport's effects run sample by sample: none may delay a sound (GRYT-1819).
       - name: Check the microphone effects add no delay
