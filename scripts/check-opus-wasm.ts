@@ -40,6 +40,35 @@ const filled = dec.decode(null);
 assert.equal(filled.length, FRAME, "a lost packet left a gap");
 assert.ok(rms(filled) > 0.05, "the lost frame was filled with silence");
 
+// Stereo: a tone on the left only stays on the left. A stereo decoder plays a mono packet on both sides.
+const stereoEnc = opus.encoder({ frame: FRAME, bitrate: 256000, channels: 2 });
+const stereoDec = opus.decoder(FRAME, 2);
+const left: number[] = [];
+const right: number[] = [];
+for (let f = 0; f < frames; f++) {
+  const pcm = new Float32Array(FRAME * 2);
+  for (let i = 0; i < FRAME; i++) pcm[2 * i] = tone(f * FRAME + i);
+  const decoded = stereoDec.decode(stereoEnc.encode(pcm));
+  assert.equal(decoded.length, FRAME * 2, "a stereo frame decoded to the wrong length");
+  if (f < 10) continue;
+  for (let i = 0; i < FRAME; i++) {
+    left.push(decoded[2 * i]);
+    right.push(decoded[2 * i + 1]);
+  }
+}
+const leftLevel = rms(Float32Array.from(left)) / 0.3536;
+const rightLevel = rms(Float32Array.from(right)) / 0.3536;
+assert.ok(leftLevel > 0.85 && leftLevel < 1.15, `the left tone came back at ${(leftLevel * 100).toFixed(0)}%`);
+assert.ok(rightLevel < 0.05, `the right side, silent going in, came back at ${(rightLevel * 100).toFixed(0)}%`);
+const fresh = opus.decoder(FRAME, 2);
+let both: Float32Array<ArrayBufferLike> = new Float32Array(0);
+for (let f = 0; f < 10; f++) both = fresh.decode(enc.encode(Float32Array.from({ length: FRAME }, (_, i) => tone(f * FRAME + i))));
+fresh.destroy();
+assert.equal(both.length, FRAME * 2, "a mono packet didn't come out as stereo");
+assert.ok(both.every((v, i) => i % 2 === 1 || Math.abs(v - both[i + 1]) < 1e-6), "a mono packet came out different on each side");
+
 enc.destroy();
 dec.destroy();
-console.log(`opus wasm: 2.5 ms frames at ${avg.toFixed(1)} bytes, the tone back at ${(level * 100).toFixed(0)}%, a lost frame filled`);
+stereoEnc.destroy();
+stereoDec.destroy();
+console.log(`opus wasm: 2.5 ms frames at ${avg.toFixed(1)} bytes, the tone back at ${(level * 100).toFixed(0)}%, a lost frame filled, stereo kept apart (right ${(rightLevel * 100).toFixed(1)}%)`);
