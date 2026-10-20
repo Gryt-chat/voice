@@ -180,6 +180,8 @@ export interface NativeAudioSession {
   setSending(on: boolean): void;
   setOutputGain(gain: number): void;
   setEffects(effects: VoiceEffectSettings): void;
+  /** The sender ids heard speaking, for the SFU's audio_senders to name (GRYT-1830). */
+  speaking(): number[];
   close(): void;
 }
 

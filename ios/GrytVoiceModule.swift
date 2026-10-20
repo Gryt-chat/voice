@@ -49,6 +49,14 @@ public final class GrytVoiceModule: Module {
       return Int(gv_voice_route(voice))
     }
 
+    /// The sender ids heard speaking in the last 250 ms (GRYT-1830).
+    Function("speaking") { () -> [Int] in
+      guard let voice = self.voice else { return [] }
+      var ids = [UInt32](repeating: 0, count: 16)
+      let n = Int(gv_voice_speaking(voice, &ids, Int32(ids.count)))
+      return ids.prefix(n).map { Int($0) }
+    }
+
     OnDestroy { self.stopVoice() }
   }
 

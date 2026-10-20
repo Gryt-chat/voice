@@ -70,6 +70,10 @@ int main(void) {
   assert(left > 0.4f && left < 0.6f);
   assert(right < 0.02f);
 
+  /* Speaking (GRYT-1830): the gate is open with no threshold, so sender 7 is heard speaking. */
+  uint32_t ids[GV_MAX_SENDERS];
+  assert(gv_engine_speaking(&engine, ids, GV_MAX_SENDERS) == 1 && ids[0] == 7);
+
   /* Muted: the timestamp keeps moving, but nothing is sent. */
   gv_engine_set_sending(&engine, 0);
   int before = sent;
@@ -78,9 +82,13 @@ int main(void) {
   gv_engine_capture(&engine, noise, BLOCK, 1);
   gv_engine_capture(&engine, noise, BLOCK, 1);
   assert(sent == before);
+  /* Nothing more arrives, so after the hold nobody is speaking. */
+  static float silent[BLOCK * 2];
+  for (int t = 0; t < SR * 3 / 10; t += BLOCK) gv_engine_render(&engine, silent, BLOCK);
+  assert(gv_engine_speaking(&engine, ids, GV_MAX_SENDERS) == 0);
 
   gv_engine_destroy(&engine);
-  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; stereo kept apart (right %.3f); muted sends nothing\n",
+  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; stereo kept apart (right %.3f); muted sends nothing; speaking named and cleared\n",
          delay_ms, peak, right);
   return 0;
 }

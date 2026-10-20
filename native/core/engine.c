@@ -9,6 +9,7 @@
 #define STEREO_HOLD_FRAMES (2 * SAMPLE_RATE / GV_FRAME)
 /* Someone silent this long has left or muted: their decoder is freed until they speak again. */
 #define SENDER_TIMEOUT_MS 10000
+#define SPEAKING_HOLD_MS 250
 
 int gv_engine_init(gv_engine *e, const gv_effect_settings *s, int bitrate, int stereo_bitrate, gv_send_fn send, void *user) {
   memset(e, 0, sizeof *e);
@@ -20,6 +21,7 @@ int gv_engine_init(gv_engine *e, const gv_effect_settings *s, int bitrate, int s
   atomic_init(&e->sending, 1);
   atomic_init(&e->output_gain, 1.0f);
   atomic_init(&e->effects_changed, false);
+  for (int i = 0; i < GV_MAX_SENDERS; i++) atomic_init(&e->speaking[i], 0);
   return e->mono && e->stereo ? 0 : -1;
 }
 
@@ -35,6 +37,15 @@ void gv_engine_destroy(gv_engine *e) {
 }
 
 void gv_engine_set_sending(gv_engine *e, int on) { atomic_store(&e->sending, on); }
+
+int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max) {
+  int n = 0;
+  for (int i = 0; i < GV_MAX_SENDERS && n < max; i++) {
+    uint32_t id = atomic_load(&e->speaking[i]);
+    if (id) ids[n++] = id;
+  }
+  return n;
+}
 
 void gv_engine_set_output_gain(gv_engine *e, float gain) { atomic_store(&e->output_gain, gain); }
 
@@ -101,6 +112,7 @@ void gv_engine_receive(gv_engine *e, const uint8_t *bytes, size_t len) {
     if (!s->decoder) return;
     s->used = 1;
     s->id = id;
+    s->last_speaking_ms = -1e9;
     gv_jitter_init(&s->jitter, FRAME_MS, 5, 60);
   }
   s->last_heard_ms = e->now_ms;
@@ -108,12 +120,15 @@ void gv_engine_receive(gv_engine *e, const uint8_t *bytes, size_t len) {
 }
 
 /* One frame from a sender's jitter buffer into its pending stereo samples. */
-static void pull_frame(gv_sender *s) {
+static void pull_frame(gv_sender *s, double now_ms) {
   gv_packet p;
   float *out = s->pending + s->pending_frames * 2;
   gv_pull_kind k = gv_jitter_pull(&s->jitter, &p);
   int got = 0;
-  if (k == GV_PULL_PACKET) got = gryt_decode(s->decoder, p.opus, (int)p.opus_len, out, GV_FRAME);
+  if (k == GV_PULL_PACKET) {
+    got = gryt_decode(s->decoder, p.opus, (int)p.opus_len, out, GV_FRAME);
+    if (p.flags & GV_FLAG_SPEAKING) s->last_speaking_ms = now_ms;
+  }
   else if (k == GV_PULL_LOST) got = gryt_decode(s->decoder, NULL, 0, out, GV_FRAME);
   if (got != GV_FRAME) memset(out, 0, GV_FRAME * 2 * sizeof(float));
   s->pending_frames += GV_FRAME;
@@ -138,13 +153,19 @@ void gv_engine_render(gv_engine *e, float *out, size_t frames) {
   memset(out, 0, frames * 2 * sizeof(float));
   for (int i = 0; i < GV_MAX_SENDERS; i++) {
     gv_sender *s = &e->senders[i];
-    if (!s->used) continue;
-    if (e->now_ms - s->last_heard_ms > SENDER_TIMEOUT_MS) {
-      drop_sender(s);
+    if (!s->used) {
+      atomic_store(&e->speaking[i], 0);
       continue;
     }
+    if (e->now_ms - s->last_heard_ms > SENDER_TIMEOUT_MS) {
+      drop_sender(s);
+      atomic_store(&e->speaking[i], 0);
+      continue;
+    }
+    /* A muted sender stops sending, so the ring goes out this long after its last speaking packet. */
+    atomic_store(&e->speaking[i], e->now_ms - s->last_speaking_ms < SPEAKING_HOLD_MS ? s->id : 0);
     for (size_t done = 0; done < frames;) {
-      if (s->pending_frames == 0) pull_frame(s);
+      if (s->pending_frames == 0) pull_frame(s, e->now_ms);
       size_t take = frames - done < s->pending_frames ? frames - done : s->pending_frames;
       for (size_t k = 0; k < take * 2; k++) out[done * 2 + k] += s->pending[k];
       memmove(s->pending, s->pending + take * 2, (s->pending_frames - take) * 2 * sizeof(float));

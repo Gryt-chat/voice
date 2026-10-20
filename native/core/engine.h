@@ -25,6 +25,8 @@ typedef struct {
   uint32_t id;
   int used;
   double last_heard_ms;
+  /* When a packet played last carried the speaking flag (GRYT-1830). */
+  double last_speaking_ms;
   gv_jitter jitter;
   OpusDecoder *decoder;
   float pending[GV_FRAME * 2 * 2];
@@ -48,6 +50,8 @@ typedef struct {
   void *user;
   double now_ms;
   gv_sender senders[GV_MAX_SENDERS];
+  /* Who is heard speaking, one sender id or 0 per slot, for another thread to read. */
+  atomic_uint speaking[GV_MAX_SENDERS];
   /* One producer (the network thread), one consumer (render, on the audio thread). */
   uint8_t queue[GV_QUEUE_SLOTS][GV_QUEUE_BYTES];
   uint16_t queue_len[GV_QUEUE_SLOTS];
@@ -70,5 +74,7 @@ void gv_engine_set_sending(gv_engine *e, int on);
 void gv_engine_set_output_gain(gv_engine *e, float gain);
 /* Taken at the next capture, so the audio thread never reads half a change. */
 void gv_engine_set_effects(gv_engine *e, const gv_effect_settings *s);
+/* The sender ids heard speaking in the last 250 ms, up to max. Safe from any thread. */
+int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max);
 
 #endif

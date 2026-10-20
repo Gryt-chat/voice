@@ -18,5 +18,7 @@ void gv_voice_set_output_gain(gv_voice *v, float gain);
 void gv_voice_set_effects(gv_voice *v, const gv_effect_settings *effects);
 /* Which offered address answered, or -1 while none has. */
 int gv_voice_route(const gv_voice *v);
+/* The sender ids heard speaking, up to max (GRYT-1830). */
+int gv_voice_speaking(gv_voice *v, uint32_t *ids, int max);
 
 #endif

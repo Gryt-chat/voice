@@ -59,6 +59,7 @@ interface GrytVoiceModule {
   setSending(on: boolean): void;
   setOutputGain(gain: number): void;
   setEffects(effects: Record<string, number>): void;
+  speaking(): number[];
 }
 
 // Where requireOptionalNativeModule looks, read directly so this package doesn't depend on expo-modules-core.
@@ -86,6 +87,7 @@ export const nativePlatform: VoicePlatform = {
       setSending: (on) => grytVoice.setSending(on && !micMuted),
       setOutputGain: (gain) => grytVoice.setOutputGain(gain),
       setEffects: (e) => grytVoice.setEffects(asNumbers(e)),
+      speaking: () => grytVoice.speaking(),
       close: () => {
         nativeRunning = false;
         grytVoice.stop();

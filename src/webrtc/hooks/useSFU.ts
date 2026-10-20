@@ -20,6 +20,9 @@ import { createVideoSendController } from "./videoSender";
 import { type Phase, voiceLog } from "./voiceLogger";
 
 /** The raw microphone when the worklet can do all the processing; RNNoise still needs the graph. */
+// How often the phone asks the native engine who is speaking: fast enough for a ring.
+const SPEAKING_POLL_MS = 100;
+
 function transportInput(buffer: MicrophoneBufferType, { audio }: { audio: { noiseSuppression: boolean } }) {
   const raw = !audio.noiseSuppression && !!buffer.mediaStream?.getAudioTracks().length;
   return { input: raw ? buffer.mediaStream : buffer.processedStream, raw };
@@ -211,6 +214,15 @@ function useSfuHook(): SFUInterface {
         return;
       }
       let ended = () => {};
+      // The engine can't call into JavaScript from the audio thread, so who's speaking is asked for.
+      let heard = "";
+      const poll = setInterval(() => {
+        const ids = native.speaking();
+        if (ids.join() !== heard) {
+          heard = ids.join();
+          setSpeakingSenders(ids);
+        }
+      }, SPEAKING_POLL_MS);
       const session: AudioTransportSession = {
         url: offer.udp.addrs[0],
         setInput: () => {},
@@ -218,6 +230,8 @@ function useSfuHook(): SFUInterface {
         setEffects: native.setEffects,
         setOutputGain: native.setOutputGain,
         close: () => {
+          clearInterval(poll);
+          setSpeakingSenders([]);
           native.close();
           ended();
         },
