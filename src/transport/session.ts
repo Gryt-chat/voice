@@ -34,6 +34,8 @@ export interface AudioTransportSession {
   setEffects(settings: VoiceEffectSettings): void;
   /** Gain for everything heard: 0 when deafened. */
   setOutputGain(gain: number): void;
+  /** Volume per sender id on top of that, 1 for anyone not named (GRYT-1831). */
+  setSenderGains(gains: Map<number, number>): void;
   close(): void;
   /** Settles when the session ends, for whatever reason. */
   closed: Promise<void>;
@@ -179,6 +181,9 @@ export async function startAudioTransport(o: {
     },
     setOutputGain(g) {
       gain.gain.setValueAtTime(g, o.context.currentTime);
+    },
+    setSenderGains(gains) {
+      receive.port.postMessage({ gains: [...gains] });
     },
     close() {
       wt.close();

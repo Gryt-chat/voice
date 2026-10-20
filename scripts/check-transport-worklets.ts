@@ -14,7 +14,7 @@ const FRAME = 120;
 // What an AudioWorkletGlobalScope gives a processor, and no more.
 let clock = 0;
 type Options = { processorOptions: object };
-type Message = Uint8Array | { type: string; on?: boolean };
+type Message = Uint8Array | { type: string; on?: boolean } | { gains: [number, number][] };
 const registered = new Map<string, new (options: Options) => Processor>();
 interface Port {
   sent: Uint8Array[];
@@ -85,6 +85,13 @@ const rightPeak = Math.max(...stereoRun.outRight.subarray(stereoRun.onsetIn, ste
 assert.ok(leftPeak > 0.4 && leftPeak < 0.6, `the left beep came out at ${leftPeak.toFixed(2)}`);
 assert.ok(rightPeak < 0.02, `the right side, silent going in, came out at ${rightPeak.toFixed(3)}`);
 
+// Per-user volume (GRYT-1831): sender 7 at half comes out at half.
+receive.port.onmessage?.({ data: { gains: [[7, 0.5]] } });
+const halved = run(1, 0.5);
+const halfPeak = Math.max(...halved.out.subarray(halved.onsetIn, halved.onsetIn + 0.1 * SR).map(Math.abs));
+assert.ok(halfPeak > 0.2 && halfPeak < 0.3, `at half volume the beep came out at ${halfPeak.toFixed(2)}, in at 0.5`);
+receive.port.onmessage?.({ data: { gains: [] } });
+
 // Muted: the timestamp keeps moving, but nothing is sent.
 send.port.onmessage?.({ data: { type: "sending", on: false } });
 const before = send.port.sent.length;
@@ -107,4 +114,4 @@ for (let t = 0; t < 0.3 * SR; t += QUANTUM) {
 const lastSpeaking = said.filter((m) => "speaking" in m).at(-1);
 assert.deepEqual(lastSpeaking, { speaking: [] }, "sender 7 still speaking after its packets stopped");
 
-console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; muted sends nothing; speaking named and cleared; levels by sender`);
+console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; per-user volume applied; muted sends nothing; speaking named and cleared; levels by sender`);

@@ -83,6 +83,8 @@ export interface SFUInterface {
   transportSpeaking?: ReadonlySet<string>;
   /** User ids heard over the own transport while this client is on it too: their WebRTC copy is a duplicate to silence (GRYT-1831). */
   transportUsers?: ReadonlySet<string>;
+  /** Per-user volume over the own transport, 1 = as sent, by user id; anyone not named plays at 1 (GRYT-1831). */
+  setTransportUserGains?: (gains: ReadonlyMap<string, number>) => void;
   /** Each user's level heard over the own transport, in dBFS (-120 silent), for a halo; the mic's only on the native engine. Null when off the transport. */
   getTransportLevels?: () => { users: ReadonlyMap<string, number>; mic: number; micSpeaking: boolean } | null;
 }

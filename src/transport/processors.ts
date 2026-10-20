@@ -116,6 +116,8 @@ class ReceiveProcessor extends AudioWorkletProcessor {
   private readonly frameSize: number;
   private readonly senders = new Map<number, Sender>();
   private speakingKey = "";
+  /** Per-sender volume, 1 for anyone not named: a user's own volume for someone (GRYT-1831). */
+  private gains = new Map<number, number>();
   private levelsAt = 0;
   private opus: Awaited<ReturnType<typeof loadOpus>> | null = null;
 
@@ -123,7 +125,10 @@ class ReceiveProcessor extends AudioWorkletProcessor {
     super(options);
     this.frameSize = options.processorOptions.frame;
     loadOpus(options.processorOptions.wasm).then((opus) => (this.opus = opus));
-    this.port.onmessage = (e: MessageEvent<Uint8Array>) => this.receive(e.data);
+    this.port.onmessage = (e: MessageEvent<Uint8Array | { gains: [number, number][] }>) => {
+      if (e.data instanceof Uint8Array) this.receive(e.data);
+      else this.gains = new Map(e.data.gains);
+    };
   }
 
   private receive(bytes: Uint8Array) {
@@ -174,9 +179,10 @@ class ReceiveProcessor extends AudioWorkletProcessor {
         s.pending = joined;
       }
       let sum = 0;
+      const gain = this.gains.get(id) ?? 1;
       for (let i = 0; i < out.length; i++) {
-        out[i] += s.pending[2 * i];
-        if (outRight !== out) outRight[i] += s.pending[2 * i + 1];
+        out[i] += s.pending[2 * i] * gain;
+        if (outRight !== out) outRight[i] += s.pending[2 * i + 1] * gain;
         sum += s.pending[2 * i] ** 2 + s.pending[2 * i + 1] ** 2;
       }
       s.power = sum / (out.length * 2);

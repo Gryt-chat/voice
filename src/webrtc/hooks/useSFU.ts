@@ -224,6 +224,21 @@ function useSfuHook(): SFUInterface {
     () => (onTransport ? new Set(senderUsers.values()) : new Set<string>()),
     [onTransport, senderUsers],
   );
+  // Per-user volume on the transport: kept by user, applied by sender id whenever either side changes.
+  const userGainsRef = useRef<ReadonlyMap<string, number>>(new Map());
+  const applyUserGains = useCallback(() => {
+    const bySender = new Map<number, number>();
+    for (const [id, user] of senderUsersRef.current) {
+      const g = userGainsRef.current.get(user);
+      if (g !== undefined) bySender.set(id, g);
+    }
+    audioTransportRef.current?.setSenderGains(bySender);
+  }, []);
+  const setTransportUserGains = useCallback((gains: ReadonlyMap<string, number>) => {
+    userGainsRef.current = gains;
+    applyUserGains();
+  }, [applyUserGains]);
+  useEffect(applyUserGains, [senderUsers, applyUserGains]);
   const transportSpeaking = useMemo(
     () => new Set(speakingSenders.flatMap((id) => senderUsers.get(id) ?? [])),
     [speakingSenders, senderUsers],
@@ -257,6 +272,8 @@ function useSfuHook(): SFUInterface {
         setSending: native.setSending,
         setEffects: native.setEffects,
         setOutputGain: native.setOutputGain,
+        // shortcut: the native engine has no per-sender gain yet, so per-user volume doesn't reach it; add with the phone's volume menu.
+        setSenderGains: () => {},
         close: () => {
           clearInterval(poll);
           setSpeakingSenders([]);
@@ -293,6 +310,7 @@ function useSfuHook(): SFUInterface {
       audioTransportRef.current?.close();
       audioTransportRef.current = session;
       session.setOutputGain(outputGainRef.current);
+      applyUserGains();
       feedTransport(session, microphoneBufferRef.current);
       // The WebRTC copy keeps going until WebRTC audio is gone (GRYT-1831): peers without the transport hear only that one.
       setOnTransport(true);
@@ -306,7 +324,7 @@ function useSfuHook(): SFUInterface {
     } catch (error) {
       voiceLog.warn("TRANSPORT", "Own transport failed, staying on WebRTC audio", error);
     }
-  }, [audioTransportWasm, nativeAudio, feedTransport]);
+  }, [audioTransportWasm, nativeAudio, feedTransport, applyUserGains]);
 
   useEffect(() => {
     const session = audioTransportRef.current;
@@ -1076,6 +1094,7 @@ function useSfuHook(): SFUInterface {
     transportSpeaking,
     transportUsers,
     getTransportLevels,
+    setTransportUserGains,
   };
 }
 
