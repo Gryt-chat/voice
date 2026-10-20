@@ -202,17 +202,21 @@ function useSfuHook(): SFUInterface {
   const senderUsersRef = useRef(senderUsers);
   senderUsersRef.current = senderUsers;
   const nativeAudioRef = useRef<NativeAudioSession | null>(null);
+  // The browser's receive worklet reports levels by sender; kept here for the same getter.
+  const workletLevelsRef = useRef(new Map<number, number>());
   // Asked for rather than kept in state: levels change ten times a second, and state would re-render every user of this hook.
   const getTransportLevels = useCallback(() => {
     const native = nativeAudioRef.current;
-    if (!native) return null;
-    const { ids, db, mic, micSpeaking } = native.levels();
+    const heard = native ? native.levels() : null;
+    const bySender = heard ? new Map(heard.ids.map((id, i) => [id, heard.db[i]])) : workletLevelsRef.current;
+    if (!heard && bySender.size === 0) return null;
     const users = new Map<string, number>();
-    ids.forEach((id, i) => {
+    for (const [id, db] of bySender) {
       const user = senderUsersRef.current.get(id);
-      if (user) users.set(user, db[i]);
-    });
-    return { users, mic, micSpeaking };
+      if (user) users.set(user, db);
+    }
+    // A browser's own mic has an analyser of its own, so only the engine says.
+    return { users, mic: heard?.mic ?? -120, micSpeaking: heard?.micSpeaking ?? false };
   }, []);
   const transportSpeaking = useMemo(
     () => new Set(speakingSenders.flatMap((id) => senderUsers.get(id) ?? [])),
@@ -276,6 +280,7 @@ function useSfuHook(): SFUInterface {
       const session = await startAudioTransport({
         offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(), effects: PASS_THROUGH,
         onSpeaking: setSpeakingSenders,
+        onLevels: (levels) => (workletLevelsRef.current = levels),
       });
       audioTransportRef.current?.close();
       audioTransportRef.current = session;
