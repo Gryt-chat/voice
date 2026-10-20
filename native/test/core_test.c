@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../core/effects.h"
 #include "../core/jitter.h"
 #include "../core/packet.h"
 #include "../core/seal.h"
@@ -101,6 +102,30 @@ int main(int argc, char **argv) {
       }
     }
     printf("stats %u %u %u %u %u\n", j.stats.late, j.stats.duplicate, j.stats.lost, j.stats.drained, j.stats.rebuffered);
+  } else if (argc == 15 && !strcmp(argv[1], "effects")) {
+    /* Settings as numbers, then stereo, block size, and planar float32 files in and out (left, then right). */
+    gv_effect_settings s = {atof(argv[2]), atof(argv[3]), atof(argv[4]), atof(argv[5]), atoi(argv[6]), atof(argv[7]),
+                            atoi(argv[8]), atof(argv[9]), atoi(argv[10])};
+    int stereo = atoi(argv[11]);
+    size_t block = (size_t)atoi(argv[12]);
+    FILE *in = fopen(argv[13], "rb");
+    if (!in) return 3;
+    fseek(in, 0, SEEK_END);
+    size_t n = (size_t)ftell(in) / sizeof(float) / (stereo ? 2 : 1);
+    fseek(in, 0, SEEK_SET);
+    float *l = malloc(n * sizeof(float)), *r = stereo ? malloc(n * sizeof(float)) : NULL;
+    if (fread(l, sizeof(float), n, in) != n || (r && fread(r, sizeof(float), n, in) != n)) return 3;
+    fclose(in);
+    gv_effects fx;
+    gv_effects_init(&fx, 48000, &s);
+    for (size_t at = 0; at < n; at += block) gv_effects_process(&fx, l + at, r ? r + at : NULL, at + block > n ? n - at : block);
+    FILE *out = fopen(argv[14], "wb");
+    if (!out) return 3;
+    fwrite(l, sizeof(float), n, out);
+    if (r) fwrite(r, sizeof(float), n, out);
+    fclose(out);
+    free(l);
+    free(r);
   } else return 2;
   return 0;
 }

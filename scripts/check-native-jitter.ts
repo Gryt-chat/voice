@@ -11,8 +11,8 @@ const { JitterBuffer } = await import("../dist/transport/jitterBuffer.js");
 const bin = join(mkdtempSync(join(tmpdir(), "gv-jitter-")), "core_test");
 execFileSync("cc", [
   "-std=c99", "-O2", "-Wall", "-Wextra", "-Werror", "-o", bin,
-  "native/core/packet.c", "native/core/seal.c", "native/core/jitter.c", "native/vendor/monocypher/monocypher.c",
-  "native/test/core_test.c",
+  "native/core/packet.c", "native/core/seal.c", "native/core/jitter.c", "native/core/effects.c", "native/vendor/monocypher/monocypher.c",
+  "native/test/core_test.c", "-lm",
 ]);
 
 let rng = 1;
