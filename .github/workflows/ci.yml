@@ -148,6 +148,8 @@ jobs:
         run: npm run check-native-effects
       - name: Check the native Opus build against the WASM one
         run: npm run check-native-opus
+      - name: Check the native engine end to end
+        run: npm run check-native-engine
 
       # The own transport's effects run sample by sample: none may delay a sound (GRYT-1819).
       - name: Check the microphone effects add no delay

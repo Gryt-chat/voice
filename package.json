@@ -65,7 +65,8 @@
     "check-native-core": "node scripts/check-native-core.ts",
     "check-native-jitter": "node scripts/check-native-jitter.ts",
     "check-native-effects": "node scripts/check-native-effects.ts",
-    "check-native-opus": "node scripts/check-native-opus.ts"
+    "check-native-opus": "node scripts/check-native-opus.ts",
+    "check-native-engine": "node scripts/check-native-engine.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
