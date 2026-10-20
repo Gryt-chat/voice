@@ -941,7 +941,11 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       // The Web Audio track, re-added after a reconnect, came with ~10 ms it never lost; a clone starts clean (voice#53).
       // The raw track on the direct path has no Web Audio behind it, and mute switches that very track.
       const direct = track === microphoneBufferRef.current.directTrack;
-      const sent = track.kind === "audio" && !direct ? track.clone() : track;
+      let sent = track;
+      if (track.kind === "audio" && !direct) {
+        // react-native-webrtc throws "Not implemented" on clone(); the phone has no Web Audio track to clean.
+        try { sent = track.clone(); } catch { sent = track; }
+      }
       if (sent !== track) sentClones.add(sent);
       const sender = peerConnection.addTrack(sent, localStream);
       tracks.push(sender);

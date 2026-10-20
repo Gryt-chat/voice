@@ -11,6 +11,7 @@ public final class GrytVoiceModule: Module {
     /// The room_joined offer's udp part, and the effects as `transportEffects` gives them. False if it didn't start.
     Function("start") { (addrs: [String], session: Double, key: String, effects: [String: Double]) -> Bool in
       self.stopVoice()
+      Self.webRTCAudio(enabled: false)
       guard let keyData = Data(base64Encoded: key), keyData.count == 32, !addrs.isEmpty else { return false }
       var settings = Self.settings(effects)
       let cStrings = addrs.map { strdup($0) }
@@ -22,6 +23,7 @@ public final class GrytVoiceModule: Module {
           gv_voice_start(list.baseAddress, Int32(list.count), UInt32(session), raw.bindMemory(to: UInt8.self).baseAddress, &settings, 64)
         }
       }
+      if self.voice == nil { Self.webRTCAudio(enabled: true) }
       return self.voice != nil
     }
 
@@ -51,8 +53,21 @@ public final class GrytVoiceModule: Module {
   }
 
   private func stopVoice() {
-    if let voice { gv_voice_stop(voice) }
+    if let voice {
+      gv_voice_stop(voice)
+      Self.webRTCAudio(enabled: true)
+    }
     voice = nil
+  }
+
+  /// WebRTC's own audio unit takes the shared audio session and our capture stops, so it stays off
+  /// while the engine runs. By name, so this pod doesn't link WebRTC; without it there's nothing to do.
+  private static func webRTCAudio(enabled: Bool) {
+    guard let type = NSClassFromString("RTCAudioSession") as? NSObject.Type,
+          let shared = type.perform(NSSelectorFromString("sharedInstance"))?.takeUnretainedValue() as? NSObject
+    else { return }
+    shared.setValue(!enabled, forKey: "useManualAudio")
+    shared.setValue(enabled, forKey: "isAudioEnabled")
   }
 
   private static func settings(_ e: [String: Double]) -> gv_effect_settings {
