@@ -150,6 +150,8 @@ jobs:
         run: npm run check-native-opus
       - name: Check the native engine end to end
         run: npm run check-native-engine
+      - name: Build the native engine on real devices
+        run: npm run check-native-device
 
       # The own transport's effects run sample by sample: none may delay a sound (GRYT-1819).
       - name: Check the microphone effects add no delay
