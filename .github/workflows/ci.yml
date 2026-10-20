@@ -130,6 +130,13 @@ jobs:
       - name: Check the Opus WASM build encodes and decodes
         run: npm run check-opus-wasm
 
+      # The own transport's datagram and jitter buffer (GRYT-1818): malformed packets dropped,
+      # steady under jitter and loss, and drained back after a stall.
+      - name: Check the transport packet
+        run: npm run check-transport-packet
+      - name: Check the jitter buffer
+        run: npm run check-jitter-buffer
+
       # The own transport's effects run sample by sample: none may delay a sound (GRYT-1819).
       - name: Check the microphone effects add no delay
         run: npm run check-voice-effects

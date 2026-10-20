@@ -49,6 +49,8 @@
     "check-camera-resync": "node scripts/check-camera-resync.ts",
     "check-voice-latency": "node scripts/check-voice-latency.ts",
     "check-opus-wasm": "node scripts/check-opus-wasm.ts",
+    "check-transport-packet": "node scripts/check-transport-packet.ts",
+    "check-jitter-buffer": "node scripts/check-jitter-buffer.ts",
     "check-voice-effects": "node scripts/check-voice-effects.ts",
     "check-fresh-send-track": "node scripts/check-fresh-send-track.ts",
     "check-esports-pipeline": "node scripts/check-esports-pipeline.ts",
