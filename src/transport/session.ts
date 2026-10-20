@@ -84,6 +84,8 @@ export async function startAudioTransport(o: {
   output: AudioNode;
   wasm: ArrayBuffer;
   effects: VoiceEffectSettings;
+  /** The sender ids heard speaking, each time that changes (GRYT-1830). */
+  onSpeaking?: (senders: number[]) => void;
 }): Promise<AudioTransportSession> {
   const value = Uint8Array.from(atob(o.offer.certHash), (c) => c.charCodeAt(0));
   const dialed = new Map<WebTransport, string>();
@@ -126,6 +128,7 @@ export async function startAudioTransport(o: {
   const writer = wt.datagrams.writable.getWriter();
   // A full queue or a closed session loses the packet; audio doesn't wait.
   send.port.onmessage = (e: MessageEvent<Uint8Array>) => void writer.write(e.data).catch(() => undefined);
+  receive.port.onmessage = (e: MessageEvent<number[]>) => o.onSpeaking?.(e.data);
   const reader = wt.datagrams.readable.getReader();
   void (async () => {
     for (;;) {
@@ -137,6 +140,8 @@ export async function startAudioTransport(o: {
 
   const closed = wt.closed.then(() => undefined, () => undefined).finally(() => {
     send.port.onmessage = null;
+    receive.port.onmessage = null;
+    o.onSpeaking?.([]);
     source.disconnect();
     send.disconnect();
     receive.disconnect();

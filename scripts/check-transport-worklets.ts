@@ -92,4 +92,15 @@ send.process([[new Float32Array(QUANTUM).fill(0.3)]], [[new Float32Array(QUANTUM
 send.process([[new Float32Array(QUANTUM).fill(0.3)]], [[new Float32Array(QUANTUM)]]);
 assert.equal(send.port.sent.length, before, "a muted sender sent packets");
 
-console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; muted sends nothing`);
+// Speaking (GRYT-1830): sender 7's packets carry the flag with the gate open, so the receiver named it,
+// and once its packets stop the ring goes out.
+const said = receive.port.sent as (Uint8Array | number[])[];
+assert.ok(said.some((m) => Array.isArray(m) && m.join() === "7"), "the receiver never said sender 7 was speaking");
+said.length = 0;
+for (let t = 0; t < 0.3 * SR; t += QUANTUM) {
+  receive.process([], [[new Float32Array(QUANTUM), new Float32Array(QUANTUM)]]);
+  clock += QUANTUM / SR;
+}
+assert.deepEqual(said.at(-1), [], "sender 7 still speaking after its packets stopped");
+
+console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; muted sends nothing; speaking named and cleared`);
