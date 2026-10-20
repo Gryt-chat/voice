@@ -11,7 +11,7 @@ const { writePacket } = await import("../dist/transport/packet.js");
 
 const bin = join(mkdtempSync(join(tmpdir(), "gv-core-")), "core_test");
 execFileSync("cc", [
-  "-std=c99", "-O2", "-Wall", "-Wextra", "-Werror", "-o", bin,
+  "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", bin,
   "native/core/packet.c", "native/core/seal.c", "native/core/jitter.c", "native/core/effects.c", "native/vendor/monocypher/monocypher.c",
   "native/test/core_test.c", "-lm",
 ]);

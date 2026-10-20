@@ -67,7 +67,8 @@
     "check-native-effects": "node scripts/check-native-effects.ts",
     "check-native-opus": "node scripts/check-native-opus.ts",
     "check-native-engine": "node scripts/check-native-engine.ts",
-    "check-native-device": "node scripts/check-native-device.ts"
+    "check-native-device": "node scripts/check-native-device.ts",
+    "check-native-net": "node scripts/check-native-net.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

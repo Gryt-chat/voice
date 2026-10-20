@@ -12,7 +12,7 @@ execFileSync("sh", ["native/opus/build.sh"], { stdio: "inherit" });
 const dir = mkdtempSync(join(tmpdir(), "gv-opus-"));
 const bin = join(dir, "opus_test");
 execFileSync("cc", [
-  "-std=c99", "-O2", "-Wall", "-Wextra", "-Werror", "-Inative/build/opus/include/opus", "-o", bin,
+  "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-Inative/build/opus/include/opus", "-o", bin,
   "native/test/opus_test.c", "codec/opus/shim.c", "native/build/opus/lib/libopus.a", "-lm",
 ]);
 
