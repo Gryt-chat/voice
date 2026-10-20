@@ -126,6 +126,10 @@ jobs:
       - name: Check the latency poll reads once a second
         run: npm run check-voice-latency
 
+      # The own transport's effects run sample by sample: none may delay a sound (GRYT-1819).
+      - name: Check the microphone effects add no delay
+        run: npm run check-voice-effects
+
       # A reconnect re-added the same Web Audio track and the call stayed ~10 ms slower (voice#53).
       - name: Each connection sends its own microphone clone
         run: npm run check-fresh-send-track
