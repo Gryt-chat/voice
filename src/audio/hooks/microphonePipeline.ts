@@ -116,8 +116,10 @@ export function createMicrophoneBuffer({
 
   let agcAnalyser: AnalyserNode | undefined;
   let agcGain: GainNode | undefined;
+  // eSports mode promises no processing. Compressor and limiter each add 6 ms of lookahead, the clipper 4 ms.
+  const lean = eSportsModeEnabled;
 
-  if (autoGainEnabled) {
+  if (autoGainEnabled && !lean) {
     agcAnalyser = audioContext.createAnalyser();
     agcAnalyser.fftSize = 2048;
     agcAnalyser.smoothingTimeConstant = 0;
@@ -133,7 +135,7 @@ export function createMicrophoneBuffer({
   let compressor: DynamicsCompressorNode | undefined;
   let compressorMakeup: GainNode | undefined;
 
-  if (compressorEnabled) {
+  if (compressorEnabled && !lean) {
     compressor = audioContext.createDynamicsCompressor();
     compressor.threshold.value = -24;
     compressor.knee.value = 20;
@@ -152,21 +154,24 @@ export function createMicrophoneBuffer({
     processingChain = compressorMakeup;
   }
 
-  // Always on, whatever else is: auto gain and the compressor both add level, and nothing
+  // On whenever processing is: auto gain and the compressor both add level, and nothing
   // else stops a loud word going over 0 dBFS.
-  const limiter = audioContext.createDynamicsCompressor();
-  limiter.threshold.value = LIMITER_THRESHOLD_DB;
-  limiter.knee.value = 0;
-  limiter.ratio.value = 20;
-  limiter.attack.value = 0.001;
-  limiter.release.value = 0.1;
-  const limiterTrim = audioContext.createGain();
-  limiterTrim.gain.value = Math.pow(10, -LIMITER_MAKEUP_DB / 20);
-  const softClip = createSoftClipper(audioContext);
-  processingChain.connect(limiter);
-  limiter.connect(limiterTrim);
-  limiterTrim.connect(softClip.input);
-  processingChain = softClip.output;
+  let limiter: DynamicsCompressorNode | undefined;
+  if (!lean) {
+    limiter = audioContext.createDynamicsCompressor();
+    limiter.threshold.value = LIMITER_THRESHOLD_DB;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.001;
+    limiter.release.value = 0.1;
+    const limiterTrim = audioContext.createGain();
+    limiterTrim.gain.value = Math.pow(10, -LIMITER_MAKEUP_DB / 20);
+    const softClip = createSoftClipper(audioContext);
+    processingChain.connect(limiter);
+    limiter.connect(limiterTrim);
+    limiterTrim.connect(softClip.input);
+    processingChain = softClip.output;
+  }
 
   if (noiseGateNode) {
     // Input 0 carries the signal being gated. Input 1 is a tap taken before RNNoise, because
