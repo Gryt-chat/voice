@@ -468,7 +468,11 @@ export async function connectToSfuWebSocket(
         switch (message.event) {
           case "room_joined": {
             const joined = parseRoomJoined(message.data);
-            voiceLog.ok("SFU-WS", "7c", "SFU confirmed room_joined", joined);
+            // The ticket is a credential, if only for 30 s: logs get pasted into bug reports.
+            voiceLog.ok("SFU-WS", "7c", "SFU confirmed room_joined", {
+              ...joined,
+              audioTransport: joined.audioTransport && { urls: joined.audioTransport.urls },
+            });
             options.onRoomJoined?.(joined);
 
             if (!isResolved) {

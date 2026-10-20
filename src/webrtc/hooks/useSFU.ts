@@ -173,9 +173,20 @@ function useSfuHook(): SFUInterface {
 
   // The own voice transport (GRYT-1818): voice over WebTransport instead of the WebRTC audio track.
   const { audioTransportWasm } = config.connection;
+  // Refs, because the connect that calls this was set up before the audio context existed.
+  const speakersRef = useRef({ audioContext, remoteBusNode });
+  speakersRef.current = { audioContext, remoteBusNode };
   const startTransport = useCallback(async (offer: AudioTransportOffer) => {
     const input = microphoneBufferRef.current.processedStream;
-    if (!audioTransportWasm || !audioTransportSupported() || !audioContext || !remoteBusNode || !input) return;
+    const { audioContext, remoteBusNode } = speakersRef.current;
+    if (!audioTransportWasm || !audioTransportSupported() || !audioContext || !remoteBusNode || !input) {
+      const missing = [
+        !audioTransportWasm && "not enabled", !audioTransportSupported() && "no WebTransport",
+        !audioContext && "no audio context", !remoteBusNode && "no speaker bus", !input && "no microphone",
+      ].filter(Boolean);
+      voiceLog.info("TRANSPORT", `Own transport offered, staying on WebRTC: ${missing.join(", ")}`);
+      return;
+    }
     try {
       const session = await startAudioTransport({
         offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(),
@@ -192,7 +203,7 @@ function useSfuHook(): SFUInterface {
     } catch (error) {
       voiceLog.warn("TRANSPORT", "Own transport failed, staying on WebRTC audio", error);
     }
-  }, [audioTransportWasm, audioContext, remoteBusNode]);
+  }, [audioTransportWasm]);
 
   const outputGain = effectiveDeafened ? 0 : sliderToOutputGain(outputVolume);
   const outputGainRef = useRef(outputGain);
