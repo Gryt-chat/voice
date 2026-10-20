@@ -43,6 +43,15 @@ public final class GrytVoiceModule: Module {
       gv_voice_set_effects(voice, &settings)
     }
 
+    /// Volume per sender id, 1 = as sent; anyone not listed plays at 1 (GRYT-1831).
+    Function("setGains") { (ids: [Int], gains: [Double]) in
+      guard let voice = self.voice else { return }
+      let n = min(ids.count, gains.count)
+      let senders = ids.prefix(n).map { UInt32(truncatingIfNeeded: $0) }
+      let volumes = gains.prefix(n).map { Float($0) }
+      gv_voice_set_gains(voice, senders, volumes, Int32(n))
+    }
+
     /// Which offered address answered, or -1 while none has.
     Function("route") { () -> Int in
       guard let voice = self.voice else { return -1 }

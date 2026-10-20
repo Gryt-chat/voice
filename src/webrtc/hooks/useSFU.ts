@@ -272,8 +272,7 @@ function useSfuHook(): SFUInterface {
         setSending: native.setSending,
         setEffects: native.setEffects,
         setOutputGain: native.setOutputGain,
-        // shortcut: the native engine has no per-sender gain yet, so per-user volume doesn't reach it; add with the phone's volume menu.
-        setSenderGains: () => {},
+        setSenderGains: native.setGains,
         close: () => {
           clearInterval(poll);
           setSpeakingSenders([]);

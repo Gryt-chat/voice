@@ -60,6 +60,7 @@ interface GrytVoiceModule {
   setOutputGain(gain: number): void;
   setEffects(effects: Record<string, number>): void;
   speaking(): number[];
+  setGains(ids: number[], gains: number[]): void;
   levels(): { ids: number[]; db: number[]; mic: number; micSpeaking: boolean };
 }
 
@@ -89,6 +90,7 @@ export const nativePlatform: VoicePlatform = {
       setOutputGain: (gain) => grytVoice.setOutputGain(gain),
       setEffects: (e) => grytVoice.setEffects(asNumbers(e)),
       speaking: () => grytVoice.speaking(),
+      setGains: (gains) => grytVoice.setGains([...gains.keys()], [...gains.values()]),
       levels: () => grytVoice.levels(),
       close: () => {
         nativeRunning = false;

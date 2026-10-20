@@ -88,6 +88,18 @@ int main(void) {
   gv_engine_levels(&engine, ids, db, GV_MAX_SENDERS, &mic_db, &mic_speaking);
   assert(mic_db > -11 && mic_db < -7);
   assert(db[0] > -12 && db[0] < -7);
+  /* Per-sender volume (GRYT-1831): sender 7 at half plays at half, measured on what was heard before the gain. */
+  uint32_t seven = 7;
+  float half = 0.5f, peak_half = 0;
+  gv_engine_set_gains(&engine, &seven, &half, 1);
+  for (int t = 0; t < SR / 10; t += BLOCK) {
+    for (int i = 0; i < BLOCK; i++) tone[i] = 0.5f * sinf(2 * (float)M_PI * 1000 * (t + i) / SR);
+    gv_engine_capture(&engine, tone, BLOCK, 1);
+    gv_engine_render(&engine, out2, BLOCK);
+    for (int i = 0; i < BLOCK * 2; i++) peak_half = fmaxf(peak_half, fabsf(out2[i]));
+  }
+  assert(peak_half > 0.2f && peak_half < 0.3f);
+  gv_engine_set_gains(&engine, NULL, NULL, 0);
 
   /* Muted: the timestamp keeps moving, but nothing is sent. */
   gv_engine_set_sending(&engine, 0);
@@ -105,7 +117,7 @@ int main(void) {
   assert(gv_engine_speaking(&engine, ids, GV_MAX_SENDERS) == 0);
 
   gv_engine_destroy(&engine);
-  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; stereo kept apart (right %.3f); muted sends nothing; speaking named and cleared; levels about -9 dB for a 0.5 beep, the mic silent when muted\n",
+  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; stereo kept apart (right %.3f); muted sends nothing; speaking named and cleared; levels about -9 dB for a 0.5 beep, the mic silent when muted; per-sender volume\n",
          delay_ms, peak, right);
   return 0;
 }
