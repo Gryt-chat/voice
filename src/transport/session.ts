@@ -1,6 +1,9 @@
 /** The own voice transport on the main thread (GRYT-1818): one WebTransport session to the SFU, the send
     worklet feeding it and the receive worklet playing what comes back. */
 
+import type { VoiceEffectSettings } from "../audio/voiceEffects";
+import type { VoiceConfig } from "../types";
+
 import type { ReceiveOptions, SendOptions } from "./processors";
 import { RECEIVE_PROCESSOR, SEND_PROCESSOR } from "./workletNames";
 import { TRANSPORT_WORKLET_SOURCE } from "./workletSource";
@@ -15,6 +18,9 @@ export interface AudioTransportOffer {
 export interface AudioTransportSession {
   /** Swap the microphone stream, after the pipeline is rebuilt. */
   setInput(stream: MediaStream): void;
+  /** Mute and push to talk. The timestamp keeps moving while off. */
+  setSending(on: boolean): void;
+  setEffects(settings: VoiceEffectSettings): void;
   /** Gain for everything heard: 0 when deafened. */
   setOutputGain(gain: number): void;
   close(): void;
@@ -25,11 +31,31 @@ export interface AudioTransportSession {
 // 2.5 ms CELT frames; the transport exists for the latency.
 const FRAME = 120;
 const BITRATE = 64_000;
-// The microphone pipeline already applied the user's processing, so the worklet passes it through.
-const PASS_THROUGH = {
+// For a stream the microphone pipeline already processed.
+export const PASS_THROUGH: VoiceEffectSettings = {
   volume: 100, gateThreshold: 0, gateReleaseMs: 200, gateSmoothing: 0.8, autoGain: false,
   autoGainTargetDb: -20, compressor: false, compressorAmount: 50, limiter: false,
 };
+
+/** The user's settings as the worklet's effects, chosen the way the graph chooses (microphonePipeline.ts). */
+type EffectInputs = Pick<
+  VoiceConfig["audio"], "volume" | "noiseGate" | "noiseGateRelease" | "autoGain" | "compressorEnabled" | "compressorAmount"
+>;
+
+export function transportEffects(audio: EffectInputs, eSports: boolean): VoiceEffectSettings {
+  const lean = eSports || (!audio.autoGain.enabled && !audio.compressorEnabled);
+  return {
+    volume: audio.volume,
+    gateThreshold: audio.noiseGate,
+    gateReleaseMs: audio.noiseGateRelease,
+    gateSmoothing: eSports ? 0.3 : 0.8,
+    autoGain: audio.autoGain.enabled && !lean,
+    autoGainTargetDb: audio.autoGain.targetDb,
+    compressor: audio.compressorEnabled && !lean,
+    compressorAmount: audio.compressorAmount,
+    limiter: !lean,
+  };
+}
 
 const loaded = new WeakMap<BaseAudioContext, Promise<void>>();
 
@@ -52,6 +78,7 @@ export async function startAudioTransport(o: {
   input: MediaStream;
   output: AudioNode;
   wasm: ArrayBuffer;
+  effects: VoiceEffectSettings;
 }): Promise<AudioTransportSession> {
   const value = Uint8Array.from(atob(o.offer.certHash), (c) => c.charCodeAt(0));
   const url = `${o.offer.urls[0]}?ticket=${encodeURIComponent(o.offer.ticket)}`;
@@ -63,7 +90,7 @@ export async function startAudioTransport(o: {
     throw error;
   }
 
-  const sendOptions: SendOptions = { wasm: o.wasm.slice(0), frame: FRAME, bitrate: BITRATE, settings: PASS_THROUGH };
+  const sendOptions: SendOptions = { wasm: o.wasm.slice(0), frame: FRAME, bitrate: BITRATE, settings: o.effects };
   const receiveOptions: ReceiveOptions = { wasm: o.wasm.slice(0), frame: FRAME };
   const send = new AudioWorkletNode(o.context, SEND_PROCESSOR, { processorOptions: sendOptions });
   const receive = new AudioWorkletNode(o.context, RECEIVE_PROCESSOR, { numberOfInputs: 0, processorOptions: receiveOptions });
@@ -103,6 +130,12 @@ export async function startAudioTransport(o: {
       source.disconnect();
       source = o.context.createMediaStreamSource(stream);
       source.connect(send);
+    },
+    setSending(on) {
+      send.port.postMessage({ type: "sending", on });
+    },
+    setEffects(settings) {
+      send.port.postMessage({ type: "settings", settings });
     },
     setOutputGain(g) {
       gain.gain.setValueAtTime(g, o.context.currentTime);
