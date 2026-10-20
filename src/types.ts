@@ -1,6 +1,9 @@
 /* The three seams where the engine has to ask whatever embeds it. Everything
    else — signalling, ICE, tracks, connection state — is the same anywhere. */
 
+import type { VoiceEffectSettings } from "./audio/voiceEffects";
+import type { AudioUDPOffer } from "./transport/session";
+
 // ── 1. Config ────────────────────────────────────────────────────────────────
 
 /* One type, not two. The client's `CameraQuality` and `ScreenShareQuality` had
@@ -73,6 +76,8 @@ export interface VoiceConfig {
     maxBitrate?: number | null;
     /** Loads opus.wasm. Set it to try the own voice transport when the SFU offers one (GRYT-1818). */
     audioTransportWasm?: () => Promise<ArrayBuffer>;
+    /** Use the native voice engine when the platform has one and the SFU offers UDP (GRYT-1822). */
+    nativeAudio?: boolean;
   };
 }
 
@@ -166,6 +171,16 @@ export interface VoicePlatform {
   /* Undefined means the Web Audio pipeline. The web graph is not standalone — it hands out
      AudioNodes the client's meters and gate read directly — so native supplies its own. */
   createAudioPipeline?(options: AudioPipelineOptions): AudioPipeline;
+
+  /* The native voice engine, where the app ships it: the phone's GrytVoice module (GRYT-1822). Null if it won't start. */
+  startNativeAudio?(offer: AudioUDPOffer, effects: VoiceEffectSettings): NativeAudioSession | null;
+}
+
+export interface NativeAudioSession {
+  setSending(on: boolean): void;
+  setOutputGain(gain: number): void;
+  setEffects(effects: VoiceEffectSettings): void;
+  close(): void;
 }
 
 export interface CameraConstraints {

@@ -14,6 +14,7 @@ import type {
   CameraConstraints,
   VoicePlatform,
 } from "../types.js";
+import type { VoiceEffectSettings } from "../audio/voiceEffects.js";
 
 /* Not the three `false` flags the web platform passes, and not `true`: react-native-webrtc
    124 drops those constraints silently, and the processing comes from native (GRYT-335). */
@@ -40,6 +41,8 @@ function createPassthroughPipeline({
       for (const track of source.getAudioTracks()) {
         track.enabled = !muted;
       }
+      micMuted = muted;
+      if (nativeRunning) grytVoice?.setSending(!muted);
     },
 
     destroy: () => {
@@ -49,8 +52,46 @@ function createPassthroughPipeline({
   };
 }
 
+/** The GrytVoice Expo module (ios/GrytVoiceModule.swift), as the app's native side exposes it. */
+interface GrytVoiceModule {
+  start(addrs: string[], session: number, key: string, effects: Record<string, number>): boolean;
+  stop(): void;
+  setSending(on: boolean): void;
+  setOutputGain(gain: number): void;
+  setEffects(effects: Record<string, number>): void;
+}
+
+// Where requireOptionalNativeModule looks, read directly so this package doesn't depend on expo-modules-core.
+const grytVoice = (globalThis as { expo?: { modules?: { GrytVoice?: GrytVoiceModule } } }).expo?.modules?.GrytVoice;
+
+/* Every mute on the phone, push to talk included, goes through the pipeline's setMuted; the engine follows it. */
+let micMuted = false;
+let nativeRunning = false;
+
+const asNumbers = (e: VoiceEffectSettings): Record<string, number> => ({
+  ...e,
+  autoGain: e.autoGain ? 1 : 0,
+  compressor: e.compressor ? 1 : 0,
+  limiter: e.limiter ? 1 : 0,
+});
+
 export const nativePlatform: VoicePlatform = {
   name: "react-native",
+
+  startNativeAudio(offer, effects) {
+    if (!grytVoice?.start(offer.addrs, offer.session, offer.key, asNumbers(effects))) return null;
+    nativeRunning = true;
+    grytVoice.setSending(!micMuted);
+    return {
+      setSending: (on) => grytVoice.setSending(on && !micMuted),
+      setOutputGain: (gain) => grytVoice.setOutputGain(gain),
+      setEffects: (e) => grytVoice.setEffects(asNumbers(e)),
+      close: () => {
+        nativeRunning = false;
+        grytVoice.stop();
+      },
+    };
+  },
 
   createPeerConnection(config) {
     // react-native-webrtc implements the same interface against its own class, so the

@@ -4,6 +4,7 @@
 #define GRYT_VOICE_ENGINE_H
 
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -35,7 +36,12 @@ typedef struct {
   OpusEncoder *mono, *stereo;
   float frame[GV_FRAME], stereo_frame[GV_FRAME * 2];
   size_t filled;
-  int stereo_for, sending;
+  int stereo_for;
+  /* Set from the host's thread, read on the audio thread. */
+  atomic_int sending;
+  _Atomic float output_gain;
+  gv_effect_settings pending_effects;
+  atomic_bool effects_changed;
   uint16_t seq;
   uint32_t timestamp;
   gv_send_fn send;
@@ -60,5 +66,9 @@ int gv_engine_queue(gv_engine *e, const uint8_t *bytes, size_t len);
 /* Everyone mixed, interleaved stereo. Also moves the engine's clock on. */
 void gv_engine_render(gv_engine *e, float *out, size_t frames);
 void gv_engine_set_sending(gv_engine *e, int on);
+/* What everyone is heard at: 0 when deafened, 1 as sent. */
+void gv_engine_set_output_gain(gv_engine *e, float gain);
+/* Taken at the next capture, so the audio thread never reads half a change. */
+void gv_engine_set_effects(gv_engine *e, const gv_effect_settings *s);
 
 #endif

@@ -1,0 +1,7 @@
+{
+  "platforms": ["apple"],
+  "apple": {
+    "modules": ["GrytVoiceModule"],
+    "podspecPath": "GrytVoice.podspec"
+  }
+}

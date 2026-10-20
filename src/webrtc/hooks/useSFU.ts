@@ -5,6 +5,7 @@ import { useSpeakers } from "../../audio/hooks/useSpeakers";
 import type { MicrophoneBufferType } from "../../audio/types/Microphone";
 import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
 import { sliderToOutputGain } from "../../shared/audioVolume";
+import { getVoicePlatform } from "../../platform/index";
 import { singletonHook } from "../../shared/singletonHook";
 import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, PASS_THROUGH, startAudioTransport, transportEffects } from "../../transport/session";
 
@@ -189,7 +190,7 @@ function useSfuHook(): SFUInterface {
   // server map, which is the thing the engine is deliberately kept out of.
 
   // The own voice transport (GRYT-1818): voice over WebTransport instead of the WebRTC audio track.
-  const { audioTransportWasm } = config.connection;
+  const { audioTransportWasm, nativeAudio } = config.connection;
   // Refs, because the connect that calls this was set up before the audio context existed.
   // Who is heard speaking over the transport: sender ids from the receive worklet, users from the SFU.
   const [speakingSenders, setSpeakingSenders] = useState<number[]>([]);
@@ -201,6 +202,34 @@ function useSfuHook(): SFUInterface {
   const speakersRef = useRef({ audioContext, remoteBusNode });
   speakersRef.current = { audioContext, remoteBusNode };
   const startTransport = useCallback(async (offer: AudioTransportOffer) => {
+    // The phone: the native engine owns the mic and speaker, so WebRTC sends no audio at all (GRYT-1822).
+    const platform = getVoicePlatform();
+    if (nativeAudio && offer.udp && platform.startNativeAudio) {
+      const native = platform.startNativeAudio(offer.udp, transportEffects(audioRef.current.audio, audioRef.current.eSports));
+      if (!native) {
+        voiceLog.warn("TRANSPORT", "Native engine didn't start, staying on WebRTC audio");
+        return;
+      }
+      let ended = () => {};
+      const session: AudioTransportSession = {
+        url: offer.udp.addrs[0],
+        setInput: () => {},
+        setSending: native.setSending,
+        setEffects: native.setEffects,
+        setOutputGain: native.setOutputGain,
+        close: () => {
+          native.close();
+          ended();
+        },
+        closed: new Promise<void>((resolve) => (ended = resolve)),
+      };
+      audioTransportRef.current?.close();
+      audioTransportRef.current = session;
+      session.setOutputGain(outputGainRef.current);
+      await registeredTracksRef.current.find((s) => s.track?.kind === "audio")?.replaceTrack(null);
+      voiceLog.ok("TRANSPORT", "start", "Voice on the native engine", { offered: offer.udp.addrs });
+      return;
+    }
     const { input } = transportInput(microphoneBufferRef.current, audioRef.current);
     const { audioContext, remoteBusNode } = speakersRef.current;
     if (!audioTransportWasm || !audioTransportSupported() || !audioContext || !remoteBusNode || !input) {
@@ -229,11 +258,11 @@ function useSfuHook(): SFUInterface {
     } catch (error) {
       voiceLog.warn("TRANSPORT", "Own transport failed, staying on WebRTC audio", error);
     }
-  }, [audioTransportWasm, feedTransport]);
+  }, [audioTransportWasm, nativeAudio, feedTransport]);
 
   useEffect(() => {
     const session = audioTransportRef.current;
-    if (session && transportInput(microphoneBufferRef.current, audioRef.current).raw) {
+    if (session && (getVoicePlatform().startNativeAudio || transportInput(microphoneBufferRef.current, audioRef.current).raw)) {
       session.setEffects(transportEffects(config.audio, eSportsModeEnabled));
     }
   }, [config.audio, eSportsModeEnabled]);

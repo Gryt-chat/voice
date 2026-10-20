@@ -17,7 +17,9 @@ int gv_engine_init(gv_engine *e, const gv_effect_settings *s, int bitrate, int s
   e->stereo = gryt_encoder_create(SAMPLE_RATE, 2, GV_OPUS_RESTRICTED_LOWDELAY, stereo_bitrate, 5);
   e->send = send;
   e->user = user;
-  e->sending = 1;
+  atomic_init(&e->sending, 1);
+  atomic_init(&e->output_gain, 1.0f);
+  atomic_init(&e->effects_changed, false);
   return e->mono && e->stereo ? 0 : -1;
 }
 
@@ -32,10 +34,19 @@ void gv_engine_destroy(gv_engine *e) {
   for (int i = 0; i < GV_MAX_SENDERS; i++) drop_sender(&e->senders[i]);
 }
 
-void gv_engine_set_sending(gv_engine *e, int on) { e->sending = on; }
+void gv_engine_set_sending(gv_engine *e, int on) { atomic_store(&e->sending, on); }
+
+void gv_engine_set_output_gain(gv_engine *e, float gain) { atomic_store(&e->output_gain, gain); }
+
+/* shortcut: two changes within one audio block can tear; settings move by hand, so that's a few ms of odd gate. */
+void gv_engine_set_effects(gv_engine *e, const gv_effect_settings *s) {
+  e->pending_effects = *s;
+  atomic_store(&e->effects_changed, true);
+}
 
 void gv_engine_capture(gv_engine *e, const float *in, size_t frames, int channels) {
   float left[512], right[512];
+  if (atomic_exchange(&e->effects_changed, false)) e->effects.s = e->pending_effects;
   /* In chunks the effects take as one block, as the worklet gets 128 frames at a time. */
   for (size_t at = 0; at < frames; at += 128) {
     size_t n = frames - at < 128 ? frames - at : 128;
@@ -57,7 +68,7 @@ void gv_engine_capture(gv_engine *e, const float *in, size_t frames, int channel
       int stereo = e->stereo_for > 0;
       if (e->stereo_for > 0) e->stereo_for--;
       /* The timestamp moves on while muted, so the far side's clock stays right across a pause. */
-      if (e->sending && e->send) {
+      if (atomic_load(&e->sending) && e->send) {
         uint8_t opus[GV_MAX_OPUS_BYTES], packet[GV_HEADER_BYTES + GV_MAX_OPUS_BYTES];
         int len = stereo ? gryt_encode(e->stereo, e->stereo_frame, GV_FRAME, opus, sizeof opus)
                          : gryt_encode(e->mono, e->frame, GV_FRAME, opus, sizeof opus);
@@ -141,5 +152,8 @@ void gv_engine_render(gv_engine *e, float *out, size_t frames) {
       done += take;
     }
   }
+  float gain = atomic_load(&e->output_gain);
+  if (gain != 1.0f)
+    for (size_t k = 0; k < frames * 2; k++) out[k] *= gain;
   e->now_ms += frames * 1000.0 / SAMPLE_RATE;
 }
