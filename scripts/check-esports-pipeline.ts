@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 
-import { createMicrophoneBuffer } from "../dist/audio/hooks/microphonePipeline.js";
+import { createMicrophoneBuffer, setSending } from "../dist/audio/hooks/microphonePipeline.js";
 
 /** An AudioContext that records which nodes the pipeline builds. Nothing is rendered. */
 function fakeContext() {
@@ -74,4 +74,23 @@ for (const one of ["rnnoise", "autoGainEnabled", "compressorEnabled"] as const) 
   assert.ok(build({ ...nothing, [one]: true }).includes("shaper"), `${one} on its own lost the limiter and clipper`);
 }
 
-console.log("esports pipeline: no compressor, limiter or clipper in eSports mode or with every process off; any process brings them back");
+// Nothing to change the voice: the raw track goes out, and mute switches that track off (voice#53).
+{
+  const raw = { enabled: true, stop() {}, clone: () => ({ enabled: true, stop() {} }) };
+  // eslint-disable-next-line no-restricted-syntax, @typescript-eslint/no-restricted-types -- a stand-in stream with one track
+  const micStream = { getAudioTracks: () => [raw] } as unknown as MediaStream;
+  const { ctx } = fakeContext();
+  const settings = { audioContext: ctx, micStream, rnnoiseNode: null, noiseGateNode: null, eSportsModeEnabled: true, autoGainEnabled: false, compressorEnabled: false };
+
+  const sent = createMicrophoneBuffer({ ...settings, direct: true });
+  assert.ok(sent.directTrack && sent.directTrack !== raw, "the direct path sends the capture itself rather than a clone");
+  setSending(sent, ctx, false);
+  assert.equal(sent.directTrack.enabled, false, "mute left the direct track sending");
+  assert.equal(raw.enabled, true, "mute switched off the capture the meters read");
+  setSending(sent, ctx, true);
+  assert.equal(sent.directTrack.enabled, true);
+
+  assert.equal(createMicrophoneBuffer({ ...settings, direct: false }).directTrack, undefined, "the direct path ran without being asked");
+}
+
+console.log("esports pipeline: no compressor, limiter or clipper in eSports mode or with every process off; any process brings them back; the direct path sends a clone that mute switches off");

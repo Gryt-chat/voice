@@ -52,6 +52,14 @@ export interface CreateMicrophoneBufferParams {
   eSportsModeEnabled: boolean;
   autoGainEnabled: boolean;
   compressorEnabled: boolean;
+  /** Nothing would change the voice: no processing, no gate, volume at 100%. Sends the raw track. */
+  direct?: boolean;
+}
+
+/** Whether the voice goes out. Writes the mute gain, and the raw track when that is what's sent. */
+export function setSending(buffer: MicrophoneBufferType, audioContext: AudioContext, on: boolean): void {
+  buffer.muteGain?.gain.setValueAtTime(on ? 1 : 0, audioContext.currentTime);
+  if (buffer.directTrack) buffer.directTrack.enabled = on;
 }
 
 export function createMicrophoneBuffer({
@@ -62,6 +70,7 @@ export function createMicrophoneBuffer({
   eSportsModeEnabled,
   autoGainEnabled,
   compressorEnabled,
+  direct = false,
 }: CreateMicrophoneBufferParams): MicrophoneBufferType {
   const input = audioContext.createGain();
   const volumeGain = audioContext.createGain();
@@ -189,6 +198,9 @@ export function createMicrophoneBuffer({
   muteGain.connect(finalAnalyser);
   finalAnalyser.connect(outputDestination);
 
+  // The graph still runs for the meters, but the Web Audio round trip costs about 10 ms to send.
+  const directTrack = direct ? micStream?.getAudioTracks()[0]?.clone() : undefined;
+
   return {
     input,
     output,
@@ -198,7 +210,8 @@ export function createMicrophoneBuffer({
     monitorTap,
     monitorAnalyser,
     mediaStream: micStream || new MediaStream(),
-    processedStream: outputDestination.stream,
+    processedStream: directTrack ? new MediaStream([directTrack]) : outputDestination.stream,
+    directTrack,
     muteGain,
     volumeGain,
     noiseGate,
@@ -331,10 +344,7 @@ export function usePipelineControls({
         "Mute gain → 0 (PTT mode, managed by PTT hook)",
       );
 
-      microphoneBuffer.muteGain.gain.setValueAtTime(
-        0,
-        audioContext?.currentTime || 0,
-      );
+      if (audioContext) setSending(microphoneBuffer, audioContext, false);
 
       return;
     }
@@ -346,11 +356,8 @@ export function usePipelineControls({
       `Mute gain → ${gainValue} (isMuted=${isMuted}, inputMode=${inputMode})`,
     );
 
-    microphoneBuffer.muteGain.gain.setValueAtTime(
-      gainValue,
-      audioContext?.currentTime || 0,
-    );
-  }, [isMuted, microphoneBuffer.muteGain, audioContext, inputMode]);
+    if (audioContext) setSending(microphoneBuffer, audioContext, gainValue === 1);
+  }, [isMuted, microphoneBuffer, audioContext, inputMode]);
 
   /**
    * Noise gate control — audio thread. The gate lives in an AudioWorklet so it keeps running
