@@ -23,7 +23,8 @@ function useAudioContextHook(): SharedAudioContextValue {
     if (!activated) return;
 
     const ac = new AudioContext({
-      latencyHint: "interactive",
+      // The smallest buffer the device allows: 13.3 → 8 ms out and back in on a Mac, measured (GRYT-1822).
+      latencyHint: 0,
       sampleRate: 48000,
     });
 
