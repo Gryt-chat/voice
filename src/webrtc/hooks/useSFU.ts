@@ -293,9 +293,12 @@ function useSfuHook(): SFUInterface {
     }
     const { input } = transportInput(microphoneBufferRef.current, audioRef.current);
     const { audioContext, remoteBusNode } = speakersRef.current;
-    if (!audioTransportWasm || !audioTransportSupported() || !audioContext || !remoteBusNode || !input) {
+    // The WebSocket fallback is the SFU's own address with /audio-ws (GRYT-1831), so no WebTransport is fine.
+    const sfuUrl = activeSfuUrlRef.current;
+    const wsUrl = sfuUrl ? new URL("/audio-ws", sfuUrl).toString() : undefined;
+    if (!audioTransportWasm || (!audioTransportSupported() && !wsUrl) || !audioContext || !remoteBusNode || !input) {
       const missing = [
-        !audioTransportWasm && "not enabled", !audioTransportSupported() && "no WebTransport",
+        !audioTransportWasm && "not enabled", !audioTransportSupported() && !wsUrl && "no WebTransport",
         !audioContext && "no audio context", !remoteBusNode && "no speaker bus", !input && "no microphone",
       ].filter(Boolean);
       voiceLog.info("TRANSPORT", `Own transport offered, staying on WebRTC: ${missing.join(", ")}`);
@@ -303,7 +306,7 @@ function useSfuHook(): SFUInterface {
     }
     try {
       const session = await startAudioTransport({
-        offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(), effects: PASS_THROUGH,
+        offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(), effects: PASS_THROUGH, wsUrl,
         onSpeaking: setSpeakingSenders,
         onLevels: (levels) => (workletLevelsRef.current = levels),
       });
