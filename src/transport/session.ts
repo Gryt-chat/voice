@@ -16,6 +16,8 @@ export interface AudioTransportOffer {
 }
 
 export interface AudioTransportSession {
+  /** The offered address that answered first. */
+  url: string;
   /** Swap the microphone stream, after the pipeline is rebuilt. */
   setInput(stream: MediaStream): void;
   /** Mute and push to talk. The timestamp keeps moving while off. */
@@ -81,14 +83,28 @@ export async function startAudioTransport(o: {
   effects: VoiceEffectSettings;
 }): Promise<AudioTransportSession> {
   const value = Uint8Array.from(atob(o.offer.certHash), (c) => c.charCodeAt(0));
-  const url = `${o.offer.urls[0]}?ticket=${encodeURIComponent(o.offer.ticket)}`;
-  const wt = new WebTransport(url, { serverCertificateHashes: [{ algorithm: "sha-256", value }] });
-  try {
-    await Promise.all([wt.ready, loadWorklets(o.context)]);
-  } catch (error) {
-    wt.close();
+  const dialed = new Map<WebTransport, string>();
+  const dial = (url: string) => {
+    const t = new WebTransport(`${url}?ticket=${encodeURIComponent(o.offer.ticket)}`, {
+      serverCertificateHashes: [{ algorithm: "sha-256", value }],
+    });
+    dialed.set(t, url);
+    return t.ready.then(() => t, (error: Error) => {
+      t.close();
+      throw error;
+    });
+  };
+  // Every address at once, like ICE: the LAN one wins on the SFU's own network. The ticket is single use, so the rest get a 401.
+  const attempts = o.offer.urls.map(dial);
+  const first = new Promise<WebTransport>((resolve, reject) => {
+    let left = attempts.length;
+    for (const a of attempts) a.then(resolve, (error: Error) => --left === 0 && reject(error));
+  });
+  const wt = await Promise.all([first, loadWorklets(o.context)]).then(([t]) => t, (error: Error) => {
+    for (const a of attempts) a.then((t) => t.close(), () => undefined);
     throw error;
-  }
+  });
+  for (const a of attempts) a.then((t) => t !== wt && t.close(), () => undefined);
 
   const sendOptions: SendOptions = { wasm: o.wasm.slice(0), frame: FRAME, bitrate: BITRATE, settings: o.effects };
   const receiveOptions: ReceiveOptions = { wasm: o.wasm.slice(0), frame: FRAME };
@@ -126,6 +142,7 @@ export async function startAudioTransport(o: {
   });
 
   return {
+    url: dialed.get(wt) ?? o.offer.urls[0],
     setInput(stream) {
       source.disconnect();
       source = o.context.createMediaStreamSource(stream);

@@ -217,7 +217,7 @@ function useSfuHook(): SFUInterface {
       void session.closed.then(() => {
         if (audioTransportRef.current === session) audioTransportRef.current = null;
       });
-      voiceLog.ok("TRANSPORT", "start", "Voice on the own transport", { url: offer.urls[0] });
+      voiceLog.ok("TRANSPORT", "start", "Voice on the own transport", { url: session.url, offered: offer.urls });
     } catch (error) {
       voiceLog.warn("TRANSPORT", "Own transport failed, staying on WebRTC audio", error);
     }
