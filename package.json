@@ -24,7 +24,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.ts",
+    "build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json && node scripts/add-esm-extensions.ts && node -e \"fs.cpSync('src/codec/opus.wasm','dist/codec/opus.wasm')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "typecheck:scripts": "tsc -p scripts",
     "lint": "eslint --flag unstable_native_nodejs_ts_config .",
@@ -48,6 +48,7 @@
     "check-mic-bitrate": "node scripts/check-mic-bitrate.ts",
     "check-camera-resync": "node scripts/check-camera-resync.ts",
     "check-voice-latency": "node scripts/check-voice-latency.ts",
+    "check-opus-wasm": "node scripts/check-opus-wasm.ts",
     "check-voice-effects": "node scripts/check-voice-effects.ts",
     "check-fresh-send-track": "node scripts/check-fresh-send-track.ts",
     "check-esports-pipeline": "node scripts/check-esports-pipeline.ts",

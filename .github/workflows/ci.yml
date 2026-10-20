@@ -126,6 +126,10 @@ jobs:
       - name: Check the latency poll reads once a second
         run: npm run check-voice-latency
 
+      # libopus built to WASM by codec/opus/build.sh: a tone survives 2.5 ms frames (GRYT-1818).
+      - name: Check the Opus WASM build encodes and decodes
+        run: npm run check-opus-wasm
+
       # The own transport's effects run sample by sample: none may delay a sound (GRYT-1819).
       - name: Check the microphone effects add no delay
         run: npm run check-voice-effects
