@@ -26,8 +26,12 @@ const libs = {
   win32: ["-lws2_32", "-lole32", "-lwinmm"],
 }[process.platform] ?? [];
 
+// One universal Mac binary, so a build on either arch serves both.
+const arch = process.platform === "darwin" ? ["-arch", "arm64", "-arch", "x86_64"] : [];
+
 mkdirSync(dirname(out), { recursive: true });
 execFileSync(cc, [
+  ...arch,
   "-std=c11", "-O2", "-D_DEFAULT_SOURCE", "-DOPUS_BUILD=1", "-DUSE_ALLOCA=1", "-DHAVE_LRINTF=1", "-DHAVE_LRINT=1",
   ...["include", "celt", "silk", "silk/float", "."].map((d) => `-I${join(opus, d)}`),
   "-o", out,

@@ -11,3 +11,5 @@ docs/bandwidth-allocation/resume-modes.mjs
 docs/bandwidth-allocation/resume.mjs
 docs/bandwidth-allocation/sizes.mjs
 docs/bandwidth-allocation/svc.mjs
+# Run by the desktop app from node_modules, where Node won't strip TypeScript (GRYT-1837).
+native/tools/build-helper.mjs
