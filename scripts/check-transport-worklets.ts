@@ -14,10 +14,10 @@ const FRAME = 120;
 // What an AudioWorkletGlobalScope gives a processor, and no more.
 let clock = 0;
 type Options = { processorOptions: object };
-type Message = Uint8Array | { type: string; on?: boolean } | { gains: [number, number][] };
+type Message = Uint8Array | { type: string; on?: boolean; nonce?: number; at?: number } | { gains: [number, number][] } | { pingSent: number; at: number };
 const registered = new Map<string, new (options: Options) => Processor>();
 interface Port {
-  sent: Uint8Array[];
+  sent: (Uint8Array | { ping?: number; pingSent?: number; at?: number })[];
   postMessage(message: Uint8Array): void;
   onmessage: ((e: { data: Message }) => void) | null;
 }
@@ -41,6 +41,16 @@ const send = new SendProcessor({ processorOptions: { wasm: wasm.buffer.slice(0),
 const receive = new ReceiveProcessor({ processorOptions: { wasm: wasm.buffer.slice(0), frame: FRAME } });
 await new Promise((r) => setTimeout(r, 100)); // both load Opus asynchronously
 
+// What session.ts does between the two worklets for the round-trip probes (GRYT-1836).
+let routed = 0;
+function routeProbes() {
+  if (routed > receive.port.sent.length) routed = 0;
+  for (; routed < receive.port.sent.length; routed++) {
+    const m = receive.port.sent[routed];
+    if (!(m instanceof Uint8Array) && m.ping !== undefined) send.port.onmessage?.({ data: { type: "pong", nonce: m.ping, at: m.at } });
+  }
+}
+
 /** Runs `seconds` with a beep starting at `beepAt`; packets go straight across, as a perfect network. */
 function run(seconds: number, beepAt: number, stereo = false) {
   const out = new Float32Array(Math.round(seconds * SR));
@@ -55,6 +65,10 @@ function run(seconds: number, beepAt: number, stereo = false) {
     // Stereo: the beep on the left only, so the sides differ and the sender switches to stereo.
     send.process([stereo ? [mic, new Float32Array(QUANTUM)] : [mic]], [[new Float32Array(QUANTUM)]]);
     for (const bytes of send.port.sent.splice(0)) {
+      if (!(bytes instanceof Uint8Array)) {
+        receive.port.onmessage?.({ data: bytes as Message });
+        continue;
+      }
       const forwarded = new Uint8Array(4 + bytes.length);
       new DataView(forwarded.buffer).setUint32(0, 7);
       forwarded.set(bytes, 4);
@@ -63,6 +77,7 @@ function run(seconds: number, beepAt: number, stereo = false) {
     const block = new Float32Array(QUANTUM);
     const blockRight = new Float32Array(QUANTUM);
     receive.process([], [[block, blockRight]]);
+    routeProbes();
     out.set(block, pos);
     outRight.set(blockRight, pos);
     clock += QUANTUM / SR;
@@ -101,7 +116,7 @@ assert.equal(send.port.sent.length, before, "a muted sender sent packets");
 
 // Speaking (GRYT-1830): sender 7's packets carry the flag with the gate open, so the receiver named it,
 // and once its packets stop the ring goes out. Levels go out by sender, about -9 dBFS for a 0.5 beep.
-type Report = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][] };
+type Report = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][]; rtt: [number, number][] };
 const said = receive.port.sent as (Uint8Array | Report)[];
 assert.ok(said.some((m) => "speaking" in m && m.speaking.join() === "7"), "the receiver never said sender 7 was speaking");
 const loudest = Math.max(...said.flatMap((m) => ("levels" in m ? m.levels.filter(([id]) => id === 7).map(([, db]) => db) : [])));
@@ -109,6 +124,9 @@ assert.ok(loudest > -11 && loudest < -7, `sender 7 peaked at ${loudest.toFixed(1
 // Buffered, for the latency estimate: reported for sender 7, never negative, and within the jitter buffer's reach.
 const buffered = said.flatMap((m) => ("buffered" in m ? m.buffered.filter(([id]) => id === 7).map(([, ms]) => ms) : []));
 assert.ok(buffered.length > 0 && buffered.every((ms) => ms >= 0 && ms < 100), `sender 7 buffered ${buffered.join(", ")} ms`);
+// Round trips (GRYT-1836): the loopback answers this sender's own pings, so the path back measures as nothing.
+const rtts = said.flatMap((m) => ("rtt" in m ? m.rtt.filter(([id]) => id === 7).map(([, ms]) => ms) : []));
+assert.ok(rtts.length > 0 && rtts.every((ms) => Math.abs(ms) < 3.5), `round trips to sender 7: ${rtts.join(", ")} ms`);
 said.length = 0;
 for (let t = 0; t < 0.3 * SR; t += QUANTUM) {
   receive.process([], [[new Float32Array(QUANTUM), new Float32Array(QUANTUM)]]);
@@ -117,4 +135,4 @@ for (let t = 0; t < 0.3 * SR; t += QUANTUM) {
 const lastSpeaking = said.filter((m) => "speaking" in m).at(-1);
 assert.deepEqual(lastSpeaking, { speaking: [] }, "sender 7 still speaking after its packets stopped");
 
-console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; per-user volume applied; muted sends nothing; speaking named and cleared; levels and buffered ms by sender`);
+console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; per-user volume applied; muted sends nothing; speaking named and cleared; levels, buffered ms and round trips by sender`);

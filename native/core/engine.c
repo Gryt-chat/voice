@@ -3,6 +3,9 @@
 #include <math.h>
 #include <string.h>
 
+#define GV_PROBE_PING 1
+#define GV_PROBE_PONG 2
+#define GV_PROBE_EVERY_MS 1000
 #define SAMPLE_RATE 48000
 #define FRAME_MS (GV_FRAME * 1000.0 / SAMPLE_RATE)
 /* Two seconds of stereo after the sides last differed, so a song doesn't flip back and forth. */
@@ -27,7 +30,12 @@ int gv_engine_init(gv_engine *e, const gv_effect_settings *s, int bitrate, int s
     atomic_init(&e->slot_id[i], 0);
     atomic_init(&e->level_db[i], -INFINITY);
     atomic_init(&e->buffered_ms[i], 0);
+    atomic_init(&e->rtt_id[i], 0);
+    atomic_init(&e->rtt_ms[i], 0);
   }
+  e->rng = (uint32_t)(uintptr_t)e ^ 0x9e3779b9u;
+  /* The first ping goes with the first audio rather than a second in. */
+  e->probe_at = -GV_PROBE_EVERY_MS;
   atomic_init(&e->mic_db, -INFINITY);
   atomic_init(&e->mic_speaking, false);
   return e->mono && e->stereo ? 0 : -1;
@@ -70,6 +78,67 @@ int gv_engine_buffered(gv_engine *e, uint32_t *ids, float *ms, int max) {
   return n;
 }
 
+int gv_engine_rtt(gv_engine *e, uint32_t *ids, float *ms, int max) {
+  int n = 0;
+  for (int i = 0; i < GV_MAX_SENDERS && n < max; i++) {
+    uint32_t id = atomic_load(&e->rtt_id[i]);
+    if (!id) continue;
+    ids[n] = id;
+    ms[n++] = atomic_load(&e->rtt_ms[i]);
+  }
+  return n;
+}
+
+/* Under the last audio packet's seq and timestamp, so a client from before drops it rather than decoding it. */
+static void send_probe(gv_engine *e, uint8_t kind, uint32_t nonce, double hold_ms) {
+  uint8_t body[7] = {kind, (uint8_t)(nonce >> 24), (uint8_t)(nonce >> 16), (uint8_t)(nonce >> 8), (uint8_t)nonce, 0, 0};
+  double tenths = hold_ms * 10 < 0 ? 0 : hold_ms * 10 > 0xffff ? 0xffff : hold_ms * 10;
+  body[5] = (uint8_t)((unsigned)lround(tenths) >> 8);
+  body[6] = (uint8_t)lround(tenths);
+  uint8_t packet[GV_HEADER_BYTES + sizeof body];
+  gv_packet p = {GV_FLAG_PROBE, (uint16_t)(e->seq - 1), e->timestamp, body, kind == GV_PROBE_PING ? 5u : 7u};
+  size_t n = gv_write_packet(&p, packet, sizeof packet);
+  if (n && e->send) e->send(e->user, packet, n);
+}
+
+/* Pongs go out muted too, so someone listening still has a round trip; pings only while sending, once a second. */
+static void probe(gv_engine *e) {
+  for (int i = 0; i < e->n_pongs; i++) send_probe(e, GV_PROBE_PONG, e->pong_nonce[i], e->now_ms - e->pong_at[i]);
+  e->n_pongs = 0;
+  if (!atomic_load(&e->sending) || e->now_ms - e->probe_at < GV_PROBE_EVERY_MS) return;
+  e->probe_at = e->now_ms;
+  e->rng ^= e->rng << 13, e->rng ^= e->rng >> 17, e->rng ^= e->rng << 5;
+  int at = e->next_ping++ % GV_PINGS;
+  e->ping_nonce[at] = e->rng;
+  e->ping_at[at] = e->now_ms;
+  send_probe(e, GV_PROBE_PING, e->rng, 0);
+}
+
+static void heard_probe(gv_engine *e, uint32_t sender, const gv_packet *p) {
+  if (p->opus_len < 5) return;
+  const uint8_t *b = p->opus;
+  uint32_t nonce = (uint32_t)b[1] << 24 | (uint32_t)b[2] << 16 | (uint32_t)b[3] << 8 | b[4];
+  if (b[0] == GV_PROBE_PING && p->opus_len == 5 && e->n_pongs < GV_PINGS) {
+    e->pong_nonce[e->n_pongs] = nonce;
+    e->pong_at[e->n_pongs++] = e->now_ms;
+    return;
+  }
+  if (b[0] != GV_PROBE_PONG || p->opus_len != 7) return;
+  for (int i = 0; i < GV_PINGS; i++) {
+    if (e->ping_nonce[i] != nonce || !nonce) continue;
+    float rtt = (float)(e->now_ms - e->ping_at[i] - ((b[5] << 8) | b[6]) / 10.0);
+    int slot = -1;
+    for (int k = 0; k < GV_MAX_SENDERS && slot < 0; k++)
+      if (atomic_load(&e->rtt_id[k]) == sender) slot = k;
+    for (int k = 0; k < GV_MAX_SENDERS && slot < 0; k++)
+      if (!atomic_load(&e->rtt_id[k])) slot = k;
+    if (slot < 0) return;
+    atomic_store(&e->rtt_ms[slot], rtt);
+    atomic_store(&e->rtt_id[slot], sender);
+    return;
+  }
+}
+
 int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max) {
   int n = 0;
   for (int i = 0; i < GV_MAX_SENDERS && n < max; i++) {
@@ -106,6 +175,7 @@ void gv_engine_set_effects(gv_engine *e, const gv_effect_settings *s) {
 void gv_engine_capture(gv_engine *e, const float *in, size_t frames, int channels) {
   float left[512], right[512];
   if (atomic_exchange(&e->effects_changed, false)) e->effects.s = e->pending_effects;
+  probe(e);
   /* In chunks the effects take as one block, as the worklet gets 128 frames at a time. */
   for (size_t at = 0; at < frames; at += 128) {
     size_t n = frames - at < 128 ? frames - at : 128;
@@ -152,6 +222,10 @@ void gv_engine_receive(gv_engine *e, const uint8_t *bytes, size_t len) {
   uint32_t id;
   gv_packet p;
   if (gv_read_forwarded(bytes, len, &id, &p) != 0) return;
+  if (p.flags & GV_FLAG_PROBE) {
+    heard_probe(e, id, &p);
+    return;
+  }
   gv_sender *s = NULL, *free_slot = NULL;
   for (int i = 0; i < GV_MAX_SENDERS; i++) {
     if (e->senders[i].used && e->senders[i].id == id) s = &e->senders[i];

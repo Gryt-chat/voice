@@ -246,23 +246,29 @@ function useSfuHook(): SFUInterface {
   const speakersRef = useRef({ audioContext, remoteBusNode });
   speakersRef.current = { audioContext, remoteBusNode };
   const workletBufferedRef = useRef(new Map<number, number>());
+  const workletRttRef = useRef(new Map<number, number>());
   const getTransportLatency = useCallback((): TransportLatency | null => {
     const native = nativeAudioRef.current;
     const n = native?.latency();
-    const bySender = n ? new Map(n.ids.map((id, i) => [id, n.bufferedMs[i]])) : workletBufferedRef.current;
     if (!n && !audioTransportRef.current) return null;
-    const bufferedByUser = new Map<string, number>();
-    for (const [id, ms] of bySender) {
-      const user = senderUsersRef.current.get(id);
-      if (user) bufferedByUser.set(user, ms);
-    }
-    if (n) return { frameMs: TRANSPORT_FRAME_MS, inputMs: n.inputMs + n.ioBufferMs, outputMs: n.outputMs + n.ioBufferMs, bufferedByUser, sampleRate: n.sampleRate };
+    const byUser = (bySender: ReadonlyMap<number, number>) => {
+      const out = new Map<string, number>();
+      for (const [id, ms] of bySender) {
+        const user = senderUsersRef.current.get(id);
+        if (user && ms >= 0) out.set(user, ms);
+      }
+      return out;
+    };
+    const bufferedByUser = byUser(n ? new Map(n.ids.map((id, i) => [id, n.bufferedMs[i]])) : workletBufferedRef.current);
+    const rttByUser = byUser(n ? new Map(n.ids.map((id, i) => [id, n.rttMs[i]])) : workletRttRef.current);
+    if (n) return { frameMs: TRANSPORT_FRAME_MS, inputMs: n.inputMs + n.ioBufferMs, outputMs: n.outputMs + n.ioBufferMs, bufferedByUser, rttByUser, sampleRate: n.sampleRate };
     const ctx = speakersRef.current.audioContext as (AudioContext & { outputLatency?: number }) | null;
     return {
       frameMs: TRANSPORT_FRAME_MS,
       inputMs: typeof ctx?.baseLatency === "number" ? ctx.baseLatency * 1000 : null,
       outputMs: typeof ctx?.outputLatency === "number" ? ctx.outputLatency * 1000 : null,
       bufferedByUser,
+      rttByUser,
       sampleRate: null,
     };
   }, []);
@@ -333,6 +339,7 @@ function useSfuHook(): SFUInterface {
         onSpeaking: setSpeakingSenders,
         onLevels: (levels) => (workletLevelsRef.current = levels),
         onBuffered: (buffered) => (workletBufferedRef.current = buffered),
+        onRoundTrip: (rtt) => (workletRttRef.current = rtt),
       });
       audioTransportRef.current?.close();
       audioTransportRef.current = session;

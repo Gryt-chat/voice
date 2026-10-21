@@ -115,7 +115,7 @@ static void command(char *line) {
 
 static double finite_db(float db) { return isfinite(db) ? db : -120; }
 
-/* r <route> <mic_db> <mic_speaking> l=<id>:<db>,... b=<id>:<ms>,... s=<id>,... */
+/* r <route> <mic_db> <mic_speaking> l=<id>:<db>,... b=<id>:<ms>,... s=<id>,... t=<id>:<rtt ms>,... */
 static void report(void) {
   if (!voice) return;
   uint32_t ids[MAX_IDS], speaking[MAX_IDS];
@@ -130,6 +130,9 @@ static void report(void) {
   int ns = gv_voice_speaking(voice, speaking, MAX_IDS);
   printf(" s=");
   for (int i = 0; i < ns; i++) printf("%s%u", i ? "," : "", speaking[i]);
+  int nt = gv_voice_rtt(voice, ids, ms, MAX_IDS);
+  printf(" t=");
+  for (int i = 0; i < nt; i++) printf("%s%u:%.1f", i ? "," : "", ids[i], ms[i]);
   printf("\n");
   fflush(stdout);
 }

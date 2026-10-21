@@ -14,6 +14,7 @@
 
 #define GV_FRAME 120
 #define GV_MAX_SENDERS 16
+#define GV_PINGS 8
 /* Packets the network thread can hand over between two audio callbacks: a full second at 16 talkers would need 6400. */
 #define GV_QUEUE_SLOTS 512
 #define GV_QUEUE_BYTES (4 + GV_HEADER_BYTES + GV_MAX_OPUS_BYTES)
@@ -62,6 +63,13 @@ typedef struct {
   _Atomic float level_db[GV_MAX_SENDERS];
   /* How much of each slot's audio is waiting to play, in ms: its jitter buffer plus decoded samples. */
   _Atomic float buffered_ms[GV_MAX_SENDERS];
+  /* Round-trip probes (GRYT-1836), all on the audio thread but the results: pings this engine sent, pongs it owes,
+     and the measured round trip to each sender that answered, in ms. */
+  uint32_t ping_nonce[GV_PINGS], pong_nonce[GV_PINGS], rng;
+  double ping_at[GV_PINGS], pong_at[GV_PINGS], probe_at;
+  int next_ping, n_pongs;
+  atomic_uint rtt_id[GV_MAX_SENDERS];
+  _Atomic float rtt_ms[GV_MAX_SENDERS];
   /* The mic as sent, after the effects: silent when muted or gated. */
   _Atomic float mic_db;
   atomic_bool mic_speaking;
@@ -95,5 +103,7 @@ int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max);
 int gv_engine_levels(gv_engine *e, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking);
 /* Every sender heard and how much of their audio is buffered, in ms, up to max. Safe from any thread. */
 int gv_engine_buffered(gv_engine *e, uint32_t *ids, float *ms, int max);
+/* Every sender that answered a ping and the measured round trip to them, in ms, up to max. Safe from any thread. */
+int gv_engine_rtt(gv_engine *e, uint32_t *ids, float *ms, int max);
 
 #endif

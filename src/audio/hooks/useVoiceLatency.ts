@@ -46,6 +46,8 @@ export interface LatencyBreakdown {
   /** On the own transport: one frame, and the most anyone's audio waits here before it plays. Null off it. */
   transportFrameMs: number | null;
   transportBufferedMs: number | null;
+  /** The slowest measured round trip on the own transport, through the SFU to someone and back (GRYT-1836). */
+  transportRttMs: number | null;
 }
 
 const EMPTY: LatencyBreakdown = {
@@ -74,6 +76,7 @@ const EMPTY: LatencyBreakdown = {
   callAgeMs: null,
   transportFrameMs: null,
   transportBufferedMs: null,
+  transportRttMs: null,
 };
 
 export function useVoiceLatency(enabled: boolean) {
@@ -244,9 +247,11 @@ export function useVoiceLatency(enabled: boolean) {
       // On the own transport, voice goes sender to SFU to here: about one whole round trip, plus a frame.
       const transport = sfuRef.current.getTransportLatency?.() ?? null;
       const transportBufferedMs = transport ? worst([...transport.bufferedByUser.values()]) : null;
+      const transportRttMs = transport ? worst([...transport.rttByUser.values()]) : null;
       let estimatedMouthToEarMs = estimatedOneWayMs === null ? null : estimatedOneWayMs + (jitterBufferMs ?? 0) + (local.outputMs ?? 0);
       if (transport) {
-        estimatedMouthToEarMs = (local.totalMs ?? 0) + transport.frameMs + (networkRttMs ?? 0) + (transportBufferedMs ?? 0) + (transport.outputMs ?? local.outputMs ?? 0);
+        // Half the measured round trip is the one-way: no clock can split it without assuming the same.
+        estimatedMouthToEarMs = (local.totalMs ?? 0) + transport.frameMs + (transportRttMs ?? networkRttMs ?? 0) / 2 + (transportBufferedMs ?? 0) + (transport.outputMs ?? local.outputMs ?? 0);
       }
 
       if (!cancelled) {
@@ -276,6 +281,7 @@ export function useVoiceLatency(enabled: boolean) {
           callAgeMs: connectedAt === null ? null : performance.now() - connectedAt,
           transportFrameMs: transport?.frameMs ?? null,
           transportBufferedMs,
+          transportRttMs,
         });
       }
     };

@@ -7,6 +7,7 @@ const dist = new URL("../dist/", import.meta.url);
 // In dependency order: each one only uses what comes before it.
 const parts = [
   "transport/packet.js",
+  "transport/probe.js",
   "transport/workletNames.js",
   "transport/jitterBuffer.js",
   "audio/voiceEffects.js",

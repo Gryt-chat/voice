@@ -24,5 +24,7 @@ int gv_voice_speaking(gv_voice *v, uint32_t *ids, int max);
 void gv_voice_set_gains(gv_voice *v, const uint32_t *ids, const float *gains, int n);
 int gv_voice_levels(gv_voice *v, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking);
 int gv_voice_buffered(gv_voice *v, uint32_t *ids, float *ms, int max);
+/* Measured round trips to each sender that answered a ping, in ms (GRYT-1836). */
+int gv_voice_rtt(gv_voice *v, uint32_t *ids, float *ms, int max);
 
 #endif

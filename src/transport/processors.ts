@@ -4,7 +4,8 @@
 import { loadOpus, type OpusDecoder, type OpusEncoder } from "../codec/opus";
 import { type VoiceEffectSettings, VoiceEffects } from "../audio/voiceEffects";
 import { JitterBuffer } from "./jitterBuffer";
-import { FLAG_SPEAKING, readForwarded, writePacket } from "./packet";
+import { FLAG_PROBE, FLAG_SPEAKING, readForwarded, writePacket } from "./packet";
+import { type Probe, PROBE_EVERY_S, PROBE_PING, PROBE_PONG, readProbe, writeProbe } from "./probe";
 import { RECEIVE_PROCESSOR, SEND_PROCESSOR } from "./workletNames";
 
 declare const sampleRate: number;
@@ -41,6 +42,9 @@ class SendProcessor extends AudioWorkletProcessor {
   private sending = true;
   private seq = 0;
   private timestamp = 0;
+  private probeAt = 0;
+  /** Pings heard by the receive worklet, to answer: their nonce and when they arrived, in ms. */
+  private pongs: { nonce: number; at: number }[] = [];
 
   constructor(options: { processorOptions: SendOptions }) {
     super(options);
@@ -52,15 +56,33 @@ class SendProcessor extends AudioWorkletProcessor {
       this.encoder = opus.encoder({ frame: o.frame, bitrate: o.bitrate });
       this.stereoEncoder = opus.encoder({ frame: o.frame, bitrate: o.stereoBitrate, channels: 2 });
     });
-    this.port.onmessage = (e: MessageEvent<{ type: string; settings?: VoiceEffectSettings; on?: boolean }>) => {
+    this.port.onmessage = (e: MessageEvent<{ type: string; settings?: VoiceEffectSettings; on?: boolean; nonce?: number; at?: number }>) => {
       if (e.data.type === "settings" && e.data.settings) this.effects.set(e.data.settings);
       if (e.data.type === "sending") this.sending = !!e.data.on;
+      if (e.data.type === "pong" && e.data.nonce !== undefined && e.data.at !== undefined) this.pongs.push({ nonce: e.data.nonce, at: e.data.at });
     };
+  }
+
+  /** Under the last audio packet's seq and timestamp, so an older client drops it rather than decoding it. */
+  private sendProbe(probe: Probe) {
+    const bytes = writePacket({ flags: FLAG_PROBE, seq: (this.seq - 1) & 0xffff, timestamp: this.timestamp, opus: writeProbe(probe) });
+    this.port.postMessage(bytes, [bytes.buffer]);
+  }
+
+  /** Pongs go out muted too, so someone listening still has a round trip; pings only while sending. */
+  private probe() {
+    for (const p of this.pongs.splice(0)) this.sendProbe({ kind: PROBE_PONG, nonce: p.nonce, holdMs: currentTime * 1000 - p.at });
+    if (!this.sending || currentTime - this.probeAt < PROBE_EVERY_S) return;
+    this.probeAt = currentTime;
+    const nonce = (Math.random() * 0x100000000) >>> 0;
+    this.sendProbe({ kind: PROBE_PING, nonce });
+    this.port.postMessage({ pingSent: nonce, at: currentTime * 1000 });
   }
 
   process(inputs: Float32Array[][]): boolean {
     const input = inputs[0]?.[0];
     if (!input) return true;
+    this.probe();
     const block = Float32Array.from(input);
     // Stereo only when the sides really differ: a mono mic, or one copied to both, stays mono at its own bitrate.
     const right = inputs[0][1] && Float32Array.from(inputs[0][1]);
@@ -109,7 +131,10 @@ const SPEAKING_HOLD_S = 0.25;
 const LEVELS_EVERY_S = 0.05;
 
 /** What the receive worklet tells the page: who is speaking when that changes, and levels in dBFS by sender. */
-export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][] };
+export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][]; rtt: [number, number][] };
+
+/** How many of this client's pings wait for answers; older ones are forgotten. */
+const MAX_PINGS = 8;
 
 /** Forwarded packets in on the port, everyone mixed out: a jitter buffer and a decoder per sender. */
 class ReceiveProcessor extends AudioWorkletProcessor {
@@ -120,20 +145,34 @@ class ReceiveProcessor extends AudioWorkletProcessor {
   private gains = new Map<number, number>();
   private levelsAt = 0;
   private opus: Awaited<ReturnType<typeof loadOpus>> | null = null;
+  /** This client's recent pings by nonce with when they went (ms), and round trips by sender: out, back, minus the hold. */
+  private pings = new Map<number, number>();
+  private rtt = new Map<number, number>();
 
   constructor(options: { processorOptions: ReceiveOptions }) {
     super(options);
     this.frameSize = options.processorOptions.frame;
     loadOpus(options.processorOptions.wasm).then((opus) => (this.opus = opus));
-    this.port.onmessage = (e: MessageEvent<Uint8Array | { gains: [number, number][] }>) => {
+    this.port.onmessage = (e: MessageEvent<Uint8Array | { gains: [number, number][] } | { pingSent: number; at: number }>) => {
       if (e.data instanceof Uint8Array) this.receive(e.data);
-      else this.gains = new Map(e.data.gains);
+      else if ("pingSent" in e.data) {
+        this.pings.set(e.data.pingSent, e.data.at);
+        for (const nonce of this.pings.keys()) if (this.pings.size > MAX_PINGS) this.pings.delete(nonce);
+      } else this.gains = new Map(e.data.gains);
     };
   }
 
   private receive(bytes: Uint8Array) {
     const forwarded = readForwarded(bytes);
     if (!forwarded || !this.opus) return;
+    if (forwarded.packet.flags & FLAG_PROBE) {
+      const probe = readProbe(forwarded.packet.opus);
+      const now = currentTime * 1000;
+      if (probe?.kind === PROBE_PING) this.port.postMessage({ ping: probe.nonce, at: now });
+      const sent = probe?.kind === PROBE_PONG ? this.pings.get(probe.nonce) : undefined;
+      if (probe?.kind === PROBE_PONG && sent !== undefined) this.rtt.set(forwarded.sender, now - sent - probe.holdMs);
+      return;
+    }
     let s = this.senders.get(forwarded.sender);
     if (!s) {
       s = {
@@ -162,6 +201,7 @@ class ReceiveProcessor extends AudioWorkletProcessor {
       if (currentTime - s.lastHeard > 10) {
         s.decoder.destroy();
         this.senders.delete(id);
+        this.rtt.delete(id);
         continue;
       }
       // Pending is interleaved stereo, as the decoder gives it.
@@ -200,7 +240,7 @@ class ReceiveProcessor extends AudioWorkletProcessor {
       const levels = [...this.senders].map(([id, s]): [number, number] => [id, s.power > 0 ? 10 * Math.log10(s.power) : -120]);
       // Waiting to play, in ms: the jitter buffer plus decoded samples not out yet. For the latency estimate.
       const buffered = [...this.senders].map(([id, s]): [number, number] => [id, s.jitter.depthMs + (s.pending.length / 2 / sampleRate) * 1000]);
-      this.port.postMessage({ levels, buffered } satisfies ReceiveReport);
+      this.port.postMessage({ levels, buffered, rtt: [...this.rtt] } satisfies ReceiveReport);
     }
     return true;
   }
