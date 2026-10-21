@@ -34,7 +34,6 @@ Pod::Spec.new do |s|
     "#{opus}/celt/opus_custom_demo.c",
   ]
   s.public_header_files = 'native/core/{voice,effects}.h'
-  s.preserve_paths = ['native/vendor/miniaudio/*', 'native/core/device.c']
   s.frameworks = 'AVFoundation', 'CoreAudio', 'AudioToolbox'
   s.pod_target_xcconfig = {
     'GCC_C_LANGUAGE_STANDARD' => 'c11',
