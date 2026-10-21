@@ -172,8 +172,9 @@ export interface VoicePlatform {
      AudioNodes the client's meters and gate read directly — so native supplies its own. */
   createAudioPipeline?(options: AudioPipelineOptions): AudioPipeline;
 
-  /* The native voice engine, where the app ships it: the phone's GrytVoice module (GRYT-1822). Null if it won't start. */
-  startNativeAudio?(offer: AudioUDPOffer, effects: VoiceEffectSettings): NativeAudioSession | null;
+  /* The native voice engine, where the app ships it: the phone's GrytVoice module (GRYT-1822). Null if it won't start.
+     Async: Apple's voice-processing unit takes about two seconds to start, too long to hold the JS thread. */
+  startNativeAudio?(offer: AudioUDPOffer, effects: VoiceEffectSettings): Promise<NativeAudioSession | null>;
 }
 
 export interface NativeAudioSession {
