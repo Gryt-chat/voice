@@ -46,13 +46,15 @@ static int set(AudioUnit u, AudioUnitPropertyID id, AudioUnitScope scope, AudioU
 gv_device *gv_device_start(gv_engine *engine, const char *name, unsigned period, gv_tap_fn tap, void *user) {
   (void)name;
   AVAudioSession *session = AVAudioSession.sharedInstance;
+  // Not defaultToSpeaker: with it, the app's route picker can't move the call to the earpiece.
   [session setCategory:AVAudioSessionCategoryPlayAndRecord
                   mode:AVAudioSessionModeVoiceChat
-               options:AVAudioSessionCategoryOptionDefaultToSpeaker | AVAudioSessionCategoryOptionAllowBluetoothHFP
+               options:AVAudioSessionCategoryOptionAllowBluetoothHFP
                  error:nil];
   [session setPreferredSampleRate:48000 error:nil];
   [session setPreferredIOBufferDuration:(double)period / 48000 error:nil];
   if (![session setActive:YES error:nil]) return NULL;
+  [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:nil];
 
   gv_device *d = calloc(1, sizeof *d);
   if (!d) return NULL;
