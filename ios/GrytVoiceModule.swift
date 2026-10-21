@@ -10,7 +10,8 @@ public final class GrytVoiceModule: Module {
     Name("GrytVoice")
 
     /// The room_joined offer's udp part, and the effects as `transportEffects` gives them. False if it didn't start.
-    Function("start") { (addrs: [String], session: Double, key: String, effects: [String: Double]) -> Bool in
+    /// Async, so off the JS thread: the voice-processing unit takes about two seconds to start.
+    AsyncFunction("start") { (addrs: [String], session: Double, key: String, effects: [String: Double]) -> Bool in
       self.stopVoice()
       Self.webRTCAudio(enabled: false)
       guard let keyData = Data(base64Encoded: key), keyData.count == 32, !addrs.isEmpty else { return false }
