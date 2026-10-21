@@ -26,6 +26,7 @@ int gv_engine_init(gv_engine *e, const gv_effect_settings *s, int bitrate, int s
     atomic_init(&e->speaking[i], 0);
     atomic_init(&e->slot_id[i], 0);
     atomic_init(&e->level_db[i], -INFINITY);
+    atomic_init(&e->buffered_ms[i], 0);
   }
   atomic_init(&e->mic_db, -INFINITY);
   atomic_init(&e->mic_speaking, false);
@@ -55,6 +56,17 @@ int gv_engine_levels(gv_engine *e, uint32_t *ids, float *db, int max, float *mic
   }
   *mic_db = atomic_load(&e->mic_db);
   *mic_speaking = atomic_load(&e->mic_speaking);
+  return n;
+}
+
+int gv_engine_buffered(gv_engine *e, uint32_t *ids, float *ms, int max) {
+  int n = 0;
+  for (int i = 0; i < GV_MAX_SENDERS && n < max; i++) {
+    uint32_t id = atomic_load(&e->slot_id[i]);
+    if (!id) continue;
+    ids[n] = id;
+    ms[n++] = atomic_load(&e->buffered_ms[i]);
+  }
   return n;
 }
 
@@ -222,6 +234,7 @@ void gv_engine_render(gv_engine *e, float *out, size_t frames) {
     /* A muted sender stops sending, so the ring goes out this long after its last speaking packet. */
     atomic_store(&e->speaking[i], e->now_ms - s->last_speaking_ms < SPEAKING_HOLD_MS ? s->id : 0);
     atomic_store(&e->level_db[i], sum > 0 ? (float)(10 * log10(sum / (double)(frames * 2))) : -INFINITY);
+    atomic_store(&e->buffered_ms[i], (float)(gv_jitter_depth_ms(&s->jitter) + s->pending_frames * 1000.0 / SAMPLE_RATE));
     atomic_store(&e->slot_id[i], s->id);
   }
   float gain = atomic_load(&e->output_gain);

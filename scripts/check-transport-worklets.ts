@@ -101,11 +101,14 @@ assert.equal(send.port.sent.length, before, "a muted sender sent packets");
 
 // Speaking (GRYT-1830): sender 7's packets carry the flag with the gate open, so the receiver named it,
 // and once its packets stop the ring goes out. Levels go out by sender, about -9 dBFS for a 0.5 beep.
-type Report = { speaking: number[] } | { levels: [number, number][] };
+type Report = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][] };
 const said = receive.port.sent as (Uint8Array | Report)[];
 assert.ok(said.some((m) => "speaking" in m && m.speaking.join() === "7"), "the receiver never said sender 7 was speaking");
 const loudest = Math.max(...said.flatMap((m) => ("levels" in m ? m.levels.filter(([id]) => id === 7).map(([, db]) => db) : [])));
 assert.ok(loudest > -11 && loudest < -7, `sender 7 peaked at ${loudest.toFixed(1)} dBFS, the beep went in at about -9`);
+// Buffered, for the latency estimate: reported for sender 7, never negative, and within the jitter buffer's reach.
+const buffered = said.flatMap((m) => ("buffered" in m ? m.buffered.filter(([id]) => id === 7).map(([, ms]) => ms) : []));
+assert.ok(buffered.length > 0 && buffered.every((ms) => ms >= 0 && ms < 100), `sender 7 buffered ${buffered.join(", ")} ms`);
 said.length = 0;
 for (let t = 0; t < 0.3 * SR; t += QUANTUM) {
   receive.process([], [[new Float32Array(QUANTUM), new Float32Array(QUANTUM)]]);
@@ -114,4 +117,4 @@ for (let t = 0; t < 0.3 * SR; t += QUANTUM) {
 const lastSpeaking = said.filter((m) => "speaking" in m).at(-1);
 assert.deepEqual(lastSpeaking, { speaking: [] }, "sender 7 still speaking after its packets stopped");
 
-console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; per-user volume applied; muted sends nothing; speaking named and cleared; levels by sender`);
+console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; per-user volume applied; muted sends nothing; speaking named and cleared; levels and buffered ms by sender`);

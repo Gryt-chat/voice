@@ -109,7 +109,7 @@ const SPEAKING_HOLD_S = 0.25;
 const LEVELS_EVERY_S = 0.05;
 
 /** What the receive worklet tells the page: who is speaking when that changes, and levels in dBFS by sender. */
-export type ReceiveReport = { speaking: number[] } | { levels: [number, number][] };
+export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][] };
 
 /** Forwarded packets in on the port, everyone mixed out: a jitter buffer and a decoder per sender. */
 class ReceiveProcessor extends AudioWorkletProcessor {
@@ -198,7 +198,9 @@ class ReceiveProcessor extends AudioWorkletProcessor {
     if (currentTime - this.levelsAt >= LEVELS_EVERY_S) {
       this.levelsAt = currentTime;
       const levels = [...this.senders].map(([id, s]): [number, number] => [id, s.power > 0 ? 10 * Math.log10(s.power) : -120]);
-      this.port.postMessage({ levels } satisfies ReceiveReport);
+      // Waiting to play, in ms: the jitter buffer plus decoded samples not out yet. For the latency estimate.
+      const buffered = [...this.senders].map(([id, s]): [number, number] => [id, s.jitter.depthMs + (s.pending.length / 2 / sampleRate) * 1000]);
+      this.port.postMessage({ levels, buffered } satisfies ReceiveReport);
     }
     return true;
   }

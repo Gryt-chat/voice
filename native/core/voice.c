@@ -44,3 +44,7 @@ void gv_voice_set_gains(gv_voice *v, const uint32_t *ids, const float *gains, in
 int gv_voice_levels(gv_voice *v, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking) {
   return gv_engine_levels(&v->engine, ids, db, max, mic_db, mic_speaking);
 }
+
+int gv_voice_buffered(gv_voice *v, uint32_t *ids, float *ms, int max) {
+  return gv_engine_buffered(&v->engine, ids, ms, max);
+}

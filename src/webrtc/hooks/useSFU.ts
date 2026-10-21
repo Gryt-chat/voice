@@ -8,9 +8,9 @@ import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
 import { sliderToOutputGain } from "../../shared/audioVolume";
 import { getVoicePlatform } from "../../platform/index";
 import { singletonHook } from "../../shared/singletonHook";
-import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, PASS_THROUGH, startAudioTransport, transportEffects } from "../../transport/session";
+import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, PASS_THROUGH, startAudioTransport, TRANSPORT_FRAME_MS, transportEffects } from "../../transport/session";
 
-import { SFUConnectionState, type SFUInterface, type Streams, type StreamSources, type VideoStreams } from "../types/SFU";
+import { SFUConnectionState, type SFUInterface, type Streams, type StreamSources, type TransportLatency, type VideoStreams } from "../types/SFU";
 import { type CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
 import { sfuConnect } from "./sfuConnectFlow";
 import { publishOnSfuSlot } from "./sfuSlots";
@@ -245,6 +245,26 @@ function useSfuHook(): SFUInterface {
   );
   const speakersRef = useRef({ audioContext, remoteBusNode });
   speakersRef.current = { audioContext, remoteBusNode };
+  const workletBufferedRef = useRef(new Map<number, number>());
+  const getTransportLatency = useCallback((): TransportLatency | null => {
+    const native = nativeAudioRef.current;
+    const n = native?.latency();
+    const bySender = n ? new Map(n.ids.map((id, i) => [id, n.bufferedMs[i]])) : workletBufferedRef.current;
+    if (!n && !audioTransportRef.current) return null;
+    const bufferedByUser = new Map<string, number>();
+    for (const [id, ms] of bySender) {
+      const user = senderUsersRef.current.get(id);
+      if (user) bufferedByUser.set(user, ms);
+    }
+    if (n) return { frameMs: TRANSPORT_FRAME_MS, inputMs: n.inputMs + n.ioBufferMs, outputMs: n.outputMs + n.ioBufferMs, bufferedByUser };
+    const ctx = speakersRef.current.audioContext as (AudioContext & { outputLatency?: number }) | null;
+    return {
+      frameMs: TRANSPORT_FRAME_MS,
+      inputMs: typeof ctx?.baseLatency === "number" ? ctx.baseLatency * 1000 : null,
+      outputMs: typeof ctx?.outputLatency === "number" ? ctx.outputLatency * 1000 : null,
+      bufferedByUser,
+    };
+  }, []);
   const startTransport = useCallback(async (offer: AudioTransportOffer) => {
     // The phone: the native engine owns the mic and speaker, so WebRTC sends no audio at all (GRYT-1822).
     const platform = getVoicePlatform();
@@ -308,6 +328,7 @@ function useSfuHook(): SFUInterface {
         offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(), effects: PASS_THROUGH, wsUrl,
         onSpeaking: setSpeakingSenders,
         onLevels: (levels) => (workletLevelsRef.current = levels),
+        onBuffered: (buffered) => (workletBufferedRef.current = buffered),
       });
       audioTransportRef.current?.close();
       audioTransportRef.current = session;
@@ -1096,6 +1117,7 @@ function useSfuHook(): SFUInterface {
     transportSpeaking,
     transportUsers,
     getTransportLevels,
+    getTransportLatency,
     setTransportUserGains,
   };
 }
