@@ -87,4 +87,16 @@ export interface SFUInterface {
   setTransportUserGains?: (gains: ReadonlyMap<string, number>) => void;
   /** Each user's level heard over the own transport, in dBFS (-120 silent), for a halo; the mic's only on the native engine. Null when off the transport. */
   getTransportLevels?: () => { users: ReadonlyMap<string, number>; mic: number; micSpeaking: boolean } | null;
+  /** The parts of an own-transport latency estimate this device knows, in ms. Null when off the transport. */
+  getTransportLatency?: () => TransportLatency | null;
+}
+
+export interface TransportLatency {
+  /** One Opus frame, which the sender waits for before it can send. */
+  frameMs: number;
+  /** This device's capture and playback delays; null where the platform doesn't say. */
+  inputMs: number | null;
+  outputMs: number | null;
+  /** Each user's audio waiting to play here: jitter buffer plus decoded samples. */
+  bufferedByUser: ReadonlyMap<string, number>;
 }

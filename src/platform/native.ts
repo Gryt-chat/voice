@@ -10,6 +10,7 @@ import {
 
 import type {
   AudioPipeline,
+  NativeLatency,
   AudioPipelineOptions,
   CameraConstraints,
   VoicePlatform,
@@ -62,6 +63,7 @@ interface GrytVoiceModule {
   speaking(): number[];
   setGains(ids: number[], gains: number[]): void;
   levels(): { ids: number[]; db: number[]; mic: number; micSpeaking: boolean };
+  latency(): NativeLatency;
 }
 
 // Where requireOptionalNativeModule looks, read directly so this package doesn't depend on expo-modules-core.
@@ -92,6 +94,7 @@ export const nativePlatform: VoicePlatform = {
       speaking: () => grytVoice.speaking(),
       setGains: (gains) => grytVoice.setGains([...gains.keys()], [...gains.values()]),
       levels: () => grytVoice.levels(),
+      latency: () => grytVoice.latency(),
       close: () => {
         nativeRunning = false;
         grytVoice.stop();

@@ -23,5 +23,6 @@ int gv_voice_speaking(gv_voice *v, uint32_t *ids, int max);
 /* Every sender heard with its level in dBFS, and the mic's, for the halo (GRYT-1830). */
 void gv_voice_set_gains(gv_voice *v, const uint32_t *ids, const float *gains, int n);
 int gv_voice_levels(gv_voice *v, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking);
+int gv_voice_buffered(gv_voice *v, uint32_t *ids, float *ms, int max);
 
 #endif

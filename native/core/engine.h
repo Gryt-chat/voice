@@ -60,6 +60,8 @@ typedef struct {
   /* Each slot's sender and how loud it was in the last render, in dBFS, for the halo. */
   atomic_uint slot_id[GV_MAX_SENDERS];
   _Atomic float level_db[GV_MAX_SENDERS];
+  /* How much of each slot's audio is waiting to play, in ms: its jitter buffer plus decoded samples. */
+  _Atomic float buffered_ms[GV_MAX_SENDERS];
   /* The mic as sent, after the effects: silent when muted or gated. */
   _Atomic float mic_db;
   atomic_bool mic_speaking;
@@ -91,5 +93,7 @@ void gv_engine_set_gains(gv_engine *e, const uint32_t *ids, const float *gains, 
 int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max);
 /* Every sender heard and its level in dBFS, up to max, plus the mic's (GRYT-1830). Safe from any thread. */
 int gv_engine_levels(gv_engine *e, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking);
+/* Every sender heard and how much of their audio is buffered, in ms, up to max. Safe from any thread. */
+int gv_engine_buffered(gv_engine *e, uint32_t *ids, float *ms, int max);
 
 #endif

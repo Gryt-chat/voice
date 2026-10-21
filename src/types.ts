@@ -186,7 +186,17 @@ export interface NativeAudioSession {
   setGains(gains: Map<number, number>): void;
   /** Each sender heard and its level in dBFS, and the mic's, for the halo. Silence is -120. */
   levels(): { ids: number[]; db: number[]; mic: number; micSpeaking: boolean };
+  /** Each sender's audio waiting to play, and the audio session's own delays, all in ms. */
+  latency(): NativeLatency;
   close(): void;
+}
+
+export interface NativeLatency {
+  ids: number[];
+  bufferedMs: number[];
+  inputMs: number;
+  outputMs: number;
+  ioBufferMs: number;
 }
 
 export interface CameraConstraints {

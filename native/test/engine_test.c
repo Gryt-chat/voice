@@ -88,6 +88,10 @@ int main(void) {
   gv_engine_levels(&engine, ids, db, GV_MAX_SENDERS, &mic_db, &mic_speaking);
   assert(mic_db > -11 && mic_db < -7);
   assert(db[0] > -12 && db[0] < -7);
+  /* Buffered, for the latency estimate: sender 7 is named, with no more queued than the jitter buffer's ceiling. */
+  float buffered[GV_MAX_SENDERS];
+  assert(gv_engine_buffered(&engine, ids, buffered, GV_MAX_SENDERS) == 1 && ids[0] == 7);
+  assert(buffered[0] >= 0 && buffered[0] < 70);
   /* Per-sender volume (GRYT-1831): sender 7 at half plays at half, measured on what was heard before the gain. */
   uint32_t seven = 7;
   float half = 0.5f, peak_half = 0;

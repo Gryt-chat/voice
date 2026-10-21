@@ -43,6 +43,7 @@ export interface AudioTransportSession {
 
 // 2.5 ms CELT frames; the transport exists for the latency.
 const FRAME = 120;
+export const TRANSPORT_FRAME_MS = 2.5;
 // Sivert's listening test: 96 kbps is the least that holds up, 192 sounds the same as the original.
 const BITRATE = 192_000;
 // 256 sounded like the original song in stereo. Only used while the mic's two sides really differ.
@@ -194,6 +195,8 @@ export async function startAudioTransport(o: {
   onSpeaking?: (senders: number[]) => void;
   /** Each sender's level in dBFS, about twenty times a second, for a halo (GRYT-1830). */
   onLevels?: (levels: Map<number, number>) => void;
+  /** Each sender's audio waiting to play, in ms, with the levels: for the latency estimate. */
+  onBuffered?: (buffered: Map<number, number>) => void;
 }): Promise<AudioTransportSession> {
   const [pipe] = await Promise.all([dialPipe(o.offer, o.wsUrl), loadWorklets(o.context)]);
 
@@ -214,7 +217,10 @@ export async function startAudioTransport(o: {
   send.port.onmessage = (e: MessageEvent<Uint8Array>) => pipe.send(e.data);
   receive.port.onmessage = (e: MessageEvent<ReceiveReport>) => {
     if ("speaking" in e.data) o.onSpeaking?.(e.data.speaking);
-    else o.onLevels?.(new Map(e.data.levels));
+    else {
+      o.onLevels?.(new Map(e.data.levels));
+      o.onBuffered?.(new Map(e.data.buffered));
+    }
   };
   pipe.listen((d) => receive.port.postMessage(d, [d.buffer]));
 
@@ -223,6 +229,7 @@ export async function startAudioTransport(o: {
     receive.port.onmessage = null;
     o.onSpeaking?.([]);
     o.onLevels?.(new Map());
+    o.onBuffered?.(new Map());
     source.disconnect();
     send.disconnect();
     receive.disconnect();

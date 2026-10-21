@@ -43,6 +43,9 @@ export interface LatencyBreakdown {
   estimatedMouthToEarMs: number | null;
   /** How long this connection has been up, so long-call growth can be read against it. */
   callAgeMs: number | null;
+  /** On the own transport: one frame, and the most anyone's audio waits here before it plays. Null off it. */
+  transportFrameMs: number | null;
+  transportBufferedMs: number | null;
 }
 
 const EMPTY: LatencyBreakdown = {
@@ -69,6 +72,8 @@ const EMPTY: LatencyBreakdown = {
   estimatedRoundTripMs: null,
   estimatedMouthToEarMs: null,
   callAgeMs: null,
+  transportFrameMs: null,
+  transportBufferedMs: null,
 };
 
 export function useVoiceLatency(enabled: boolean) {
@@ -236,9 +241,13 @@ export function useVoiceLatency(enabled: boolean) {
       }
 
       const estimatedRoundTripMs = estimatedOneWayMs !== null ? estimatedOneWayMs * 2 : null;
-      const estimatedMouthToEarMs = estimatedOneWayMs === null
-        ? null
-        : estimatedOneWayMs + (jitterBufferMs ?? 0) + (local.outputMs ?? 0);
+      // On the own transport, voice goes sender to SFU to here: about one whole round trip, plus a frame.
+      const transport = sfuRef.current.getTransportLatency?.() ?? null;
+      const transportBufferedMs = transport ? worst([...transport.bufferedByUser.values()]) : null;
+      let estimatedMouthToEarMs = estimatedOneWayMs === null ? null : estimatedOneWayMs + (jitterBufferMs ?? 0) + (local.outputMs ?? 0);
+      if (transport) {
+        estimatedMouthToEarMs = (local.totalMs ?? 0) + transport.frameMs + (networkRttMs ?? 0) + (transportBufferedMs ?? 0) + (transport.outputMs ?? local.outputMs ?? 0);
+      }
 
       if (!cancelled) {
         setLatency({
@@ -265,6 +274,8 @@ export function useVoiceLatency(enabled: boolean) {
           estimatedRoundTripMs,
           estimatedMouthToEarMs,
           callAgeMs: connectedAt === null ? null : performance.now() - connectedAt,
+          transportFrameMs: transport?.frameMs ?? null,
+          transportBufferedMs,
         });
       }
     };

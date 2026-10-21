@@ -1,3 +1,4 @@
+import AVFoundation
 import ExpoModulesCore
 
 /// The native voice engine (`native/core`, GRYT-1822) on the phone's own microphone and speaker,
@@ -76,6 +77,21 @@ public final class GrytVoiceModule: Module {
       let n = Int(gv_voice_levels(voice, &ids, &db, Int32(ids.count), &mic, &micSpeaking))
       let floor = { (x: Float) in x.isFinite ? Double(x) : -120 }
       return ["ids": ids.prefix(n).map { Int($0) }, "db": db.prefix(n).map(floor), "mic": floor(mic), "micSpeaking": micSpeaking != 0]
+    }
+
+    /// For the latency estimate: each sender's buffered ms, and the audio session's own delays in ms.
+    Function("latency") { () -> [String: Any] in
+      var ids = [UInt32](repeating: 0, count: 16)
+      var ms = [Float](repeating: 0, count: 16)
+      let n = self.voice.map { Int(gv_voice_buffered($0, &ids, &ms, Int32(ids.count))) } ?? 0
+      let session = AVAudioSession.sharedInstance()
+      return [
+        "ids": ids.prefix(n).map { Int($0) },
+        "bufferedMs": ms.prefix(n).map { Double($0) },
+        "inputMs": session.inputLatency * 1000,
+        "outputMs": session.outputLatency * 1000,
+        "ioBufferMs": session.ioBufferDuration * 1000,
+      ]
     }
 
     OnDestroy { self.stopVoice() }
