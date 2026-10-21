@@ -154,6 +154,8 @@ jobs:
         run: npm run check-native-device
       - name: Check the native engine over real UDP
         run: npm run check-native-net
+      - name: Build the desktop's voice helper and check its protocol
+        run: npm run check-voice-helper
 
       # The own transport's effects run sample by sample: none may delay a sound (GRYT-1819).
       - name: Check the microphone effects add no delay
