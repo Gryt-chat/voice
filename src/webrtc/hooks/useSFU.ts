@@ -307,6 +307,9 @@ function useSfuHook(): SFUInterface {
       audioTransportRef.current?.close();
       audioTransportRef.current = session;
       session.setOutputGain(outputGainRef.current);
+      // Mute and push to talk, as the browser transport gets them: the phone's pipeline mutes the engine itself as well.
+      microphoneBufferRef.current.onSending = session.setSending;
+      session.setSending(microphoneBufferRef.current.sending ?? true);
       await registeredTracksRef.current.find((s) => s.track?.kind === "audio")?.replaceTrack(null);
       voiceLog.ok("TRANSPORT", "start", "Voice on the native engine", { offered: offer.udp.addrs });
       return;
