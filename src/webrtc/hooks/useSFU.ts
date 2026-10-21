@@ -256,13 +256,14 @@ function useSfuHook(): SFUInterface {
       const user = senderUsersRef.current.get(id);
       if (user) bufferedByUser.set(user, ms);
     }
-    if (n) return { frameMs: TRANSPORT_FRAME_MS, inputMs: n.inputMs + n.ioBufferMs, outputMs: n.outputMs + n.ioBufferMs, bufferedByUser };
+    if (n) return { frameMs: TRANSPORT_FRAME_MS, inputMs: n.inputMs + n.ioBufferMs, outputMs: n.outputMs + n.ioBufferMs, bufferedByUser, sampleRate: n.sampleRate };
     const ctx = speakersRef.current.audioContext as (AudioContext & { outputLatency?: number }) | null;
     return {
       frameMs: TRANSPORT_FRAME_MS,
       inputMs: typeof ctx?.baseLatency === "number" ? ctx.baseLatency * 1000 : null,
       outputMs: typeof ctx?.outputLatency === "number" ? ctx.outputLatency * 1000 : null,
       bufferedByUser,
+      sampleRate: null,
     };
   }, []);
   const startTransport = useCallback(async (offer: AudioTransportOffer) => {

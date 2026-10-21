@@ -91,6 +91,7 @@ public final class GrytVoiceModule: Module {
         "inputMs": session.inputLatency * 1000,
         "outputMs": session.outputLatency * 1000,
         "ioBufferMs": session.ioBufferDuration * 1000,
+        "sampleRate": session.sampleRate,
       ]
     }
 
