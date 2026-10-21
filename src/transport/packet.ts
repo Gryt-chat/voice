@@ -9,6 +9,8 @@ export const MAX_OPUS_BYTES = 1275;
 export const SENDER_BYTES = 4;
 
 export const FLAG_SPEAKING = 1;
+/** The payload is a round-trip probe (probe.ts), not Opus (GRYT-1836). */
+export const FLAG_PROBE = 2;
 
 export interface AudioPacket {
   flags: number;

@@ -11,6 +11,8 @@
 #define GV_MAX_OPUS_BYTES 1275
 #define GV_SENDER_BYTES 4
 #define GV_FLAG_SPEAKING 1
+/* The payload is a round-trip probe, as src/transport/probe.ts writes it, not Opus (GRYT-1836). */
+#define GV_FLAG_PROBE 2
 
 typedef struct {
   uint8_t flags;

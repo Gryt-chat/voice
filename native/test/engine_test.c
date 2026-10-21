@@ -22,6 +22,24 @@ static void loopback(void *user, const uint8_t *packet, size_t len) {
   sent++;
 }
 
+
+/* A path with delay: packets come back DELAY_BLOCKS later, each way, as through a far SFU (GRYT-1836). */
+#define DELAY_BLOCKS 15
+static gv_engine far;
+static uint8_t held[64][4 + GV_HEADER_BYTES + 16];
+static size_t held_len[64];
+static int held_due[64], n_held, block_no;
+
+static void delayed(void *user, const uint8_t *packet, size_t len) {
+  (void)user;
+  if (len > GV_HEADER_BYTES + 16 || n_held == 64) return;
+  memcpy(held[n_held] + 4, packet, len);
+  held[n_held][3] = 9;
+  held_len[n_held] = len + 4;
+  /* Probes only: audio would fill the queue, and only the round trip is under test. */
+  held_due[n_held++] = packet[1] & GV_FLAG_PROBE ? block_no + DELAY_BLOCKS : -1;
+}
+
 /* One second with a 1 kHz beep at 0.5 s on the left, and on the right too unless left_only. */
 static void run(int channels, int left_only, float *outL, float *outR) {
   static float in[BLOCK * 2], out[BLOCK * 2];
@@ -92,6 +110,10 @@ int main(void) {
   float buffered[GV_MAX_SENDERS];
   assert(gv_engine_buffered(&engine, ids, buffered, GV_MAX_SENDERS) == 1 && ids[0] == 7);
   assert(buffered[0] >= 0 && buffered[0] < 70);
+  /* Round trips (GRYT-1836): the loopback answers this engine's own pings, so the path back measures as nothing. */
+  float rtt[GV_MAX_SENDERS];
+  assert(gv_engine_rtt(&engine, ids, rtt, GV_MAX_SENDERS) == 1 && ids[0] == 7);
+  assert(fabsf(rtt[0]) < 0.1f); /* the hold goes in tenths of a ms */
   /* Per-sender volume (GRYT-1831): sender 7 at half plays at half, measured on what was heard before the gain. */
   uint32_t seven = 7;
   float half = 0.5f, peak_half = 0;
@@ -121,7 +143,20 @@ int main(void) {
   assert(gv_engine_speaking(&engine, ids, GV_MAX_SENDERS) == 0);
 
   gv_engine_destroy(&engine);
-  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; stereo kept apart (right %.3f); muted sends nothing; speaking named and cleared; levels about -9 dB for a 0.5 beep, the mic silent when muted; per-sender volume\n",
+  /* Through a delayed path: 15 blocks is 40 ms each way, so the round trip has to come out at 80. */
+  assert(gv_engine_init(&far, &off, 192000, 256000, delayed, NULL) == 0);
+  static float silence[BLOCK], sink[BLOCK * 2];
+  for (block_no = 0; block_no < 200; block_no++) {
+    gv_engine_capture(&far, silence, BLOCK, 1);
+    for (int i = 0; i < n_held; i++)
+      if (held_due[i] == block_no) gv_engine_receive(&far, held[i], held_len[i]);
+    gv_engine_render(&far, sink, BLOCK);
+  }
+  assert(gv_engine_rtt(&far, ids, rtt, GV_MAX_SENDERS) == 1 && ids[0] == 9);
+  double want = 2 * DELAY_BLOCKS * BLOCK * 1000.0 / SR;
+  assert(fabs(rtt[0] - want) < 3);
+  gv_engine_destroy(&far);
+  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; stereo kept apart (right %.3f); muted sends nothing; speaking named and cleared; levels about -9 dB for a 0.5 beep, the mic silent when muted; per-sender volume; round trips measured to within 3 ms of a known delay\n",
          delay_ms, peak, right);
   return 0;
 }

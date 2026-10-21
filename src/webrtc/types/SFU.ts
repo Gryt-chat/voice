@@ -101,4 +101,6 @@ export interface TransportLatency {
   bufferedByUser: ReadonlyMap<string, number>;
   /** The phone's audio session rate, null in a browser. Below 48000 the voice is band-limited. */
   sampleRate: number | null;
+  /** Measured round trip to each user through the SFU: a ping out, their pong back, minus how long they held it (GRYT-1836). */
+  rttByUser: ReadonlyMap<string, number>;
 }

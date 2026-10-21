@@ -200,6 +200,8 @@ export interface NativeLatency {
   ioBufferMs: number;
   /** The rate the audio session actually runs at. Below 48000 the voice is band-limited. */
   sampleRate: number;
+  /** Measured round trips to each sender, in ms, aligned with ids; -1 where none has come back yet (GRYT-1836). */
+  rttMs: number[];
 }
 
 export interface CameraConstraints {

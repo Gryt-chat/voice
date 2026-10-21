@@ -48,3 +48,5 @@ int gv_voice_levels(gv_voice *v, uint32_t *ids, float *db, int max, float *mic_d
 int gv_voice_buffered(gv_voice *v, uint32_t *ids, float *ms, int max) {
   return gv_engine_buffered(&v->engine, ids, ms, max);
 }
+
+int gv_voice_rtt(gv_voice *v, uint32_t *ids, float *ms, int max) { return gv_engine_rtt(&v->engine, ids, ms, max); }

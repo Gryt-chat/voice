@@ -197,6 +197,8 @@ export async function startAudioTransport(o: {
   onLevels?: (levels: Map<number, number>) => void;
   /** Each sender's audio waiting to play, in ms, with the levels: for the latency estimate. */
   onBuffered?: (buffered: Map<number, number>) => void;
+  /** Measured round trips by sender, in ms, with the levels (GRYT-1836). */
+  onRoundTrip?: (rtt: Map<number, number>) => void;
 }): Promise<AudioTransportSession> {
   const [pipe] = await Promise.all([dialPipe(o.offer, o.wsUrl), loadWorklets(o.context)]);
 
@@ -214,12 +216,18 @@ export async function startAudioTransport(o: {
   let source = o.context.createMediaStreamSource(o.input);
   source.connect(send);
 
-  send.port.onmessage = (e: MessageEvent<Uint8Array>) => pipe.send(e.data);
-  receive.port.onmessage = (e: MessageEvent<ReceiveReport>) => {
-    if ("speaking" in e.data) o.onSpeaking?.(e.data.speaking);
+  // The worklets keep the probe clock between them (GRYT-1836): sent pings go to receive, heard pings back to send.
+  send.port.onmessage = (e: MessageEvent<Uint8Array | { pingSent: number; at: number }>) => {
+    if (e.data instanceof Uint8Array) pipe.send(e.data);
+    else receive.port.postMessage(e.data);
+  };
+  receive.port.onmessage = (e: MessageEvent<ReceiveReport | { ping: number; at: number }>) => {
+    if ("ping" in e.data) send.port.postMessage({ type: "pong", nonce: e.data.ping, at: e.data.at });
+    else if ("speaking" in e.data) o.onSpeaking?.(e.data.speaking);
     else {
       o.onLevels?.(new Map(e.data.levels));
       o.onBuffered?.(new Map(e.data.buffered));
+      o.onRoundTrip?.(new Map(e.data.rtt));
     }
   };
   pipe.listen((d) => receive.port.postMessage(d, [d.buffer]));
@@ -230,6 +238,7 @@ export async function startAudioTransport(o: {
     o.onSpeaking?.([]);
     o.onLevels?.(new Map());
     o.onBuffered?.(new Map());
+    o.onRoundTrip?.(new Map());
     source.disconnect();
     send.disconnect();
     receive.disconnect();

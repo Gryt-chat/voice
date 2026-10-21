@@ -85,10 +85,16 @@ public final class GrytVoiceModule: Module {
       var ids = [UInt32](repeating: 0, count: 16)
       var ms = [Float](repeating: 0, count: 16)
       let n = self.voice.map { Int(gv_voice_buffered($0, &ids, &ms, Int32(ids.count))) } ?? 0
+      // Round trips by the same ids, -1 for anyone who hasn't answered a ping yet (GRYT-1836).
+      var rttIds = [UInt32](repeating: 0, count: 16)
+      var rttMs = [Float](repeating: 0, count: 16)
+      let nr = self.voice.map { Int(gv_voice_rtt($0, &rttIds, &rttMs, Int32(rttIds.count))) } ?? 0
+      let rttById = Dictionary(zip(rttIds.prefix(nr), rttMs.prefix(nr)), uniquingKeysWith: { a, _ in a })
       let session = AVAudioSession.sharedInstance()
       return [
         "ids": ids.prefix(n).map { Int($0) },
         "bufferedMs": ms.prefix(n).map { Double($0) },
+        "rttMs": ids.prefix(n).map { Double(rttById[$0] ?? -1) },
         "inputMs": session.inputLatency * 1000,
         "outputMs": session.outputLatency * 1000,
         "ioBufferMs": session.ioBufferDuration * 1000,
