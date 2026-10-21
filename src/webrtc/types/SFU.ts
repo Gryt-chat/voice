@@ -99,4 +99,6 @@ export interface TransportLatency {
   outputMs: number | null;
   /** Each user's audio waiting to play here: jitter buffer plus decoded samples. */
   bufferedByUser: ReadonlyMap<string, number>;
+  /** The phone's audio session rate, null in a browser. Below 48000 the voice is band-limited. */
+  sampleRate: number | null;
 }

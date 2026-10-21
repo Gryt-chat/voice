@@ -46,6 +46,8 @@ static int set(AudioUnit u, AudioUnitPropertyID id, AudioUnitScope scope, AudioU
 gv_device *gv_device_start(gv_engine *engine, const char *name, unsigned period, gv_tap_fn tap, void *user) {
   (void)name;
   AVAudioSession *session = AVAudioSession.sharedInstance;
+  // Left active by WebRTC after an earlier call, it keeps that call's rate: 48 kHz only takes on activation.
+  [session setActive:NO error:nil];
   // Not defaultToSpeaker: with it, the app's route picker can't move the call to the earpiece.
   [session setCategory:AVAudioSessionCategoryPlayAndRecord
                   mode:AVAudioSessionModeVoiceChat

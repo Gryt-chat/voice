@@ -197,6 +197,8 @@ export interface NativeLatency {
   inputMs: number;
   outputMs: number;
   ioBufferMs: number;
+  /** The rate the audio session actually runs at. Below 48000 the voice is band-limited. */
+  sampleRate: number;
 }
 
 export interface CameraConstraints {
