@@ -48,6 +48,19 @@ interface SFUConnectionOptions {
 
   /** Which own-transport sender id is which user, each time someone joins or leaves it (GRYT-1830). */
   onAudioSenders?: (senders: Map<number, string>) => void;
+
+  /** Whether anyone in the room is off the own transport and still needs WebRTC audio (GRYT-1853). */
+  onWebRTCAudioWanted?: (wanted: boolean) => void;
+}
+
+/** The SFU's webrtc_audio_wanted, or null for anything that isn't one. */
+export function parseWebRTCAudioWanted(data: string): boolean | null {
+  try {
+    const { wanted } = JSON.parse(data) as { wanted?: boolean };
+    return typeof wanted === "boolean" ? wanted : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The SFU's audio_senders: decimal sender id to user id. Anything else in it is dropped. */
@@ -519,6 +532,12 @@ export async function connectToSfuWebSocket(
 
           case "audio_senders": {
             options.onAudioSenders?.(parseAudioSenders(message.data));
+            break;
+          }
+
+          case "webrtc_audio_wanted": {
+            const wanted = parseWebRTCAudioWanted(message.data);
+            if (wanted !== null) options.onWebRTCAudioWanted?.(wanted);
             break;
           }
 
