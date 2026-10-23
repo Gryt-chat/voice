@@ -20,7 +20,11 @@ import { createDemandReporter, type VideoDemand, type VideoRole, type VideoSendS
 import { createVideoSendController } from "./videoSender";
 import { type Phase, voiceLog } from "./voiceLogger";
 
-const kbpsToBitrate = (kbps: number | undefined) => (kbps ? kbps * 1000 : TRANSPORT_BITRATE.max);
+/** The person's choice, under the channel's max bitrate when it has one (GRYT-1856). The engine keeps 96 kbps as a floor. */
+const transportBitrate = (kbps: number | undefined, channelMaxBps: number | null | undefined) => {
+  const own = kbps ? kbps * 1000 : TRANSPORT_BITRATE.max;
+  return channelMaxBps && channelMaxBps > 0 ? Math.min(own, channelMaxBps) : own;
+};
 
 /** The raw microphone when the worklet can do all the processing; RNNoise still needs the graph. */
 // How often the phone asks the native engine who is speaking: fast enough for a ring.
@@ -115,6 +119,8 @@ function useSfuHook(): SFUInterface {
   const { microphoneBuffer, isAcquiring } = useMicrophone(isConnecting || isConnected);
   const microphoneBufferRef = useRef(microphoneBuffer);
   const audioTransportRef = useRef<AudioTransportSession | null>(null);
+  // The channel's eSports mode and bitrate, which a recovery reconnect has to pass again.
+  const lastChannelSettingsRef = useRef<{ eSportsMode?: boolean; maxBitrate?: number | null }>({});
   // Read when the transport starts or the pipeline is rebuilt, which can be before a render.
   const audioRef = useRef({ audio: config.audio, eSports: eSportsModeEnabled });
   audioRef.current = { audio: config.audio, eSports: eSportsModeEnabled };
@@ -316,7 +322,7 @@ function useSfuHook(): SFUInterface {
       audioTransportRef.current?.close();
       audioTransportRef.current = session;
       session.setOutputGain(outputGainRef.current);
-      session.setBitrate(kbpsToBitrate(audioRef.current.audio.bitrateKbps));
+      session.setBitrate(transportBitrate(audioRef.current.audio.bitrateKbps, lastChannelSettingsRef.current.maxBitrate));
       // Mute and push to talk, as the browser transport gets them: the phone's pipeline mutes the engine itself as well.
       microphoneBufferRef.current.onSending = session.setSending;
       session.setSending(microphoneBufferRef.current.sending ?? true);
@@ -340,7 +346,7 @@ function useSfuHook(): SFUInterface {
     try {
       const session = await startAudioTransport({
         offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(), effects: PASS_THROUGH, wsUrl,
-        bitrate: kbpsToBitrate(audioRef.current.audio.bitrateKbps),
+        bitrate: transportBitrate(audioRef.current.audio.bitrateKbps, lastChannelSettingsRef.current.maxBitrate),
         onSpeaking: setSpeakingSenders,
         onLevels: (levels) => (workletLevelsRef.current = levels),
         onBuffered: (buffered) => (workletBufferedRef.current = buffered),
@@ -373,7 +379,7 @@ function useSfuHook(): SFUInterface {
   }, [config.audio, eSportsModeEnabled]);
 
   useEffect(() => {
-    audioTransportRef.current?.setBitrate(kbpsToBitrate(config.audio.bitrateKbps));
+    audioTransportRef.current?.setBitrate(transportBitrate(config.audio.bitrateKbps, lastChannelSettingsRef.current.maxBitrate));
   }, [config.audio.bitrateKbps]);
 
   const outputGain = effectiveDeafened ? 0 : sliderToOutputGain(outputVolume);
@@ -419,8 +425,6 @@ function useSfuHook(): SFUInterface {
 
   // Track the last channel ID so we can reconnect after server restart
   const lastChannelIdRef = useRef<string>("");
-  // The channel's eSports mode and bitrate, which a recovery reconnect has to pass again.
-  const lastChannelSettingsRef = useRef<{ eSportsMode?: boolean; maxBitrate?: number | null }>({});
   // Whether the call was ended on purpose, by a hang-up or by giving up, rather than lost.
   // Starts true, so an initial page load does not auto-reconnect.
   const intentionalDisconnectRef = useRef(true);
