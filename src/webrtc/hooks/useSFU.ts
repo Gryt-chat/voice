@@ -8,7 +8,7 @@ import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
 import { sliderToOutputGain } from "../../shared/audioVolume";
 import { getVoicePlatform } from "../../platform/index";
 import { singletonHook } from "../../shared/singletonHook";
-import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, PASS_THROUGH, startAudioTransport, TRANSPORT_FRAME_MS, transportEffects } from "../../transport/session";
+import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, PASS_THROUGH, startAudioTransport, TRANSPORT_BITRATE, TRANSPORT_FRAME_MS, transportEffects } from "../../transport/session";
 
 import { SFUConnectionState, type SFUInterface, type Streams, type StreamSources, type TransportLatency, type VideoStreams } from "../types/SFU";
 import { type CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
@@ -19,6 +19,8 @@ import { useSFUStreams } from "./useSFUStreams";
 import { createDemandReporter, type VideoDemand, type VideoRole, type VideoSendSettings } from "./videoDemand";
 import { createVideoSendController } from "./videoSender";
 import { type Phase, voiceLog } from "./voiceLogger";
+
+const kbpsToBitrate = (kbps: number | undefined) => (kbps ? kbps * 1000 : TRANSPORT_BITRATE.max);
 
 /** The raw microphone when the worklet can do all the processing; RNNoise still needs the graph. */
 // How often the phone asks the native engine who is speaking: fast enough for a ring.
@@ -298,6 +300,8 @@ function useSfuHook(): SFUInterface {
         setInput: () => {},
         setSending: native.setSending,
         setEffects: native.setEffects,
+        // shortcut: the native engine stays at 192 kbps; the phone gets the setting with its own task.
+        setBitrate: () => {},
         setOutputGain: native.setOutputGain,
         setSenderGains: native.setGains,
         close: () => {
@@ -336,6 +340,7 @@ function useSfuHook(): SFUInterface {
     try {
       const session = await startAudioTransport({
         offer, context: audioContext, input, output: remoteBusNode, wasm: await audioTransportWasm(), effects: PASS_THROUGH, wsUrl,
+        bitrate: kbpsToBitrate(audioRef.current.audio.bitrateKbps),
         onSpeaking: setSpeakingSenders,
         onLevels: (levels) => (workletLevelsRef.current = levels),
         onBuffered: (buffered) => (workletBufferedRef.current = buffered),
@@ -366,6 +371,10 @@ function useSfuHook(): SFUInterface {
       session.setEffects(transportEffects(config.audio, eSportsModeEnabled));
     }
   }, [config.audio, eSportsModeEnabled]);
+
+  useEffect(() => {
+    audioTransportRef.current?.setBitrate(kbpsToBitrate(config.audio.bitrateKbps));
+  }, [config.audio.bitrateKbps]);
 
   const outputGain = effectiveDeafened ? 0 : sliderToOutputGain(outputVolume);
   const outputGainRef = useRef(outputGain);

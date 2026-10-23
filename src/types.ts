@@ -49,6 +49,8 @@ export interface VoiceConfig {
     };
     compressorEnabled: boolean;
     compressorAmount: number;
+    /** The own transport's voice bitrate, 96–192. Unset is 192 (GRYT-1823). */
+    bitrateKbps?: number;
   };
 
   camera: {
