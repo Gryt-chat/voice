@@ -228,10 +228,31 @@ function useSfuHook(): SFUInterface {
   }, []);
   // Whether this client is on the own transport right now: only then is a WebRTC copy of someone a duplicate.
   const [onTransport, setOnTransport] = useState(false);
+  const [webrtcAudioWanted, setWebRTCAudioWanted] = useState(true);
   const transportUsers = useMemo(
     () => (onTransport ? new Set(senderUsers.values()) : new Set<string>()),
     [onTransport, senderUsers],
   );
+  // GRYT-1853: on the browser transport, the WebRTC copy only goes while someone in the room needs it.
+  const droppedAudioSenderRef = useRef<RTCRtpSender | null>(null);
+  useEffect(() => {
+    if (nativeAudioRef.current) return;
+    const drop = onTransport && !webrtcAudioWanted;
+    if (drop && !droppedAudioSenderRef.current) {
+      const sender = registeredTracksRef.current.find((s) => s.track?.kind === "audio");
+      if (!sender) return;
+      droppedAudioSenderRef.current = sender;
+      void sender.replaceTrack(null).catch(() => undefined);
+      voiceLog.info("TRANSPORT", "Everyone here is on the own transport: WebRTC audio paused");
+    } else if (!drop && droppedAudioSenderRef.current) {
+      const sender = droppedAudioSenderRef.current;
+      droppedAudioSenderRef.current = null;
+      const track = microphoneBufferRef.current.processedStream?.getAudioTracks()[0] ?? null;
+      // A sender from a connection that has since closed refuses; the new one already has the track.
+      void sender.replaceTrack(track).catch(() => undefined);
+      voiceLog.info("TRANSPORT", "Someone here needs WebRTC audio: sending it again");
+    }
+  }, [onTransport, webrtcAudioWanted]);
   // Per-user volume on the transport: kept by user, applied by sender id whenever either side changes.
   const userGainsRef = useRef<ReadonlyMap<string, number>>(new Map());
   const applyUserGains = useCallback(() => {
@@ -454,6 +475,8 @@ function useSfuHook(): SFUInterface {
     intentionalDisconnectRef.current = false;
     lastChannelIdRef.current = channelID;
     lastChannelSettingsRef.current = { eSportsMode: channelEsportsMode, maxBitrate: channelMaxBitrate };
+    // An SFU from before GRYT-1853 never says, so a new call assumes someone needs the copy.
+    setWebRTCAudioWanted(true);
     activeCallRef.current = call;
     const seq = ++connectSeqRef.current;
 
@@ -481,6 +504,7 @@ function useSfuHook(): SFUInterface {
       onIngestCap: videoSend.setIngestCap,
       onAudioTransport: (offer) => void startTransport(offer),
       onAudioSenders: setSenderUsers,
+      onWebRTCAudioWanted: setWebRTCAudioWanted,
     }).catch((error: unknown) => {
       // Refused is ended on purpose, or signalling coming back asks for the room again.
       if (error instanceof RoomRefusal) intentionalDisconnectRef.current = true;

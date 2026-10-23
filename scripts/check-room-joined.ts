@@ -80,4 +80,9 @@ assert.deepEqual([...parseAudioSenders('{"senders":{"3":"user_a","12":"user_b"}}
 assert.deepEqual([...parseAudioSenders('{"senders":{"x":"u","4":7,"5":"","-1":"u"}}')], []);
 for (const bad of ["", "null", "{", '{"senders":null}', '{"senders":"3"}']) assert.equal(parseAudioSenders(bad).size, 0, bad);
 
-console.log("room_joined ok: the timeout and the ingest cap survive the wire, and an SFU that says nothing says null; audio_senders parsed");
+const { parseWebRTCAudioWanted } = await import("../dist/webrtc/hooks/sfuConnection.js");
+assert.equal(parseWebRTCAudioWanted('{"wanted":false}'), false);
+assert.equal(parseWebRTCAudioWanted('{"wanted":true}'), true);
+for (const bad of ["", "null", "{", '{"wanted":"no"}', "{}"]) assert.equal(parseWebRTCAudioWanted(bad), null, bad);
+
+console.log("room_joined ok: the timeout and the ingest cap survive the wire, and an SFU that says nothing says null; audio_senders and webrtc_audio_wanted parsed");

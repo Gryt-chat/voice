@@ -529,6 +529,7 @@ export interface ConnectParams {
   onIngestCap?: (bps: number | null) => void;
   onAudioTransport?: (offer: AudioTransportOffer) => void;
   onAudioSenders?: (senders: Map<number, string>) => void;
+  onWebRTCAudioWanted?: (wanted: boolean) => void;
 }
 
 /* The SFU rejects explicit nulls where it accepts an absent key. */
@@ -560,6 +561,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     onIngestCap,
     onAudioTransport,
     onAudioSenders,
+    onWebRTCAudioWanted,
   } = params;
   const {
     isConnectingRef,
@@ -1046,6 +1048,9 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
           },
           onAudioSenders: (senders) => {
             if (!isStale()) onAudioSenders?.(senders);
+          },
+          onWebRTCAudioWanted: (wanted) => {
+            if (!isStale()) onWebRTCAudioWanted?.(wanted);
           },
           onAbnormalClose: (info) => {
             if (isStale() || isDisconnectingRef.current) return;
