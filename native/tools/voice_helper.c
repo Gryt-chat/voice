@@ -30,6 +30,7 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 static gv_voice *voice;
 static gv_effect_settings effects = {100, 0, 200, 0.8, 0, -20, 0, 50, 0};
+static int bitrate;
 static volatile int quit;
 
 static int b64(char c) {
@@ -80,6 +81,7 @@ static void start(char *rest) {
   if (voice) gv_voice_stop(voice), voice = NULL;
   if (session && key && period && n > 0 && unbase64(key, k, 32) == 32)
     voice = gv_voice_start(addrs, n, (uint32_t)strtoul(session, NULL, 10), k, &effects, (unsigned)atoi(period));
+  if (voice && bitrate > 0) gv_voice_set_bitrate(voice, bitrate);
   printf("started %d\n", voice != NULL);
   fflush(stdout);
 }
@@ -109,6 +111,10 @@ static void command(char *line) {
   } else if (!strcmp(line, "sending") && voice) gv_voice_set_sending(voice, atoi(rest));
   else if (!strcmp(line, "output") && voice) gv_voice_set_output_gain(voice, (float)atof(rest));
   else if (!strcmp(line, "effects")) parse_effects(rest);
+  else if (!strcmp(line, "bitrate")) {
+    bitrate = atoi(rest);
+    if (voice && bitrate > 0) gv_voice_set_bitrate(voice, bitrate);
+  }
   else if (!strcmp(line, "gains")) gains(rest);
   else if (!strcmp(line, "quit")) quit = 1;
 }

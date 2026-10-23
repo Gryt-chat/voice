@@ -300,8 +300,7 @@ function useSfuHook(): SFUInterface {
         setInput: () => {},
         setSending: native.setSending,
         setEffects: native.setEffects,
-        // shortcut: the native engine stays at 192 kbps; the phone gets the setting with its own task.
-        setBitrate: () => {},
+        setBitrate: (bitrate) => native.setBitrate?.(bitrate),
         setOutputGain: native.setOutputGain,
         setSenderGains: native.setGains,
         close: () => {
@@ -317,6 +316,7 @@ function useSfuHook(): SFUInterface {
       audioTransportRef.current?.close();
       audioTransportRef.current = session;
       session.setOutputGain(outputGainRef.current);
+      session.setBitrate(kbpsToBitrate(audioRef.current.audio.bitrateKbps));
       // Mute and push to talk, as the browser transport gets them: the phone's pipeline mutes the engine itself as well.
       microphoneBufferRef.current.onSending = session.setSending;
       session.setSending(microphoneBufferRef.current.sending ?? true);

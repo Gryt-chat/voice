@@ -45,6 +45,8 @@ typedef struct {
   _Atomic float output_gain;
   gv_effect_settings pending_effects;
   atomic_bool effects_changed;
+  /* A new mono bitrate waiting for the audio thread, 0 when none (GRYT-1823). */
+  atomic_int pending_bitrate;
   /* Per-sender volume, handed over like the effects (GRYT-1831): anyone not listed plays at 1. */
   uint32_t gain_ids[GV_MAX_SENDERS], pending_gain_ids[GV_MAX_SENDERS];
   float gains[GV_MAX_SENDERS], pending_gains[GV_MAX_SENDERS];
@@ -95,6 +97,8 @@ void gv_engine_set_sending(gv_engine *e, int on);
 void gv_engine_set_output_gain(gv_engine *e, float gain);
 /* Taken at the next capture, so the audio thread never reads half a change. */
 void gv_engine_set_effects(gv_engine *e, const gv_effect_settings *s);
+/* Mono bits per second, stereo at 4/3 of it. Taken at the next capture. */
+void gv_engine_set_bitrate(gv_engine *e, int bitrate);
 /* Each listed sender's volume, 1 = as sent; anyone else plays at 1. Taken at the next render. */
 void gv_engine_set_gains(gv_engine *e, const uint32_t *ids, const float *gains, int n);
 /* The sender ids heard speaking in the last 250 ms, up to max. Safe from any thread. */

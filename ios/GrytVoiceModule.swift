@@ -45,6 +45,10 @@ public final class GrytVoiceModule: Module {
       gv_voice_set_effects(voice, &settings)
     }
 
+    Function("setBitrate") { (bitrate: Int) in
+      if let voice = self.voice { gv_voice_set_bitrate(voice, Int32(bitrate)) }
+    }
+
     /// Volume per sender id, 1 = as sent; anyone not listed plays at 1 (GRYT-1831).
     Function("setGains") { (ids: [Int], gains: [Double]) in
       guard let voice = self.voice else { return }

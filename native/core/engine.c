@@ -24,6 +24,7 @@ int gv_engine_init(gv_engine *e, const gv_effect_settings *s, int bitrate, int s
   atomic_init(&e->sending, 1);
   atomic_init(&e->output_gain, 1.0f);
   atomic_init(&e->effects_changed, false);
+  atomic_init(&e->pending_bitrate, 0);
   atomic_init(&e->gains_changed, false);
   for (int i = 0; i < GV_MAX_SENDERS; i++) {
     atomic_init(&e->speaking[i], 0);
@@ -172,9 +173,16 @@ void gv_engine_set_effects(gv_engine *e, const gv_effect_settings *s) {
   atomic_store(&e->effects_changed, true);
 }
 
+void gv_engine_set_bitrate(gv_engine *e, int bitrate) { atomic_store(&e->pending_bitrate, bitrate); }
+
 void gv_engine_capture(gv_engine *e, const float *in, size_t frames, int channels) {
   float left[512], right[512];
   if (atomic_exchange(&e->effects_changed, false)) e->effects.s = e->pending_effects;
+  int bitrate = atomic_exchange(&e->pending_bitrate, 0);
+  if (bitrate > 0) {
+    opus_encoder_ctl(e->mono, OPUS_SET_BITRATE(bitrate));
+    opus_encoder_ctl(e->stereo, OPUS_SET_BITRATE(bitrate * 4 / 3));
+  }
   probe(e);
   /* In chunks the effects take as one block, as the worklet gets 128 frames at a time. */
   for (size_t at = 0; at < frames; at += 128) {
