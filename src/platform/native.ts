@@ -60,6 +60,8 @@ interface GrytVoiceModule {
   setSending(on: boolean): void;
   setOutputGain(gain: number): void;
   setEffects(effects: Record<string, number>): void;
+  /** Missing from builds before GRYT-1823. */
+  setBitrate?(bitrate: number): void;
   speaking(): number[];
   setGains(ids: number[], gains: number[]): void;
   levels(): { ids: number[]; db: number[]; mic: number; micSpeaking: boolean };
@@ -91,6 +93,7 @@ export const nativePlatform: VoicePlatform = {
       setSending: (on) => grytVoice.setSending(on && !micMuted),
       setOutputGain: (gain) => grytVoice.setOutputGain(gain),
       setEffects: (e) => grytVoice.setEffects(asNumbers(e)),
+      setBitrate: (bitrate) => grytVoice.setBitrate?.(bitrate),
       speaking: () => grytVoice.speaking(),
       setGains: (gains) => grytVoice.setGains([...gains.keys()], [...gains.values()]),
       levels: () => grytVoice.levels(),

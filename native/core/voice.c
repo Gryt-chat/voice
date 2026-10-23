@@ -38,6 +38,7 @@ void gv_voice_stop(gv_voice *v) {
 void gv_voice_set_sending(gv_voice *v, int on) { gv_engine_set_sending(&v->engine, on); }
 void gv_voice_set_output_gain(gv_voice *v, float gain) { gv_engine_set_output_gain(&v->engine, gain); }
 void gv_voice_set_effects(gv_voice *v, const gv_effect_settings *effects) { gv_engine_set_effects(&v->engine, effects); }
+void gv_voice_set_bitrate(gv_voice *v, int bitrate) { gv_engine_set_bitrate(&v->engine, bitrate); }
 int gv_voice_route(const gv_voice *v) { return gv_net_chosen(v->net); }
 int gv_voice_speaking(gv_voice *v, uint32_t *ids, int max) { return gv_engine_speaking(&v->engine, ids, max); }
 void gv_voice_set_gains(gv_voice *v, const uint32_t *ids, const float *gains, int n) { gv_engine_set_gains(&v->engine, ids, gains, n); }

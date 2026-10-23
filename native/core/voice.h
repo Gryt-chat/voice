@@ -16,6 +16,8 @@ void gv_voice_stop(gv_voice *v);
 void gv_voice_set_sending(gv_voice *v, int on);
 void gv_voice_set_output_gain(gv_voice *v, float gain);
 void gv_voice_set_effects(gv_voice *v, const gv_effect_settings *effects);
+/* Mono bits per second; stereo follows at 4/3 (GRYT-1823). */
+void gv_voice_set_bitrate(gv_voice *v, int bitrate);
 /* Which offered address answered, or -1 while none has. */
 int gv_voice_route(const gv_voice *v);
 /* The sender ids heard speaking, up to max (GRYT-1830). */

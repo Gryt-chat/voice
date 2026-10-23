@@ -183,6 +183,8 @@ export interface NativeAudioSession {
   setSending(on: boolean): void;
   setOutputGain(gain: number): void;
   setEffects(effects: VoiceEffectSettings): void;
+  /** Mono bits per second, stereo at 4/3 of it (GRYT-1823). Optional: older engines stay at 192 kbps. */
+  setBitrate?(bitrate: number): void;
   /** The sender ids heard speaking, for the SFU's audio_senders to name (GRYT-1830). */
   speaking(): number[];
   /** Volume per sender id, 1 = as sent; anyone not named plays at 1 (GRYT-1831). */

@@ -59,8 +59,39 @@ static void run(int channels, int left_only, float *outL, float *outR) {
   }
 }
 
+/* GRYT-1823: what the engine sends follows gv_engine_set_bitrate, mid-call. */
+static size_t counted_bytes;
+static void count(void *user, const uint8_t *packet, size_t len) {
+  (void)user, (void)packet;
+  counted_bytes += len - GV_HEADER_BYTES;
+}
+
+static double kbps_sent(gv_engine *e) {
+  static float in[BLOCK];
+  counted_bytes = 0;
+  for (int pos = 0; pos + BLOCK <= SR; pos += BLOCK) {
+    for (int i = 0; i < BLOCK; i++) in[i] = 0.3f * sinf(0.05f * (pos + i)) + 0.1f * sinf(0.7f * (pos + i));
+    gv_engine_capture(e, in, BLOCK, 1);
+  }
+  return counted_bytes * 8 / 1000.0;
+}
+
+static void bitrate_follows_setting(void) {
+  static gv_engine e;
+  gv_effect_settings off = {100, 0, 200, 0.8, 0, -20, 0, 50, 0};
+  assert(gv_engine_init(&e, &off, 192000, 256000, count, NULL) == 0);
+  double high = kbps_sent(&e);
+  gv_engine_set_bitrate(&e, 96000);
+  double low = kbps_sent(&e);
+  printf("bitrate: %.0f kbps at 192, %.0f kbps at 96\n", high, low);
+  assert(high > 170 && high < 210);
+  assert(low > 85 && low < 110);
+  gv_engine_destroy(&e);
+}
+
 int main(void) {
   static float l[SR], r[SR];
+  bitrate_follows_setting();
   gv_effect_settings off = {100, 0, 200, 0.8, 0, -20, 0, 50, 0};
   assert(gv_engine_init(&engine, &off, 192000, 256000, loopback, NULL) == 0);
 
