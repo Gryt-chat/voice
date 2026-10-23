@@ -1,7 +1,7 @@
 /** The own transport's AudioWorklet processors (GRYT-1818), joined with what they use into one source
     string by scripts/build-worklet-source.ts. Never imported: it only runs inside a worklet. */
 
-import { loadOpus, type OpusDecoder, type OpusEncoder } from "../codec/opus";
+import { loadOpus, type OpusCodec, type OpusDecoder, type OpusEncoder } from "../codec/opus";
 import { type VoiceEffectSettings, VoiceEffects } from "../audio/voiceEffects";
 import { JitterBuffer } from "./jitterBuffer";
 import { FLAG_PROBE, FLAG_SPEAKING, readForwarded, writePacket } from "./packet";
@@ -37,6 +37,7 @@ class SendProcessor extends AudioWorkletProcessor {
   private filled = 0;
   private encoder: OpusEncoder | null = null;
   private stereoEncoder: OpusEncoder | null = null;
+  private opus: OpusCodec | null = null;
   /** Frames left to send in stereo: two seconds past the last time left and right differed. */
   private stereoFor = 0;
   private sending = true;
@@ -52,12 +53,24 @@ class SendProcessor extends AudioWorkletProcessor {
     this.effects = new VoiceEffects(sampleRate, o.settings);
     this.frame = new Float32Array(o.frame);
     this.stereoFrame = new Float32Array(o.frame * 2);
+    let bitrates = { mono: o.bitrate, stereo: o.stereoBitrate };
+    const encode = () => {
+      if (!this.opus) return;
+      this.encoder?.destroy();
+      this.stereoEncoder?.destroy();
+      this.encoder = this.opus.encoder({ frame: o.frame, bitrate: bitrates.mono });
+      this.stereoEncoder = this.opus.encoder({ frame: o.frame, bitrate: bitrates.stereo, channels: 2 });
+    };
     loadOpus(o.wasm).then((opus) => {
-      this.encoder = opus.encoder({ frame: o.frame, bitrate: o.bitrate });
-      this.stereoEncoder = opus.encoder({ frame: o.frame, bitrate: o.stereoBitrate, channels: 2 });
+      this.opus = opus;
+      encode();
     });
-    this.port.onmessage = (e: MessageEvent<{ type: string; settings?: VoiceEffectSettings; on?: boolean; nonce?: number; at?: number }>) => {
+    this.port.onmessage = (e: MessageEvent<{ type: string; settings?: VoiceEffectSettings; on?: boolean; nonce?: number; at?: number; bitrate?: number; stereoBitrate?: number }>) => {
       if (e.data.type === "settings" && e.data.settings) this.effects.set(e.data.settings);
+      if (e.data.type === "bitrate" && e.data.bitrate && e.data.stereoBitrate) {
+        bitrates = { mono: e.data.bitrate, stereo: e.data.stereoBitrate };
+        encode();
+      }
       if (e.data.type === "sending") this.sending = !!e.data.on;
       if (e.data.type === "pong" && e.data.nonce !== undefined && e.data.at !== undefined) this.pongs.push({ nonce: e.data.nonce, at: e.data.at });
     };

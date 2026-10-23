@@ -32,6 +32,8 @@ export interface AudioTransportSession {
   /** Mute and push to talk. The timestamp keeps moving while off. */
   setSending(on: boolean): void;
   setEffects(settings: VoiceEffectSettings): void;
+  /** Mono bits per second; stereo follows at 4/3 of it. */
+  setBitrate(bitrate: number): void;
   /** Gain for everything heard: 0 when deafened. */
   setOutputGain(gain: number): void;
   /** Volume per sender id on top of that, 1 for anyone not named (GRYT-1831). */
@@ -45,9 +47,10 @@ export interface AudioTransportSession {
 const FRAME = 120;
 export const TRANSPORT_FRAME_MS = 2.5;
 // Sivert's listening test: 96 kbps is the least that holds up, 192 sounds the same as the original.
-const BITRATE = 192_000;
-// 256 sounded like the original song in stereo. Only used while the mic's two sides really differ.
-const STEREO_BITRATE = 256_000;
+export const TRANSPORT_BITRATE = { min: 96_000, max: 192_000 };
+// 256 sounded like the original song in stereo at 192 mono. Only used while the mic's two sides really differ.
+const stereoFor = (bitrate: number) => Math.round((bitrate * 4) / 3);
+const clampBitrate = (bitrate: number) => Math.min(TRANSPORT_BITRATE.max, Math.max(TRANSPORT_BITRATE.min, bitrate));
 // For a stream the microphone pipeline already processed.
 export const PASS_THROUGH: VoiceEffectSettings = {
   volume: 100, gateThreshold: 0, gateReleaseMs: 200, gateSmoothing: 0.8, autoGain: false,
@@ -189,6 +192,8 @@ export async function startAudioTransport(o: {
   output: AudioNode;
   wasm: ArrayBuffer;
   effects: VoiceEffectSettings;
+  /** Mono bits per second, clamped to TRANSPORT_BITRATE. */
+  bitrate?: number;
   /** The SFU's /audio-ws, for when WebTransport is missing or blocked (GRYT-1831). */
   wsUrl?: string;
   /** The sender ids heard speaking, each time that changes (GRYT-1830). */
@@ -202,7 +207,8 @@ export async function startAudioTransport(o: {
 }): Promise<AudioTransportSession> {
   const [pipe] = await Promise.all([dialPipe(o.offer, o.wsUrl), loadWorklets(o.context)]);
 
-  const sendOptions: SendOptions = { wasm: o.wasm.slice(0), frame: FRAME, bitrate: BITRATE, stereoBitrate: STEREO_BITRATE, settings: o.effects };
+  const bitrate = clampBitrate(o.bitrate ?? TRANSPORT_BITRATE.max);
+  const sendOptions: SendOptions = { wasm: o.wasm.slice(0), frame: FRAME, bitrate, stereoBitrate: stereoFor(bitrate), settings: o.effects };
   const receiveOptions: ReceiveOptions = { wasm: o.wasm.slice(0), frame: FRAME };
   const send = new AudioWorkletNode(o.context, SEND_PROCESSOR, { processorOptions: sendOptions });
   const receive = new AudioWorkletNode(o.context, RECEIVE_PROCESSOR, { numberOfInputs: 0, outputChannelCount: [2], processorOptions: receiveOptions });
@@ -258,6 +264,10 @@ export async function startAudioTransport(o: {
     },
     setEffects(settings) {
       send.port.postMessage({ type: "settings", settings });
+    },
+    setBitrate(bps) {
+      const mono = clampBitrate(bps);
+      send.port.postMessage({ type: "bitrate", bitrate: mono, stereoBitrate: stereoFor(mono) });
     },
     setOutputGain(g) {
       gain.gain.setValueAtTime(g, o.context.currentTime);
