@@ -69,6 +69,8 @@ export interface SFUInterface {
    * open connection, and nothing an SFU older than GRYT-715 will act on.
    */
   stillHere?: () => void;
+  /** Leave and rejoin the current call, for a change such as the voice connection that only applies at join. */
+  rejoin?: () => Promise<void>;
   /**
    * The embedder's settings for the camera's or the share's encoding. The engine owns the
    * encoding and may send less than these when viewers draw it smaller; null once it stops.
