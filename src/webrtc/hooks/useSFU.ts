@@ -995,6 +995,19 @@ function useSfuHook(): SFUInterface {
     return room.onReconnected(handleServerReconnected);
   }, [room, reannouncePresence]);
 
+  /** The same call rebuilt from scratch, as recovery does, for a setting only read at join. */
+  const rejoin = useCallback(async () => {
+    const channelId = lastChannelIdRef.current;
+    if (!channelId || intentionalDisconnectRef.current) return;
+    await tearDownRef.current(true);
+    intentionalDisconnectRef.current = false;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    // A hang-up in that half second wins.
+    if (intentionalDisconnectRef.current) return;
+    const { eSportsMode, maxBitrate } = lastChannelSettingsRef.current;
+    await connectRef.current(channelId, eSportsMode, maxBitrate, activeCallRef.current);
+  }, []);
+
   const MAX_RECONNECT_ATTEMPTS = 5;
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1160,6 +1173,7 @@ function useSfuHook(): SFUInterface {
     activeSfuUrl: activeSfuUrlRef.current,
     callAloneTimeoutSeconds: connectionState.callAloneTimeoutSeconds,
     stillHere,
+    rejoin,
     setVideoSendSettings,
     reportVideoDemand,
     transportSpeaking,
