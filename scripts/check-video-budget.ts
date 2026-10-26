@@ -54,6 +54,13 @@ const total = (streams: BudgetStream[], limits: VideoLimit[]) => limits.reduce((
   assert.equal(limits[1].maxBitrate, screenBitrate(1080, 30), "the share kept a cap Chrome parks its estimate on");
 }
 
+// A second shared window is budgeted as a share, not a camera (GRYT-1905): same cap as the first.
+{
+  const streams = [camera(), share(), share({ role: "screen:1" })];
+  const { limits } = splitVideoBudget(20_000_000, streams, false);
+  assert.equal(limits[2].maxBitrate, limits[1].maxBitrate, "the second window was capped like a camera");
+}
+
 // The 0.8 Mbps step: the camera goes to 180p at 15 fps, and the share keeps 1080p at fewer frames.
 // 780 kbps is what the gate's text share settled at once it ran at 10 fps.
 {

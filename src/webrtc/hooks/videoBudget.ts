@@ -91,8 +91,8 @@ function cutToFit(budget: number, streams: BudgetStream[], drastic: boolean): Bu
     });
   };
   const camera = (s: BudgetStream) => s.role === "camera";
-  const small = (s: BudgetStream) => s.role === "screen" && !s.large;
-  const large = (s: BudgetStream) => s.role === "screen" && s.large;
+  const small = (s: BudgetStream) => s.role !== "camera" && !s.large;
+  const large = (s: BudgetStream) => s.role !== "camera" && s.large;
   const sharp = (s: BudgetStream) => large(s) && !s.keepFramerate;
   const smooth = (s: BudgetStream) => large(s) && s.keepFramerate === true;
   const shrink = (i: number) => {
@@ -141,7 +141,7 @@ export function splitVideoBudget(budget: number, streams: BudgetStream[], drasti
   });
   const need = (i: number) => (out[i].paused ? 0 : streamNeed(streams[i], out[i].scale, out[i].fps));
   const total = () => out.reduce((sum, _, i) => sum + need(i), 0);
-  const large = (s: BudgetStream) => s.role === "screen" && s.large;
+  const large = (s: BudgetStream) => s.role !== "camera" && s.large;
 
   let spare = spend - total();
   const order = [...streams.keys()].sort((a, b) => Number(large(streams[b])) - Number(large(streams[a])));

@@ -42,10 +42,11 @@ export interface SFUInterface {
      the first stream it was given, so that stream's id is the one to announce. */
   addVideoTrack: (track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => void;
   removeVideoTrack: () => void;
-  addScreenVideoTrack: (track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => void;
-  removeScreenVideoTrack: () => void;
-  addScreenAudioTrack: (track: MediaStreamTrack, stream: MediaStream) => void;
-  removeScreenAudioTrack: () => void;
+  /** `index` is which shared window: 0, the default, is the first; later ones ask the SFU for a slot (GRYT-1905). */
+  addScreenVideoTrack: (track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string, index?: number) => void;
+  removeScreenVideoTrack: (index?: number) => void;
+  addScreenAudioTrack: (track: MediaStreamTrack, stream: MediaStream, index?: number) => void;
+  removeScreenAudioTrack: (index?: number) => void;
   currentServerConnected: string;
   currentChannelConnected: string;
   isConnected: boolean;

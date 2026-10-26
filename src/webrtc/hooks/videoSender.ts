@@ -122,7 +122,12 @@ export function createVideoSendController(
   const fresh = (): RoleState => ({
     settings: null, sender: null, state: INITIAL_PLAN_STATE, written: null, last: null, changedAt: 0, rate: null, starved: false, limit: null,
   });
-  const roles: Record<VideoRole, RoleState> = { camera: fresh(), screen: fresh() };
+  const roles = new Map<VideoRole, RoleState>([["camera", fresh()], ["screen", fresh()]]);
+  const roleState = (role: VideoRole): RoleState => {
+    let r = roles.get(role);
+    if (!r) roles.set(role, (r = fresh()));
+    return r;
+  };
   const wanted = new Map<string, VideoWanted>();
   let wantedFor: RTCPeerConnection | null = null;
   let budget: BudgetState = INITIAL_BUDGET_STATE;
@@ -134,7 +139,7 @@ export function createVideoSendController(
   let chain: Promise<void> = Promise.resolve();
 
   const write = async (role: VideoRole, sender: RTCRtpSender, plan: VideoEncodingPlan, demand: VideoWanted | null, fps: number) => {
-    const r = roles[role];
+    const r = roleState(role);
     const settings = r.settings;
     const params = sender.getParameters();
     const enc = params.encodings?.[0] as EncodingWithDownTo | undefined;
@@ -184,7 +189,7 @@ export function createVideoSendController(
       audio = reservedLast = 0;
     }
     const now = Date.now();
-    const sending = (["camera", "screen"] as const).some((role) => roles[role].settings && getSender(role)?.track?.kind === "video");
+    const sending = [...roles].some(([role, r]) => r.settings && getSender(role)?.track?.kind === "video");
     if (!sending) {
       previous = null;
       return;
@@ -202,8 +207,7 @@ export function createVideoSendController(
 
     type Pending = { role: VideoRole; sender: RTCRtpSender; demand: VideoWanted | null; input: Parameters<typeof planVideoEncoding>[0]; free: VideoEncodingPlan; budgeted: boolean };
     const pending: Pending[] = [];
-    for (const role of ["camera", "screen"] as const) {
-      const r = roles[role];
+    for (const [role, r] of roles) {
       const sender = getSender(role);
       const track = sender?.track;
       if (!sender || !track || track.kind !== "video" || !r.settings) continue;
@@ -240,7 +244,7 @@ export function createVideoSendController(
     const index = new Map<VideoRole, number>();
     for (const p of pending) {
       if (!p.budgeted || !p.input.source) continue;
-      const r = roles[p.role];
+      const r = roleState(p.role);
       const sourceFps = p.input.source.frameRate || 30;
       index.set(p.role, streams.length);
       streams.push({
@@ -249,7 +253,7 @@ export function createVideoSendController(
         scale: p.free.scaleResolutionDownBy,
         fps: Math.min(p.free.maxFramerate ?? Infinity, sourceFps),
         maxBitrate: r.settings?.maxBitrate ?? undefined,
-        large: p.role === "screen" && p.free.state.rung < 2,
+        large: p.role !== "camera" && p.free.state.rung < 2,
         keepFramerate: r.settings?.degradationPreference === "maintain-framerate",
         rate: r.rate,
         starved: r.starved,
@@ -269,7 +273,7 @@ export function createVideoSendController(
     if (tick && current) previous = current;
 
     for (const p of pending) {
-      const r = roles[p.role];
+      const r = roleState(p.role);
       const i = index.get(p.role);
       const limit = limits && i !== undefined ? limits[i] : null;
       r.limit = limit;
@@ -282,7 +286,7 @@ export function createVideoSendController(
 
   const schedule = (tick: boolean) => {
     chain = chain.then(() => update(tick)).catch((err: unknown) => {
-      roles.camera.written = roles.screen.written = null;
+      for (const r of roles.values()) r.written = null;
       voiceLog.warn("CAMERA", `setParameters failed: ${err}`);
     });
   };
@@ -290,8 +294,9 @@ export function createVideoSendController(
   return {
     /** The embedder's settings for one role, or null once that stream has stopped. */
     setSettings(role: VideoRole, settings: VideoSendSettings | null) {
-      roles[role].settings = settings;
-      if (!settings) roles[role].rate = null;
+      const r = roleState(role);
+      r.settings = settings;
+      if (!settings) r.rate = null;
       schedule(false);
     },
     onWanted(update: VideoWanted & { mid: string }) {
