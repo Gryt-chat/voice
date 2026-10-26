@@ -33,6 +33,7 @@ export {
   EXPERIMENTAL_FPS_OPTIONS,
   type ScreenShareFps,
   type ScreenShareQuality,
+  type ScreenWindow,
   STANDARD_FPS_OPTIONS,
   useScreenShare,
 } from "./hooks/useScreenShare";

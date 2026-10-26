@@ -13,6 +13,11 @@ export interface NativeAudioCapture {
   onNativeAudioData(callback: (pcm: ArrayBuffer) => void): () => void;
   onNativeAudioStopped(callback: () => void): () => void;
   onNativeAudioDiagnostic(callback: (msg: string) => void): () => void;
+  /** Each window's sound on its own instead of one mix (GRYT-1905). Absent on older hosts. */
+  setNativeAudioPerSource?(on: boolean): void;
+  onNativeAudioSourceData?(callback: (sourceIds: string[], pcm: ArrayBuffer) => void): () => void;
+  /** The windows whose applications are captured; an empty list is everything but Gryt. */
+  setAudioCaptureApplications?(sourceIds: string[]): Promise<{ id: string }[]>;
 }
 
 export interface NativeScreenCapture {
