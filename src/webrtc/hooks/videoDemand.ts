@@ -1,8 +1,11 @@
 import { estimateBitrate } from "../../audio/lib/screenBitrate";
 import type { CaptureQuality } from "../../types";
 
-/** Which of our own video streams: the camera's m-line or the screen share's. */
-export type VideoRole = "camera" | "screen";
+/** Which of our own video streams: the camera, the first shared window, or the nth after it. */
+export type VideoRole = "camera" | "screen" | `screen:${number}`;
+
+/** The role of shared window `index`; the first keeps the plain name older callers use. */
+export const screenRole = (index: number): VideoRole => (index === 0 ? "screen" : `screen:${index}`);
 
 /** What the SFU says viewers want of one of our streams. `unknown` viewers never said, so want it all. */
 export interface VideoWanted {

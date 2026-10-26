@@ -13,7 +13,7 @@ import { type AudioTransportOffer, type AudioTransportSession, audioTransportSup
 import { SFUConnectionState, type SFUInterface, type Streams, type StreamSources, type TransportLatency, type VideoStreams } from "../types/SFU";
 import { type CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
 import { sfuConnect } from "./sfuConnectFlow";
-import { publishOnSfuSlot } from "./sfuSlots";
+import { publishOnSfuSlot, sfuSlots } from "./sfuSlots";
 import { RoomRefusal, type SFUConnectionStateInternal } from "./sfuTypes";
 import { useSFUStreams } from "./useSFUStreams";
 import { createDemandReporter, type VideoDemand, type VideoRole, type VideoSendSettings } from "./videoDemand";
@@ -81,11 +81,20 @@ function useSfuHook(): SFUInterface {
   // A new camera/screen track needs another SFU offer before it can publish.
   // Keep that request tied to its peer connection while signalling is unavailable.
   const pendingRenegotiatePcRef = useRef<RTCPeerConnection | null>(null);
+  // Windows after the first (GRYT-1905). The SFU offers a screen pair per window it is asked for,
+  // so one with no free slot waits for that offer to be answered.
+  const extraScreensRef = useRef(new Map<number, { video: RTCRtpSender | null; audio: RTCRtpSender | null; codec?: string }>());
+  const screenSlotsRef = useRef(1);
+  const waitingScreensRef = useRef<{ index: number; track: MediaStreamTrack; stream: MediaStream; codec?: string }[]>([]);
 
   // The one writer of video encodings, and what this viewer draws of everybody else's.
   const videoSend = useMemo(() => createVideoSendController(
     () => peerConnectionRef.current,
-    (role) => (role === "camera" ? videoSenderRef.current : screenVideoSenderRef.current),
+    (role) => {
+      if (role === "camera") return videoSenderRef.current;
+      if (role === "screen") return screenVideoSenderRef.current;
+      return extraScreensRef.current.get(Number(role.slice(7)))?.video ?? null;
+    },
   ), []);
   const demand = useMemo(() => createDemandReporter(() => sfuWebSocketRef.current), []);
 
@@ -589,7 +598,8 @@ function useSfuHook(): SFUInterface {
     if (!ws || ws.readyState !== WebSocket.OPEN) return "pending";
 
     try {
-      ws.send(JSON.stringify({ event: "renegotiate", data: "" }));
+      const screens = screenSlotsRef.current;
+      ws.send(JSON.stringify({ event: "renegotiate", data: screens > 1 ? JSON.stringify({ screens }) : "" }));
       pendingRenegotiatePcRef.current = null;
       voiceLog.info("WEBRTC", "Renegotiation request sent");
       return "sent";
@@ -668,7 +678,8 @@ function useSfuHook(): SFUInterface {
   // Each role gets an SFU slot of its own. addTrack alone gave a camera paused before its
   // first renegotiation to the next share, and the camera coming back replaced it (GRYT-1337).
   const publishRole = useCallback((pc: RTCPeerConnection, track: MediaStreamTrack, stream: MediaStream, label: Phase): RTCRtpSender => {
-    const held = [videoSenderRef.current, screenVideoSenderRef.current, screenAudioSenderRef.current, ...registeredTracksRef.current];
+    const extras = [...extraScreensRef.current.values()].flatMap((e) => [e.video, e.audio]);
+    const held = [videoSenderRef.current, screenVideoSenderRef.current, screenAudioSenderRef.current, ...extras, ...registeredTracksRef.current];
     const sender = publishOnSfuSlot(pc, track, stream, held) ?? pc.addTrack(track, stream);
     const mid = pc.getTransceivers().find((t) => t.sender === sender)?.mid ?? null;
     if (held.includes(sender)) {
@@ -750,7 +761,73 @@ function useSfuHook(): SFUInterface {
       .catch((err: unknown) => voiceLog.fail("CAMERA", "pause", "replaceTrack(null) FAILED", err));
   }, []);
 
-  const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string) => {
+  // A window after the first: its own sender pair on a screen slot the SFU added for it.
+  const addExtraScreenTrack = useCallback((index: number, track: MediaStreamTrack, stream: MediaStream, codec?: string) => {
+    const pc = peerConnectionRef.current;
+    if (!pc || pc.connectionState === "closed") return;
+    const kind = track.kind === "audio" ? "audio" : "video";
+    const entry = extraScreensRef.current.get(index) ?? { video: null, audio: null };
+    extraScreensRef.current.set(index, entry);
+    const existing = entry[kind];
+    if (existing) {
+      if (existing.track !== track) {
+        existing.replaceTrack(track).catch((err: unknown) => voiceLog.fail("SCREEN", "replace", `window ${index} ${kind} replaceTrack FAILED`, err));
+      }
+      if (kind === "video" && codec !== entry.codec) {
+        applyVideoCodecPreferences(pc, existing, codec, "SCREEN");
+        entry.codec = codec;
+        sendRenegotiate();
+      }
+      return;
+    }
+    // Never the camera's m-line: the SFU gates that one on share_video, not share_screen.
+    const cameraMid = sfuSlots(pc).find((slot) => slot.kind === "video")?.mid;
+    const cameraSlot = pc.getTransceivers().find((t) => t.mid === cameraMid)?.sender;
+    const extras = [...extraScreensRef.current.values()].flatMap((e) => [e.video, e.audio]);
+    const held = [videoSenderRef.current, cameraSlot, screenVideoSenderRef.current, screenAudioSenderRef.current, ...extras, ...registeredTracksRef.current];
+    const sender = publishOnSfuSlot(pc, track, stream, held);
+    if (!sender) {
+      voiceLog.info("SCREEN", `window ${index} ${kind}: no free SFU slot yet, asking for ${index + 1} screens`);
+      waitingScreensRef.current = [...waitingScreensRef.current.filter((w) => w.index !== index || w.track.kind !== track.kind), { index, track, stream, codec }];
+      const asked = screenSlotsRef.current;
+      screenSlotsRef.current = Math.max(asked, index + 1);
+      // Asked once per count: an SFU from before GRYT-1905 never adds the slot, and the window waits.
+      if (screenSlotsRef.current !== asked) sendRenegotiate();
+      return;
+    }
+    entry[kind] = sender;
+    if (kind === "video") {
+      applyVideoCodecPreferences(pc, sender, codec, "SCREEN");
+      entry.codec = codec;
+    }
+    voiceLog.info("SCREEN", `window ${index} ${kind} published on its own slot`);
+    sendRenegotiate();
+    videoSend.tick();
+  }, [sendRenegotiate, applyVideoCodecPreferences, videoSend]);
+
+  const removeExtraScreenTrack = useCallback((index: number, kind: "video" | "audio") => {
+    waitingScreensRef.current = waitingScreensRef.current.filter((w) => w.index !== index || w.track.kind !== kind);
+    const sender = extraScreensRef.current.get(index)?.[kind];
+    sender?.replaceTrack(null).catch((err: unknown) => voiceLog.fail("SCREEN", "pause", `window ${index} ${kind} replaceTrack(null) FAILED`, err));
+  }, []);
+
+  // Once the SFU's offer with the new slots is answered, the waiting windows go out.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const pc = peerConnectionRef.current;
+      if (!waitingScreensRef.current.length || !pc || pc.signalingState !== "stable") return;
+      const waiting = waitingScreensRef.current;
+      waitingScreensRef.current = [];
+      for (const w of waiting) addExtraScreenTrack(w.index, w.track, w.stream, w.codec);
+    }, 250);
+    return () => clearInterval(timer);
+  }, [addExtraScreenTrack]);
+
+  const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string, index = 0) => {
+    if (index > 0) {
+      addExtraScreenTrack(index, track, stream, preferredCodec);
+      return;
+    }
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
     if (screenVideoSenderRef.current) {
@@ -779,18 +856,26 @@ function useSfuHook(): SFUInterface {
     voiceLog.info("SCREEN", `addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
     videoSend.tick();
-  }, [sendRenegotiate, applyVideoCodecPreferences, publishRole, videoSend]);
+  }, [sendRenegotiate, applyVideoCodecPreferences, publishRole, videoSend, addExtraScreenTrack]);
 
-  const removeScreenVideoTrack = useCallback(() => {
+  const removeScreenVideoTrack = useCallback((index = 0) => {
+    if (index > 0) {
+      removeExtraScreenTrack(index, "video");
+      return;
+    }
     const sender = screenVideoSenderRef.current;
     if (!sender) return;
     voiceLog.info("SCREEN", `removeScreenVideoTrack – pausing via replaceTrack(null), senderTrack=${sender.track?.id ?? "null"}`);
     sender.replaceTrack(null)
       .then(() => voiceLog.ok("SCREEN", "pause", "video replaceTrack(null) succeeded"))
       .catch((err: unknown) => voiceLog.fail("SCREEN", "pause", "video replaceTrack(null) FAILED", err));
-  }, []);
+  }, [removeExtraScreenTrack]);
 
-  const addScreenAudioTrack = useCallback((track: MediaStreamTrack, stream: MediaStream) => {
+  const addScreenAudioTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, index = 0) => {
+    if (index > 0) {
+      addExtraScreenTrack(index, track, stream);
+      return;
+    }
     const pc = peerConnectionRef.current;
     if (!pc || pc.connectionState === "closed") return;
     if (screenAudioSenderRef.current) {
@@ -805,16 +890,20 @@ function useSfuHook(): SFUInterface {
     screenAudioSenderRef.current = sender;
     voiceLog.info("SCREEN", `audio addTrack done, calling sendRenegotiate`);
     sendRenegotiate();
-  }, [sendRenegotiate, publishRole]);
+  }, [sendRenegotiate, publishRole, addExtraScreenTrack]);
 
-  const removeScreenAudioTrack = useCallback(() => {
+  const removeScreenAudioTrack = useCallback((index = 0) => {
+    if (index > 0) {
+      removeExtraScreenTrack(index, "audio");
+      return;
+    }
     const sender = screenAudioSenderRef.current;
     if (!sender) return;
     voiceLog.info("SCREEN", `removeScreenAudioTrack – pausing via replaceTrack(null), senderTrack=${sender.track?.id ?? "null"}`);
     sender.replaceTrack(null)
       .then(() => voiceLog.ok("SCREEN", "pause", "audio replaceTrack(null) succeeded"))
       .catch((err: unknown) => voiceLog.fail("SCREEN", "pause", "audio replaceTrack(null) FAILED", err));
-  }, []);
+  }, [removeExtraScreenTrack]);
 
   // Clear stale sender refs when the peer connection is closed so a fresh
   // connection gets fresh senders via the ADD path.
@@ -822,6 +911,9 @@ function useSfuHook(): SFUInterface {
     if (!isConnected) {
       screenVideoSenderRef.current = null;
       screenAudioSenderRef.current = null;
+      extraScreensRef.current.clear();
+      waitingScreensRef.current = [];
+      screenSlotsRef.current = 1;
       videoSenderRef.current = null;
       lastCameraCodecRef.current = undefined;
       lastScreenCodecRef.current = undefined;
