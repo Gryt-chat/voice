@@ -39,6 +39,15 @@ const RESOLUTION_CONSTRAINTS: Record<ScreenShareQuality, { width?: number; heigh
   "4p": { width: 7, height: 4 },
 };
 
+/** A window shared after the first: its own capture, its own sound where the host can keep it apart. */
+export interface ScreenWindow {
+  /** 1 and up, the index `useSFU`'s screen senders and the `screen:n` send role use. */
+  index: number;
+  sourceId?: string;
+  videoStream: MediaStream;
+  audioStream: MediaStream | null;
+}
+
 export interface ScreenShareInterface {
   screenVideoStream: MediaStream | null;
   screenAudioStream: MediaStream | null;
@@ -53,6 +62,10 @@ export interface ScreenShareInterface {
   subscribeEncodedFrames: (cb: EncodedFrameCallback) => () => void;
   startScreenShare: (withAudio: boolean, sourceId?: string) => Promise<void>;
   stopScreenShare: () => void;
+  /** Windows after the first (GRYT-1905). Stopping the share stops them too. */
+  extraWindows: ScreenWindow[];
+  addScreenWindow: (withAudio: boolean, sourceId?: string) => Promise<void>;
+  removeScreenWindow: (index: number) => void;
 }
 
 function useScreenShareHook(): ScreenShareInterface {
@@ -69,6 +82,8 @@ function useScreenShareHook(): ScreenShareInterface {
     stream: nativeStream,
     start: nativeStart,
     stop: nativeStop,
+    addSource: nativeAddSource,
+    removeSource: nativeRemoveSource,
   } = useNativeAudioCapture();
   const {
     available: nativeScreenAvailable,
@@ -84,8 +99,21 @@ function useScreenShareHook(): ScreenShareInterface {
   const rawStreamRef = useRef<MediaStream | null>(null);
   const usingNativeAudioRef = useRef(false);
   const usingNativeVideoRef = useRef(false);
+  const [extraWindows, setExtraWindows] = useState<ScreenWindow[]>([]);
+  const extraWindowsRef = useRef<ScreenWindow[]>([]);
+  extraWindowsRef.current = extraWindows;
+
+  const removeScreenWindow = useCallback((index: number) => {
+    const win = extraWindowsRef.current.find((w) => w.index === index);
+    if (!win) return;
+    win.videoStream.getTracks().forEach((t) => t.stop());
+    if (win.sourceId) nativeRemoveSource(win.sourceId);
+    setExtraWindows((all) => all.filter((w) => w.index !== index));
+  }, [nativeRemoveSource]);
 
   const stopScreenShare = useCallback(() => {
+    for (const w of extraWindowsRef.current) w.videoStream.getTracks().forEach((t) => t.stop());
+    setExtraWindows([]);
     if (usingNativeAudioRef.current) {
       nativeStop();
       usingNativeAudioRef.current = false;
@@ -303,6 +331,38 @@ function useScreenShareHook(): ScreenShareInterface {
     }
   }, [screenShareQuality, screenShareFps, screenShareGamingMode, screenShareCodec, stopScreenShare, nativeAvailable, nativeStart, nativeScreenAvailable, nativeScreenStart, audioContext]);
 
+  // A later window: captured the way the first is on its non-native path, at the same quality.
+  const addScreenWindow = useCallback(async (withAudio: boolean, sourceId?: string) => {
+    const res = RESOLUTION_CONSTRAINTS[screenShareQuality as ScreenShareQuality] ?? RESOLUTION_CONSTRAINTS.native;
+    const fps = screenShareFps || 30;
+    let stream: MediaStream;
+    try {
+      if (getVoiceHost().hasNativeCapture() && sourceId) {
+        const mandatory: Record<string, string | number> = { chromeMediaSource: "desktop", chromeMediaSourceId: sourceId, minFrameRate: fps, maxFrameRate: fps };
+        if (res.width && res.height) Object.assign(mandatory, { maxWidth: res.width, maxHeight: res.height });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { mandatory } as MediaTrackConstraints });
+      } else {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: fps } }, audio: withAudio });
+      }
+    } catch (error) {
+      console.error("[ScreenShare] adding a window failed:", error);
+      return;
+    }
+    const used = new Set(extraWindowsRef.current.map((w) => w.index));
+    let index = 1;
+    while (used.has(index)) index++;
+    const video = stream.getVideoTracks()[0];
+    if (!video) return;
+    video.contentHint = screenShareGamingMode ? "motion" : "detail";
+    // Native sound per window where the host keeps them apart; a browser tab brings its own.
+    let audioStream: MediaStream | null = null;
+    if (withAudio && sourceId && audioContext) audioStream = await nativeAddSource(audioContext, sourceId);
+    else if (stream.getAudioTracks().length) audioStream = new MediaStream(stream.getAudioTracks());
+    const win: ScreenWindow = { index, sourceId, videoStream: new MediaStream([video]), audioStream };
+    video.addEventListener("ended", () => removeScreenWindow(index));
+    setExtraWindows((all) => [...all, win]);
+  }, [screenShareQuality, screenShareFps, screenShareGamingMode, audioContext, nativeAddSource, removeScreenWindow]);
+
   // Sync native video capture stream → screenVideoStream
   useEffect(() => {
     if (usingNativeVideoRef.current && nativeVideoStream) {
@@ -346,6 +406,9 @@ function useScreenShareHook(): ScreenShareInterface {
     subscribeEncodedFrames,
     startScreenShare,
     stopScreenShare,
+    extraWindows,
+    addScreenWindow,
+    removeScreenWindow,
   };
 }
 
@@ -360,6 +423,9 @@ const screenShareInit: ScreenShareInterface = {
   subscribeEncodedFrames: noopUnsub,
   startScreenShare: async () => {},
   stopScreenShare: () => {},
+  extraWindows: [],
+  addScreenWindow: async () => {},
+  removeScreenWindow: () => {},
 };
 
 export const useScreenShare = singletonHook(screenShareInit, useScreenShareHook);

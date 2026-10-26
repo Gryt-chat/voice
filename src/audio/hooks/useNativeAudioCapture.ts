@@ -16,6 +16,9 @@ export interface NativeAudioCaptureState {
   stream: MediaStream | null;
   start: (audioContext: AudioContext, sourceId?: string) => Promise<boolean>;
   stop: () => void;
+  /** A later window's own sound, where the host can keep windows apart; null where it can't. */
+  addSource: (audioContext: AudioContext, sourceId: string) => Promise<MediaStream | null>;
+  removeSource: (sourceId: string) => void;
 }
 
 /**
@@ -30,6 +33,8 @@ export function useNativeAudioCapture(): NativeAudioCaptureState {
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const destinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const cleanupIpcRef = useRef<Array<() => void>>([]);
+  const primarySourceRef = useRef<string | undefined>(undefined);
+  const extraNodesRef = useRef(new Map<string, AudioWorkletNode>());
 
   // Probe availability on mount, with retry for IPC race conditions
   useEffect(() => {
@@ -79,6 +84,12 @@ export function useNativeAudioCapture(): NativeAudioCaptureState {
       workletNodeRef.current = null;
     }
     destinationRef.current = null;
+    for (const node of extraNodesRef.current.values()) {
+      node.port.postMessage({ type: "stop" });
+      node.disconnect();
+    }
+    extraNodesRef.current.clear();
+    primarySourceRef.current = undefined;
 
     for (const unsub of cleanupIpcRef.current) unsub();
     cleanupIpcRef.current = [];
@@ -130,7 +141,7 @@ export function useNativeAudioCapture(): NativeAudioCaptureState {
         }
       }, 5000);
 
-      const unsubData = api.onNativeAudioData((pcmArrayBuffer: ArrayBuffer) => {
+      const feedPrimary = (pcmArrayBuffer: ArrayBuffer) => {
         pcmChunks++;
         pcmTotalBytes += pcmArrayBuffer.byteLength;
         if (pcmChunks === 1) {
@@ -146,7 +157,24 @@ export function useNativeAudioCapture(): NativeAudioCaptureState {
         }
         totalSamples += int16.length;
         workletNode.port.postMessage({ type: "pcm", samples: int16 }, [int16.buffer]);
-      });
+      };
+      primarySourceRef.current = sourceId;
+      let unsubData: () => void;
+      if (api.setNativeAudioPerSource && api.onNativeAudioSourceData) {
+        // Untagged is the machine-wide capture, which belongs to the first window.
+        unsubData = api.onNativeAudioSourceData((sourceIds, pcm) => {
+          if (sourceIds.length && !sourceIds.includes(primarySourceRef.current ?? "")) {
+            const node = sourceIds.map((id) => extraNodesRef.current.get(id)).find(Boolean);
+            const samples = new Int16Array(pcm);
+            node?.port.postMessage({ type: "pcm", samples }, [samples.buffer]);
+            return;
+          }
+          feedPrimary(pcm);
+        });
+        api.setNativeAudioPerSource(true);
+      } else {
+        unsubData = api.onNativeAudioData(feedPrimary);
+      }
 
       const unsubStopped = api.onNativeAudioStopped(() => {
         stop();
@@ -171,6 +199,33 @@ export function useNativeAudioCapture(): NativeAudioCaptureState {
     [stop],
   );
 
+  const captureSet = useCallback(() => {
+    const primary = primarySourceRef.current;
+    // A whole-screen first window already carries every application, so later ones add nothing.
+    if (!primary?.startsWith("window:")) return;
+    void getVoiceHost().getNativeAudio()?.setAudioCaptureApplications?.([primary, ...extraNodesRef.current.keys()]);
+  }, []);
+
+  const addSource = useCallback(async (audioContext: AudioContext, sourceId: string): Promise<MediaStream | null> => {
+    const api = getVoiceHost().getNativeAudio();
+    if (!api?.onNativeAudioSourceData || !api.setAudioCaptureApplications || !primarySourceRef.current?.startsWith("window:")) return null;
+    const node = new AudioWorkletNode(audioContext, PCM_PLAYER_WORKLET_NAME, { outputChannelCount: [2] });
+    const destination = audioContext.createMediaStreamDestination();
+    node.connect(destination);
+    extraNodesRef.current.set(sourceId, node);
+    captureSet();
+    return destination.stream;
+  }, [captureSet]);
+
+  const removeSource = useCallback((sourceId: string) => {
+    const node = extraNodesRef.current.get(sourceId);
+    if (!node) return;
+    node.port.postMessage({ type: "stop" });
+    node.disconnect();
+    extraNodesRef.current.delete(sourceId);
+    captureSet();
+  }, [captureSet]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -178,5 +233,5 @@ export function useNativeAudioCapture(): NativeAudioCaptureState {
     };
   }, [stop]);
 
-  return { available, active, stream, start, stop };
+  return { available, active, stream, start, stop, addSource, removeSource };
 }
