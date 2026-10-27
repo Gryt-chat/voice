@@ -16,6 +16,8 @@ interface UseSFUStreamsParams {
   remoteBusNode: GainNode | undefined;
   outputVolume: number;
   isDeafened: boolean;
+  /** Stream ids whose user is already heard on the own transport, so the WebRTC copy is a duplicate (GRYT-1831). */
+  duplicateAudioStreams: ReadonlySet<string>;
   isConnected: boolean;
   room: RoomCoordinator | null;
   previousRemoteStreamsRef: MutableRefObject<Set<string>>;
@@ -31,6 +33,7 @@ export function useSFUStreams({
   remoteBusNode,
   outputVolume,
   isDeafened,
+  duplicateAudioStreams,
   isConnected,
   room,
   previousRemoteStreamsRef,
@@ -257,13 +260,16 @@ export function useSFUStreams({
 
     // Depends on `streams` rather than reading the ref, so a peer who joins while you are
     // deafened arrives silent instead of being the one person you can hear.
-    for (const streamData of Object.values(streams)) {
+    for (const [streamId, streamData] of Object.entries(streams)) {
       if (streamData.isLocal) continue;
+      /* Both reasons in one write: `enabled` is a single boolean per track, so a second
+         writer elsewhere would undo whichever of the two ran first. */
+      const enabled = !isDeafened && !duplicateAudioStreams.has(streamId);
       for (const track of streamData.stream.getAudioTracks()) {
-        track.enabled = !isDeafened;
+        track.enabled = enabled;
       }
     }
-  }, [streams, isDeafened, audioContext]);
+  }, [streams, isDeafened, audioContext, duplicateAudioStreams]);
 
   // Safety net: periodically remove streams whose tracks have all ended.
   // Handles edge cases where track.onended doesn't fire (ICE failure, etc).

@@ -47,6 +47,7 @@
     "check-track-replace": "node scripts/check-track-replace.ts",
     "check-connection-settles": "node scripts/check-connection-settles.ts",
     "check-native-audio-ends": "node scripts/check-native-audio-ends.ts",
+    "check-transport-dedupe": "node scripts/check-transport-dedupe.ts",
     "check-early-candidates": "node scripts/check-early-candidates.ts",
     "check-ice-failure-report": "node scripts/check-ice-failure-report.ts",
     "check-active-call-target": "node scripts/check-active-call-target.ts",
