@@ -78,6 +78,11 @@ jobs:
       - name: Check a stopped native audio capture leaves the share
         run: npm run check-native-audio-ends
 
+      # A phone has no AudioContext, so `enabled` carries both deafen and the transport
+      # duplicate. Written separately, whichever ran last won and voices doubled.
+      - name: Check a transport duplicate stays silent through deafen
+        run: npm run check-transport-dedupe
+
       # The SFU's candidate can reach us before its offer. Added then, it was rejected and
       # lost, and the join waited out its 20s timeout (GRYT-1263).
       - name: Check candidates that beat the offer are kept

@@ -88,6 +88,9 @@ export interface SFUInterface {
   transportUsers?: ReadonlySet<string>;
   /** Per-user volume over the own transport, 1 = as sent, by user id; anyone not named plays at 1 (GRYT-1831). */
   setTransportUserGains?: (gains: ReadonlyMap<string, number>) => void;
+  /** Which remote streams carry a user already heard on the own transport, so their WebRTC copy is silenced on
+      platforms with no AudioContext. The embedder owns the stream-to-user mapping (GRYT-1831). */
+  setDuplicateAudioStreams?: (streamIds: ReadonlySet<string>) => void;
   /** Each user's level heard over the own transport, in dBFS (-120 silent), for a halo; the mic's only on the native engine. Null when off the transport. */
   getTransportLevels?: () => { users: ReadonlyMap<string, number>; mic: number; micSpeaking: boolean } | null;
   /** The parts of an own-transport latency estimate this device knows, in ms. Null when off the transport. */

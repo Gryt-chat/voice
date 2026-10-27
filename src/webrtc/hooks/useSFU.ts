@@ -192,6 +192,10 @@ function useSfuHook(): SFUInterface {
     }, skipServerUpdate);
   }, [room, cleanupRefs]);
 
+  /* Remote streams carrying a user this client already hears on the own transport. The
+     embedder owns the stream-to-user mapping, so it reports them rather than the engine. */
+  const [duplicateAudioStreams, setDuplicateAudioStreams] = useState<ReadonlySet<string>>(() => new Set());
+
   useSFUStreams({
     streams,
     setStreams,
@@ -202,6 +206,7 @@ function useSfuHook(): SFUInterface {
     remoteBusNode,
     outputVolume,
     isDeafened: effectiveDeafened,
+    duplicateAudioStreams,
     isConnected,
     room,
     previousRemoteStreamsRef,
@@ -1273,6 +1278,7 @@ function useSfuHook(): SFUInterface {
     getTransportLevels,
     getTransportLatency,
     setTransportUserGains,
+    setDuplicateAudioStreams,
   };
 }
 
