@@ -3,34 +3,86 @@
 #endif
 #include "net.h"
 
-#include <netdb.h>
-#include <pthread.h>
 #include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+/* winsock2.h before windows.h, or windows.h pulls the 1.1 headers and the
+   two sets of declarations conflict. */
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <windows.h>
+#else
+#include <netdb.h>
+#include <pthread.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
+#endif
 
 #include "seal.h"
 
-/* shortcut: POSIX sockets only; Windows needs Winsock here before the desktop app can use the native path. */
 #define MAX_ADDRS 8
+
+/* One name per platform difference, so the body below reads the same on both.
+   Winsock's socket is an unsigned handle rather than a small int, so "< 0" is
+   never true for a failed one and INVALID_SOCKET is the only correct test. */
+#ifdef _WIN32
+typedef SOCKET gv_socket;
+typedef HANDLE gv_thread;
+typedef int gv_socklen;
+#define GV_BAD_SOCKET INVALID_SOCKET
+#define gv_close_socket closesocket
+#else
+typedef int gv_socket;
+typedef pthread_t gv_thread;
+typedef socklen_t gv_socklen;
+#define GV_BAD_SOCKET (-1)
+#define gv_close_socket close
+#endif
+
+#define GV_RECV_TIMEOUT_MS 200
 
 struct gv_net {
   gv_engine *engine;
-  int fd;
+  gv_socket fd;
   struct sockaddr_storage addrs[MAX_ADDRS];
-  socklen_t addr_len[MAX_ADDRS];
+  gv_socklen addr_len[MAX_ADDRS];
   int n_addrs;
   atomic_int chosen, stop;
   uint32_t session, counter;
   uint8_t key[GV_KEY_BYTES];
   gv_replay replay;
-  pthread_t thread;
+  gv_thread thread;
 };
 
-static int resolve(const char *addr, struct sockaddr_storage *out, socklen_t *len) {
+#ifdef _WIN32
+/* Winsock needs starting once per process and stopping as many times as it was
+   started. Reference counted here rather than left to the caller, so a host
+   that already called WSAStartup is not torn out from under. */
+static atomic_int wsa_users = 0;
+
+static int wsa_acquire(void) {
+  if (atomic_fetch_add(&wsa_users, 1) == 0) {
+    WSADATA data;
+    if (WSAStartup(MAKEWORD(2, 2), &data) != 0) {
+      atomic_fetch_sub(&wsa_users, 1);
+      return -1;
+    }
+  }
+  return 0;
+}
+
+static void wsa_release(void) {
+  if (atomic_fetch_sub(&wsa_users, 1) == 1) WSACleanup();
+}
+#else
+static int wsa_acquire(void) { return 0; }
+static void wsa_release(void) {}
+#endif
+
+static int resolve(const char *addr, struct sockaddr_storage *out, gv_socklen *len) {
   char host[256];
   const char *colon = strrchr(addr, ':');
   if (!colon || (size_t)(colon - addr) >= sizeof host) return -1;
@@ -45,13 +97,13 @@ static int resolve(const char *addr, struct sockaddr_storage *out, socklen_t *le
   struct addrinfo hints = {.ai_family = AF_INET, .ai_socktype = SOCK_DGRAM}, *res;
   if (getaddrinfo(h, colon + 1, &hints, &res) != 0) return -1;
   memcpy(out, res->ai_addr, res->ai_addrlen);
-  *len = res->ai_addrlen;
+  *len = (gv_socklen)res->ai_addrlen;
   freeaddrinfo(res);
   return 0;
 }
 
-static int same(const struct sockaddr_storage *a, const struct sockaddr_storage *b, socklen_t len) {
-  return memcmp(a, b, len) == 0;
+static int same(const struct sockaddr_storage *a, const struct sockaddr_storage *b, gv_socklen len) {
+  return memcmp(a, b, (size_t)len) == 0;
 }
 
 static void send_packet(void *user, const uint8_t *packet, size_t len) {
@@ -63,16 +115,18 @@ static void send_packet(void *user, const uint8_t *packet, size_t len) {
   int chosen = atomic_load(&n->chosen);
   /* Until an address answers, every offered one gets the packet, as the browser races WebTransport (GRYT-1821). */
   for (int i = 0; i < n->n_addrs; i++)
-    if (chosen < 0 || chosen == i) sendto(n->fd, out, sealed, 0, (struct sockaddr *)&n->addrs[i], n->addr_len[i]);
+    if (chosen < 0 || chosen == i)
+      /* Winsock takes a char* and an int length, so the casts are the price of
+         one call site rather than two copies of this loop. */
+      sendto(n->fd, (const char *)out, (int)sealed, 0, (struct sockaddr *)&n->addrs[i], (int)n->addr_len[i]);
 }
 
-static void *receive_loop(void *arg) {
-  gv_net *n = arg;
+static void receive_loop_body(gv_net *n) {
   uint8_t buf[2048];
   while (!atomic_load(&n->stop)) {
     struct sockaddr_storage from;
-    socklen_t from_len = sizeof from;
-    ssize_t got = recvfrom(n->fd, buf, sizeof buf, 0, (struct sockaddr *)&from, &from_len);
+    gv_socklen from_len = sizeof from;
+    int got = (int)recvfrom(n->fd, (char *)buf, (int)sizeof buf, 0, (struct sockaddr *)&from, &from_len);
     if (got <= 0) continue;
     int which = -1;
     for (int i = 0; i < n->n_addrs; i++)
@@ -88,14 +142,64 @@ static void *receive_loop(void *arg) {
     atomic_compare_exchange_strong(&n->chosen, &none, which);
     gv_engine_queue(n->engine, buf + GV_SEAL_PREFIX, 4 + GV_HEADER_BYTES + secret_len);
   }
+}
+
+#ifdef _WIN32
+static DWORD WINAPI receive_loop(LPVOID arg) {
+  receive_loop_body(arg);
+  return 0;
+}
+#else
+static void *receive_loop(void *arg) {
+  receive_loop_body(arg);
   return NULL;
+}
+#endif
+
+/* The receive thread has to come down before the socket closes, or it blocks
+   in recvfrom on a handle that is gone. Both arms join first. */
+static int start_thread(gv_net *n) {
+#ifdef _WIN32
+  n->thread = CreateThread(NULL, 0, receive_loop, n, 0, NULL);
+  return n->thread == NULL ? -1 : 0;
+#else
+  return pthread_create(&n->thread, NULL, receive_loop, n) != 0 ? -1 : 0;
+#endif
+}
+
+static void join_thread(gv_net *n) {
+#ifdef _WIN32
+  /* Worst case this waits one receive timeout, which is why that timeout
+     exists rather than a blocking recvfrom. */
+  WaitForSingleObject(n->thread, INFINITE);
+  CloseHandle(n->thread);
+#else
+  pthread_join(n->thread, NULL);
+#endif
+}
+
+/* SO_RCVTIMEO is a timeval on POSIX and a DWORD of milliseconds on Winsock.
+   Passing the wrong one silently sets a nonsense timeout rather than failing. */
+static int set_recv_timeout(gv_socket fd) {
+#ifdef _WIN32
+  DWORD ms = GV_RECV_TIMEOUT_MS;
+  return setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&ms, sizeof ms);
+#else
+  struct timeval tv = {GV_RECV_TIMEOUT_MS / 1000, (GV_RECV_TIMEOUT_MS % 1000) * 1000};
+  return setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
+#endif
 }
 
 gv_net *gv_net_open(gv_engine *engine, const char *const *addrs, int n_addrs, uint32_t session, const uint8_t key[32]) {
+  if (wsa_acquire() != 0) return NULL;
   gv_net *n = calloc(1, sizeof *n);
-  if (!n) return NULL;
+  if (!n) {
+    wsa_release();
+    return NULL;
+  }
   n->engine = engine;
   n->session = session;
+  n->fd = GV_BAD_SOCKET;
   memcpy(n->key, key, GV_KEY_BYTES);
   atomic_init(&n->chosen, -1);
   atomic_init(&n->stop, 0);
@@ -103,11 +207,10 @@ gv_net *gv_net_open(gv_engine *engine, const char *const *addrs, int n_addrs, ui
     if (resolve(addrs[i], &n->addrs[n->n_addrs], &n->addr_len[n->n_addrs]) == 0) n->n_addrs++;
   /* One socket for both families: an IPv6 socket that also takes IPv4 would differ per OS, so v4 only for now. */
   n->fd = socket(AF_INET, SOCK_DGRAM, 0);
-  struct timeval tv = {0, 200000};
-  if (n->n_addrs == 0 || n->fd < 0 || setsockopt(n->fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv) != 0 ||
-      pthread_create(&n->thread, NULL, receive_loop, n) != 0) {
-    if (n->fd >= 0) close(n->fd);
+  if (n->n_addrs == 0 || n->fd == GV_BAD_SOCKET || set_recv_timeout(n->fd) != 0 || start_thread(n) != 0) {
+    if (n->fd != GV_BAD_SOCKET) gv_close_socket(n->fd);
     free(n);
+    wsa_release();
     return NULL;
   }
   engine->send = send_packet;
@@ -118,10 +221,11 @@ gv_net *gv_net_open(gv_engine *engine, const char *const *addrs, int n_addrs, ui
 void gv_net_close(gv_net *n) {
   if (!n) return;
   atomic_store(&n->stop, 1);
-  pthread_join(n->thread, NULL);
-  close(n->fd);
+  join_thread(n);
+  gv_close_socket(n->fd);
   n->engine->send = NULL;
   free(n);
+  wsa_release();
 }
 
 int gv_net_chosen(const gv_net *n) { return atomic_load(&((gv_net *)n)->chosen); }

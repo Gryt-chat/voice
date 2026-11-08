@@ -26,16 +26,24 @@ const libs = {
   win32: ["-lws2_32", "-lole32", "-lwinmm"],
 }[process.platform] ?? [];
 
+// The MSVC runtime has no separate libm, and -lm there is a hard link error
+// rather than a no-op. The deprecation warnings are the CRT's opinion of
+// strtok and snprintf, which this code uses on purpose.
+const platform = process.platform === "win32"
+  ? ["-D_CRT_SECURE_NO_WARNINGS"]
+  : ["-lm"];
+
 // One universal Mac binary, so a build on either arch serves both.
 const arch = process.platform === "darwin" ? ["-arch", "arm64", "-arch", "x86_64"] : [];
 
 mkdirSync(dirname(out), { recursive: true });
 execFileSync(cc, [
   ...arch,
-  "-std=c11", "-O2", "-D_DEFAULT_SOURCE", "-DOPUS_BUILD=1", "-DUSE_ALLOCA=1", "-DHAVE_LRINTF=1", "-DHAVE_LRINT=1",
+  "-std=c11", "-O2", "-DOPUS_BUILD=1", "-DUSE_ALLOCA=1", "-DHAVE_LRINTF=1", "-DHAVE_LRINT=1",
+  ...(process.platform === "win32" ? [] : ["-D_DEFAULT_SOURCE"]),
   ...["include", "celt", "silk", "silk/float", "."].map((d) => `-I${join(opus, d)}`),
   "-o", out,
   join(root, "native/tools/voice_helper.c"), ...core, join(root, device), join(root, "codec/opus/shim.c"),
-  join(root, "native/vendor/monocypher/monocypher.c"), ...opusFiles, "-lm", ...libs,
+  join(root, "native/vendor/monocypher/monocypher.c"), ...opusFiles, ...platform, ...libs,
 ], { cwd: root, stdio: "inherit" });
 console.log(out);
