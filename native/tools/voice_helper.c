@@ -161,7 +161,11 @@ static void *reader(void *arg) {
 }
 
 int main(void) {
-  setvbuf(stdout, NULL, _IOLBF, 0);
+  /* Unbuffered rather than line buffered. Every write here is a whole line
+     followed by fflush, so there is nothing to gain from a buffer, and the
+     MSVC runtime rejects a NULL buffer with size 0 for _IOLBF where glibc
+     takes it as "pick a size". */
+  setvbuf(stdout, NULL, _IONBF, 0);
 #ifdef _WIN32
   InitializeCriticalSection(&lock);
   CreateThread(NULL, 0, reader, NULL, 0, NULL);
