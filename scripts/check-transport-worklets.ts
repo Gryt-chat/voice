@@ -51,8 +51,9 @@ function routeProbes() {
   }
 }
 
-/** Runs `seconds` with a beep starting at `beepAt`; packets go straight across, as a perfect network. */
-function run(seconds: number, beepAt: number, stereo = false) {
+/** Runs `seconds` with a beep starting at `beepAt`; packets go straight across, as a perfect network.
+    `leftOnly` is a mono mic on one input of a two-input device; `stereo` has a quarter of the beep on the right. */
+function run(seconds: number, beepAt: number, mode: "mono" | "leftOnly" | "stereo" = "mono") {
   const out = new Float32Array(Math.round(seconds * SR));
   const outRight = new Float32Array(out.length);
   const onsetIn = Math.round(beepAt * SR);
@@ -62,8 +63,8 @@ function run(seconds: number, beepAt: number, stereo = false) {
       const n = pos + i - onsetIn;
       mic[i] = n >= 0 && n < 0.08 * SR ? 0.5 * Math.sin((2 * Math.PI * 1000 * n) / SR) : 0;
     }
-    // Stereo: the beep on the left only, so the sides differ and the sender switches to stereo.
-    send.process([stereo ? [mic, new Float32Array(QUANTUM)] : [mic]], [[new Float32Array(QUANTUM)]]);
+    const right = mode === "leftOnly" ? new Float32Array(QUANTUM) : mic.map((v) => v / 4);
+    send.process([mode === "mono" ? [mic] : [mic, right]], [[new Float32Array(QUANTUM)]]);
     for (const bytes of send.port.sent.splice(0)) {
       if (!(bytes instanceof Uint8Array)) {
         receive.port.onmessage?.({ data: bytes as Message });
@@ -93,12 +94,17 @@ assert.ok(delayMs > 0 && delayMs < 15, `the pipeline alone took ${delayMs.toFixe
 const peak = Math.max(...out.subarray(onsetOut, onsetOut + 0.05 * SR).map(Math.abs));
 assert.ok(peak > 0.4 && peak < 0.6, `the beep came out at a peak of ${peak.toFixed(2)}, in at 0.5`);
 
-// A stereo mic: the left-only beep comes out on the left, and the right stays quiet.
-const stereoRun = run(1, 0.5, true);
-const leftPeak = Math.max(...stereoRun.out.subarray(stereoRun.onsetIn, stereoRun.onsetIn + 0.1 * SR).map(Math.abs));
-const rightPeak = Math.max(...stereoRun.outRight.subarray(stereoRun.onsetIn, stereoRun.onsetIn + 0.1 * SR).map(Math.abs));
+const peaks = (r: ReturnType<typeof run>) => [r.out, r.outRight].map((side) => Math.max(...side.subarray(r.onsetIn, r.onsetIn + 0.1 * SR).map(Math.abs)));
+
+// A mono mic on one side of a two-input device: sent mono, in both ears at its own level.
+const [oneLeft, oneRight] = peaks(run(1, 0.5, "leftOnly"));
+assert.ok(oneLeft > 0.4 && oneLeft < 0.6, `a one-sided mic came out at ${oneLeft.toFixed(2)} on the left, in at 0.5`);
+assert.ok(oneRight > 0.4 && oneRight < 0.6, `a one-sided mic came out at ${oneRight.toFixed(3)} on the right, in at 0.5`);
+
+// Real stereo, both sides heard and different: kept apart.
+const [leftPeak, rightPeak] = peaks(run(1, 0.5, "stereo"));
 assert.ok(leftPeak > 0.4 && leftPeak < 0.6, `the left beep came out at ${leftPeak.toFixed(2)}`);
-assert.ok(rightPeak < 0.02, `the right side, silent going in, came out at ${rightPeak.toFixed(3)}`);
+assert.ok(rightPeak > 0.08 && rightPeak < 0.18, `the right side, in at 0.125, came out at ${rightPeak.toFixed(3)}`);
 
 // Per-user volume (GRYT-1831): sender 7 at half comes out at half.
 receive.port.onmessage?.({ data: { gains: [[7, 0.5]] } });
@@ -135,4 +141,4 @@ for (let t = 0; t < 0.3 * SR; t += QUANTUM) {
 const lastSpeaking = said.filter((m) => "speaking" in m).at(-1);
 assert.deepEqual(lastSpeaking, { speaking: [] }, "sender 7 still speaking after its packets stopped");
 
-console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; stereo kept apart; per-user volume applied; muted sends nothing; speaking named and cleared; levels, buffered ms and round trips by sender`);
+console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; a one-sided mic sent in both ears; real stereo kept apart; per-user volume applied; muted sends nothing; speaking named and cleared; levels, buffered ms and round trips by sender`);

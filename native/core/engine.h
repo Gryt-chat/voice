@@ -40,6 +40,8 @@ typedef struct {
   float frame[GV_FRAME], stereo_frame[GV_FRAME * 2];
   size_t filled;
   int stereo_for;
+  /* The side a one-sided mic is on: 0 neither, 1 left, 2 right. */
+  int side;
   /* Set from the host's thread, read on the audio thread. */
   atomic_int sending;
   _Atomic float output_gain;

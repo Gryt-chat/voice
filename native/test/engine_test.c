@@ -40,7 +40,8 @@ static void delayed(void *user, const uint8_t *packet, size_t len) {
   held_due[n_held++] = packet[1] & GV_FLAG_PROBE ? block_no + DELAY_BLOCKS : -1;
 }
 
-/* One second with a 1 kHz beep at 0.5 s on the left, and on the right too unless left_only. */
+/* One second with a 1 kHz beep at 0.5 s on the left. The right gets nothing when left_only, else a quarter
+   of it when channels is 2, so the sides differ as a real stereo source does. */
 static void run(int channels, int left_only, float *outL, float *outR) {
   static float in[BLOCK * 2], out[BLOCK * 2];
   for (int pos = 0; pos + BLOCK <= SR; pos += BLOCK) {
@@ -48,7 +49,7 @@ static void run(int channels, int left_only, float *outL, float *outR) {
       int n = pos + i - SR / 2;
       float v = n >= 0 && n < SR * 8 / 100 ? 0.5f * sinf(2 * (float)M_PI * 1000 * n / SR) : 0;
       in[i * channels] = v;
-      if (channels == 2) in[i * 2 + 1] = left_only ? 0 : v;
+      if (channels == 2) in[i * 2 + 1] = left_only ? 0 : v / 4;
     }
     gv_engine_capture(&engine, in, BLOCK, channels);
     gv_engine_render(&engine, out, BLOCK);
@@ -109,7 +110,7 @@ int main(void) {
   assert(delay_ms > 0 && delay_ms < 15);
   assert(peak > 0.4f && peak < 0.6f && fabsf(peak - peakR) < 0.01f);
 
-  /* A stereo mic with the beep on the left only: the left comes back, the right stays quiet. */
+  /* A mono mic on one input of a two-input device: sent mono, in both ears at its own level. */
   run(2, 1, l, r);
   float left = 0, right = 0;
   for (int i = SR / 2; i < SR / 2 + SR / 10; i++) {
@@ -117,7 +118,17 @@ int main(void) {
     right = fmaxf(right, fabsf(r[i]));
   }
   assert(left > 0.4f && left < 0.6f);
-  assert(right < 0.02f);
+  assert(right > 0.4f && right < 0.6f);
+
+  /* Real stereo, both sides heard and different: kept apart. */
+  run(2, 0, l, r);
+  left = right = 0;
+  for (int i = SR / 2; i < SR / 2 + SR / 10; i++) {
+    left = fmaxf(left, fabsf(l[i]));
+    right = fmaxf(right, fabsf(r[i]));
+  }
+  assert(left > 0.4f && left < 0.6f);
+  assert(right > 0.08f && right < 0.18f);
 
   /* Speaking (GRYT-1830): the gate is open with no threshold, so sender 7 is heard speaking. */
   uint32_t ids[GV_MAX_SENDERS];
@@ -187,7 +198,7 @@ int main(void) {
   double want = 2 * DELAY_BLOCKS * BLOCK * 1000.0 / SR;
   assert(fabs(rtt[0] - want) < 3);
   gv_engine_destroy(&far);
-  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; stereo kept apart (right %.3f); muted sends nothing; speaking named and cleared; levels about -9 dB for a 0.5 beep, the mic silent when muted; per-sender volume; round trips measured to within 3 ms of a known delay\n",
+  printf("native engine ok: a beep through capture and render in %.1f ms with no network, at %.2f; a one-sided mic sent in both ears; real stereo kept apart (right %.3f); muted sends nothing; speaking named and cleared; levels about -9 dB for a 0.5 beep, the mic silent when muted; per-sender volume; round trips measured to within 3 ms of a known delay\n",
          delay_ms, peak, right);
   return 0;
 }

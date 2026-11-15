@@ -10,6 +10,10 @@
 #define FRAME_MS (GV_FRAME * 1000.0 / SAMPLE_RATE)
 /* Two seconds of stereo after the sides last differed, so a song doesn't flip back and forth. */
 #define STEREO_HOLD_FRAMES (2 * SAMPLE_RATE / GV_FRAME)
+/* A side is heard above about -70 dBFS, and silent beside the other 30 dB down: a mono mic on one input. */
+#define HEARD 1e-7
+#define SILENT_BESIDE 1e-3
+#define OPUS_MAX_BITRATE 510000
 /* Someone silent this long has left or muted: their decoder is freed until they speak again. */
 #define SENDER_TIMEOUT_MS 10000
 #define SPEAKING_HOLD_MS 250
@@ -181,30 +185,44 @@ void gv_engine_capture(gv_engine *e, const float *in, size_t frames, int channel
   int bitrate = atomic_exchange(&e->pending_bitrate, 0);
   if (bitrate > 0) {
     opus_encoder_ctl(e->mono, OPUS_SET_BITRATE(bitrate));
-    opus_encoder_ctl(e->stereo, OPUS_SET_BITRATE(bitrate * 4 / 3));
+    int stereo_bitrate = bitrate / 3 * 4;
+    opus_encoder_ctl(e->stereo, OPUS_SET_BITRATE(stereo_bitrate < OPUS_MAX_BITRATE ? stereo_bitrate : OPUS_MAX_BITRATE));
   }
   probe(e);
   /* In chunks the effects take as one block, as the worklet gets 128 frames at a time. */
   for (size_t at = 0; at < frames; at += 128) {
     size_t n = frames - at < 128 ? frames - at : 128;
     int differ = 0;
+    double pl = 0, pr = 0;
     for (size_t i = 0; i < n; i++) {
       left[i] = in[(at + i) * channels];
       right[i] = channels == 2 ? in[(at + i) * 2 + 1] : left[i];
       if (fabsf(left[i] - right[i]) > 1e-4f) differ = 1;
+      pl += left[i] * left[i];
+      pr += right[i] * right[i];
     }
-    if (differ) e->stereo_for = STEREO_HOLD_FRAMES;
+    pl /= (double)n;
+    pr /= (double)n;
+    if (channels != 2) e->side = 0;
+    else if (pl > HEARD && pr < pl * SILENT_BESIDE) e->side = 1;
+    else if (pr > HEARD && pl < pr * SILENT_BESIDE) e->side = 2;
+    else if (pl > HEARD && pr > HEARD) e->side = 0;
+    if (e->side) e->stereo_for = 0;
+    else if (differ) e->stereo_for = STEREO_HOLD_FRAMES;
     gv_effects_process(&e->effects, left, channels == 2 ? right : NULL, n);
     int on = atomic_load(&e->sending);
     double sum = 0;
-    for (size_t i = 0; i < n; i++) sum += left[i] * left[i];
+    for (size_t i = 0; i < n; i++) {
+      float m = e->side == 2 ? right[i] : left[i];
+      sum += m * m;
+    }
     atomic_store(&e->mic_db, on && sum > 0 ? (float)(10 * log10(sum / (double)n)) : -INFINITY);
     atomic_store(&e->mic_speaking, on && e->effects.gate_open);
     for (size_t i = 0; i < n; i++) {
       float r = channels == 2 ? right[i] : left[i];
       e->stereo_frame[2 * e->filled] = left[i];
       e->stereo_frame[2 * e->filled + 1] = r;
-      e->frame[e->filled++] = (left[i] + r) / 2;
+      e->frame[e->filled++] = e->side == 1 ? left[i] : e->side == 2 ? r : (left[i] + r) / 2;
       if (e->filled < GV_FRAME) continue;
       e->filled = 0;
       int stereo = e->stereo_for > 0;

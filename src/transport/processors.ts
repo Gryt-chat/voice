@@ -3,6 +3,7 @@
 
 import { loadOpus, type OpusCodec, type OpusDecoder, type OpusEncoder } from "../codec/opus";
 import { type VoiceEffectSettings, VoiceEffects } from "../audio/voiceEffects";
+import { ChannelPick } from "./channelPick";
 import { JitterBuffer } from "./jitterBuffer";
 import { FLAG_PROBE, FLAG_SPEAKING, readForwarded, writePacket } from "./packet";
 import { type Probe, PROBE_EVERY_S, PROBE_PING, PROBE_PONG, readProbe, writeProbe } from "./probe";
@@ -38,8 +39,7 @@ class SendProcessor extends AudioWorkletProcessor {
   private encoder: OpusEncoder | null = null;
   private stereoEncoder: OpusEncoder | null = null;
   private opus: OpusCodec | null = null;
-  /** Frames left to send in stereo: two seconds past the last time left and right differed. */
-  private stereoFor = 0;
+  private readonly pick: ChannelPick;
   private sending = true;
   private seq = 0;
   private timestamp = 0;
@@ -53,6 +53,7 @@ class SendProcessor extends AudioWorkletProcessor {
     this.effects = new VoiceEffects(sampleRate, o.settings);
     this.frame = new Float32Array(o.frame);
     this.stereoFrame = new Float32Array(o.frame * 2);
+    this.pick = new ChannelPick((2 * sampleRate) / o.frame);
     let bitrates = { mono: o.bitrate, stereo: o.stereoBitrate };
     const encode = () => {
       if (!this.opus) return;
@@ -97,19 +98,17 @@ class SendProcessor extends AudioWorkletProcessor {
     if (!input) return true;
     this.probe();
     const block = Float32Array.from(input);
-    // Stereo only when the sides really differ: a mono mic, or one copied to both, stays mono at its own bitrate.
     const right = inputs[0][1] && Float32Array.from(inputs[0][1]);
-    if (right && block.some((v, i) => Math.abs(v - right[i]) > 1e-4)) this.stereoFor = 2 * sampleRate / this.frame.length;
+    this.pick.look(block, right);
     this.effects.process(block, right);
     for (let i = 0; i < block.length; i++) {
       const r = right ? right[i] : block[i];
       this.stereoFrame[2 * this.filled] = block[i];
       this.stereoFrame[2 * this.filled + 1] = r;
-      this.frame[this.filled++] = (block[i] + r) / 2;
+      this.frame[this.filled++] = this.pick.mono(block[i], r);
       if (this.filled < this.frame.length) continue;
       this.filled = 0;
-      const stereo = this.stereoFor > 0 ? this.stereoEncoder : null;
-      if (this.stereoFor > 0) this.stereoFor--;
+      const stereo = this.pick.stereoNext() ? this.stereoEncoder : null;
       // The timestamp moves on while muted, so the far side's clock stays right across a pause.
       if (this.sending && this.encoder) {
         const bytes = writePacket({
