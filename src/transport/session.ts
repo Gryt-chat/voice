@@ -205,6 +205,8 @@ export async function startAudioTransport(o: {
   onBuffered?: (buffered: Map<number, number>) => void;
   /** Measured round trips by sender, in ms, with the levels (GRYT-1836). */
   onRoundTrip?: (rtt: Map<number, number>) => void;
+  /** The mix's left and right in dBFS, with the levels. Null once the call ends. */
+  onOutput?: (db: [number, number] | null) => void;
 }): Promise<AudioTransportSession> {
   const [pipe] = await Promise.all([dialPipe(o.offer, o.wsUrl), loadWorklets(o.context)]);
 
@@ -235,6 +237,7 @@ export async function startAudioTransport(o: {
       o.onLevels?.(new Map(e.data.levels));
       o.onBuffered?.(new Map(e.data.buffered));
       o.onRoundTrip?.(new Map(e.data.rtt));
+      o.onOutput?.(e.data.output);
     }
   };
   pipe.listen((d) => receive.port.postMessage(d, [d.buffer]));
@@ -246,6 +249,7 @@ export async function startAudioTransport(o: {
     o.onLevels?.(new Map());
     o.onBuffered?.(new Map());
     o.onRoundTrip?.(new Map());
+    o.onOutput?.(null);
     source.disconnect();
     send.disconnect();
     receive.disconnect();

@@ -101,8 +101,14 @@ const [oneLeft, oneRight] = peaks(run(1, 0.5, "leftOnly"));
 assert.ok(oneLeft > 0.4 && oneLeft < 0.6, `a one-sided mic came out at ${oneLeft.toFixed(2)} on the left, in at 0.5`);
 assert.ok(oneRight > 0.4 && oneRight < 0.6, `a one-sided mic came out at ${oneRight.toFixed(3)} on the right, in at 0.5`);
 
-// Real stereo, both sides heard and different: kept apart.
+// Real stereo, both sides heard and different: kept apart, and the output meters say so.
+const stereoFrom = receive.port.sent.length;
 const [leftPeak, rightPeak] = peaks(run(1, 0.5, "stereo"));
+const metered = receive.port.sent
+  .slice(stereoFrom)
+  .flatMap((m) => (!(m instanceof Uint8Array) && "output" in m ? [(m as { output: [number, number] }).output] : []))
+  .reduce((a, b) => (b[0] > a[0] ? b : a), [-120, -120]);
+assert.ok(metered[0] > -15 && metered[0] - metered[1] > 9, `the output meters read ${metered.map((d) => d.toFixed(1)).join(" and ")} dB, left 12 dB over right going in`);
 assert.ok(leftPeak > 0.4 && leftPeak < 0.6, `the left beep came out at ${leftPeak.toFixed(2)}`);
 assert.ok(rightPeak > 0.08 && rightPeak < 0.18, `the right side, in at 0.125, came out at ${rightPeak.toFixed(3)}`);
 
@@ -141,4 +147,4 @@ for (let t = 0; t < 0.3 * SR; t += QUANTUM) {
 const lastSpeaking = said.filter((m) => "speaking" in m).at(-1);
 assert.deepEqual(lastSpeaking, { speaking: [] }, "sender 7 still speaking after its packets stopped");
 
-console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; a one-sided mic sent in both ears; real stereo kept apart; per-user volume applied; muted sends nothing; speaking named and cleared; levels, buffered ms and round trips by sender`);
+console.log(`transport worklets: a beep through send and receive in ${delayMs.toFixed(1)} ms with no network, at its level; a one-sided mic sent in both ears; real stereo kept apart, on the output meters too; per-user volume applied; muted sends nothing; speaking named and cleared; levels, buffered ms and round trips by sender`);

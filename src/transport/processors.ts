@@ -142,8 +142,9 @@ const SPEAKING_HOLD_S = 0.25;
 // Levels go out about twenty times a second: often enough for a halo, rarely enough to cost nothing.
 const LEVELS_EVERY_S = 0.05;
 
-/** What the receive worklet tells the page: who is speaking when that changes, and levels in dBFS by sender. */
-export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][]; rtt: [number, number][] };
+/** What the receive worklet tells the page: who is speaking when that changes, and levels in dBFS by sender.
+    `output` is the loudest left and right of the whole mix since the last report, before the output volume. */
+export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][]; rtt: [number, number][]; output: [number, number] };
 
 /** How many of this client's pings wait for answers; older ones are forgotten. */
 const MAX_PINGS = 8;
@@ -156,6 +157,7 @@ class ReceiveProcessor extends AudioWorkletProcessor {
   /** Per-sender volume, 1 for anyone not named: a user's own volume for someone (GRYT-1831). */
   private gains = new Map<number, number>();
   private levelsAt = 0;
+  private outputPower: [number, number] = [0, 0];
   private opus: Awaited<ReturnType<typeof loadOpus>> | null = null;
   /** This client's recent pings by nonce with when they went (ms), and round trips by sender: out, back, minus the hold. */
   private pings = new Map<number, number>();
@@ -240,6 +242,13 @@ class ReceiveProcessor extends AudioWorkletProcessor {
       s.power = sum / (out.length * 2);
       s.pending = s.pending.subarray(out.length * 2);
     }
+    let left = 0;
+    let right = 0;
+    for (let i = 0; i < out.length; i++) {
+      left += out[i] ** 2;
+      right += outRight[i] ** 2;
+    }
+    this.outputPower = [Math.max(this.outputPower[0], left / out.length), Math.max(this.outputPower[1], right / out.length)];
     // Who is speaking as heard, so a ring lights with the voice; sent only when it changes.
     const speaking = [...this.senders].filter(([, s]) => currentTime - s.lastSpeaking < SPEAKING_HOLD_S).map(([id]) => id);
     const key = speaking.join(",");
@@ -252,7 +261,9 @@ class ReceiveProcessor extends AudioWorkletProcessor {
       const levels = [...this.senders].map(([id, s]): [number, number] => [id, s.power > 0 ? 10 * Math.log10(s.power) : -120]);
       // Waiting to play, in ms: the jitter buffer plus decoded samples not out yet. For the latency estimate.
       const buffered = [...this.senders].map(([id, s]): [number, number] => [id, s.jitter.depthMs + (s.pending.length / 2 / sampleRate) * 1000]);
-      this.port.postMessage({ levels, buffered, rtt: [...this.rtt] } satisfies ReceiveReport);
+      const output = this.outputPower.map((p) => (p > 0 ? 10 * Math.log10(p) : -120)) as [number, number];
+      this.outputPower = [0, 0];
+      this.port.postMessage({ levels, buffered, rtt: [...this.rtt], output } satisfies ReceiveReport);
     }
     return true;
   }
