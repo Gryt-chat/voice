@@ -12,6 +12,7 @@ const parts = [
   "transport/jitterBuffer.js",
   "audio/voiceEffects.js",
   "codec/opus.js",
+  "transport/channelPick.js",
   "transport/processors.js",
 ];
 

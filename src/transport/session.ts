@@ -46,10 +46,11 @@ export interface AudioTransportSession {
 // 2.5 ms CELT frames; the transport exists for the latency.
 const FRAME = 120;
 export const TRANSPORT_FRAME_MS = 2.5;
-// Sivert's listening test: 96 kbps is the least that holds up, 192 sounds the same as the original.
-export const TRANSPORT_BITRATE = { min: 96_000, max: 192_000 };
+// Sivert's listening test: 96 kbps is the least that holds up. 510, Opus's ceiling, is the default,
+// since a 2.5 ms frame gets about 60 bytes at 192 and 160 at 510.
+export const TRANSPORT_BITRATE = { min: 96_000, max: 510_000 };
 // 256 sounded like the original song in stereo at 192 mono. Only used while the mic's two sides really differ.
-const stereoFor = (bitrate: number) => Math.round((bitrate * 4) / 3);
+const stereoFor = (bitrate: number) => Math.min(TRANSPORT_BITRATE.max, Math.round((bitrate * 4) / 3));
 const clampBitrate = (bitrate: number) => Math.min(TRANSPORT_BITRATE.max, Math.max(TRANSPORT_BITRATE.min, bitrate));
 // For a stream the microphone pipeline already processed.
 export const PASS_THROUGH: VoiceEffectSettings = {
@@ -204,6 +205,8 @@ export async function startAudioTransport(o: {
   onBuffered?: (buffered: Map<number, number>) => void;
   /** Measured round trips by sender, in ms, with the levels (GRYT-1836). */
   onRoundTrip?: (rtt: Map<number, number>) => void;
+  /** The mix's left and right in dBFS, with the levels. Null once the call ends. */
+  onOutput?: (db: [number, number] | null) => void;
 }): Promise<AudioTransportSession> {
   const [pipe] = await Promise.all([dialPipe(o.offer, o.wsUrl), loadWorklets(o.context)]);
 
@@ -234,6 +237,7 @@ export async function startAudioTransport(o: {
       o.onLevels?.(new Map(e.data.levels));
       o.onBuffered?.(new Map(e.data.buffered));
       o.onRoundTrip?.(new Map(e.data.rtt));
+      o.onOutput?.(e.data.output);
     }
   };
   pipe.listen((d) => receive.port.postMessage(d, [d.buffer]));
@@ -245,6 +249,7 @@ export async function startAudioTransport(o: {
     o.onLevels?.(new Map());
     o.onBuffered?.(new Map());
     o.onRoundTrip?.(new Map());
+    o.onOutput?.(null);
     source.disconnect();
     send.disconnect();
     receive.disconnect();

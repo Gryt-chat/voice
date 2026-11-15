@@ -3,6 +3,7 @@
 
 import { loadOpus, type OpusCodec, type OpusDecoder, type OpusEncoder } from "../codec/opus";
 import { type VoiceEffectSettings, VoiceEffects } from "../audio/voiceEffects";
+import { ChannelPick } from "./channelPick";
 import { JitterBuffer } from "./jitterBuffer";
 import { FLAG_PROBE, FLAG_SPEAKING, readForwarded, writePacket } from "./packet";
 import { type Probe, PROBE_EVERY_S, PROBE_PING, PROBE_PONG, readProbe, writeProbe } from "./probe";
@@ -38,8 +39,7 @@ class SendProcessor extends AudioWorkletProcessor {
   private encoder: OpusEncoder | null = null;
   private stereoEncoder: OpusEncoder | null = null;
   private opus: OpusCodec | null = null;
-  /** Frames left to send in stereo: two seconds past the last time left and right differed. */
-  private stereoFor = 0;
+  private readonly pick: ChannelPick;
   private sending = true;
   private seq = 0;
   private timestamp = 0;
@@ -53,6 +53,7 @@ class SendProcessor extends AudioWorkletProcessor {
     this.effects = new VoiceEffects(sampleRate, o.settings);
     this.frame = new Float32Array(o.frame);
     this.stereoFrame = new Float32Array(o.frame * 2);
+    this.pick = new ChannelPick((2 * sampleRate) / o.frame);
     let bitrates = { mono: o.bitrate, stereo: o.stereoBitrate };
     const encode = () => {
       if (!this.opus) return;
@@ -97,19 +98,17 @@ class SendProcessor extends AudioWorkletProcessor {
     if (!input) return true;
     this.probe();
     const block = Float32Array.from(input);
-    // Stereo only when the sides really differ: a mono mic, or one copied to both, stays mono at its own bitrate.
     const right = inputs[0][1] && Float32Array.from(inputs[0][1]);
-    if (right && block.some((v, i) => Math.abs(v - right[i]) > 1e-4)) this.stereoFor = 2 * sampleRate / this.frame.length;
+    this.pick.look(block, right);
     this.effects.process(block, right);
     for (let i = 0; i < block.length; i++) {
       const r = right ? right[i] : block[i];
       this.stereoFrame[2 * this.filled] = block[i];
       this.stereoFrame[2 * this.filled + 1] = r;
-      this.frame[this.filled++] = (block[i] + r) / 2;
+      this.frame[this.filled++] = this.pick.mono(block[i], r);
       if (this.filled < this.frame.length) continue;
       this.filled = 0;
-      const stereo = this.stereoFor > 0 ? this.stereoEncoder : null;
-      if (this.stereoFor > 0) this.stereoFor--;
+      const stereo = this.pick.stereoNext() ? this.stereoEncoder : null;
       // The timestamp moves on while muted, so the far side's clock stays right across a pause.
       if (this.sending && this.encoder) {
         const bytes = writePacket({
@@ -143,8 +142,9 @@ const SPEAKING_HOLD_S = 0.25;
 // Levels go out about twenty times a second: often enough for a halo, rarely enough to cost nothing.
 const LEVELS_EVERY_S = 0.05;
 
-/** What the receive worklet tells the page: who is speaking when that changes, and levels in dBFS by sender. */
-export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][]; rtt: [number, number][] };
+/** What the receive worklet tells the page: who is speaking when that changes, and levels in dBFS by sender.
+    `output` is the loudest left and right of the whole mix since the last report, before the output volume. */
+export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][]; rtt: [number, number][]; output: [number, number] };
 
 /** How many of this client's pings wait for answers; older ones are forgotten. */
 const MAX_PINGS = 8;
@@ -157,6 +157,7 @@ class ReceiveProcessor extends AudioWorkletProcessor {
   /** Per-sender volume, 1 for anyone not named: a user's own volume for someone (GRYT-1831). */
   private gains = new Map<number, number>();
   private levelsAt = 0;
+  private outputPower: [number, number] = [0, 0];
   private opus: Awaited<ReturnType<typeof loadOpus>> | null = null;
   /** This client's recent pings by nonce with when they went (ms), and round trips by sender: out, back, minus the hold. */
   private pings = new Map<number, number>();
@@ -241,6 +242,13 @@ class ReceiveProcessor extends AudioWorkletProcessor {
       s.power = sum / (out.length * 2);
       s.pending = s.pending.subarray(out.length * 2);
     }
+    let left = 0;
+    let right = 0;
+    for (let i = 0; i < out.length; i++) {
+      left += out[i] ** 2;
+      right += outRight[i] ** 2;
+    }
+    this.outputPower = [Math.max(this.outputPower[0], left / out.length), Math.max(this.outputPower[1], right / out.length)];
     // Who is speaking as heard, so a ring lights with the voice; sent only when it changes.
     const speaking = [...this.senders].filter(([, s]) => currentTime - s.lastSpeaking < SPEAKING_HOLD_S).map(([id]) => id);
     const key = speaking.join(",");
@@ -253,7 +261,9 @@ class ReceiveProcessor extends AudioWorkletProcessor {
       const levels = [...this.senders].map(([id, s]): [number, number] => [id, s.power > 0 ? 10 * Math.log10(s.power) : -120]);
       // Waiting to play, in ms: the jitter buffer plus decoded samples not out yet. For the latency estimate.
       const buffered = [...this.senders].map(([id, s]): [number, number] => [id, s.jitter.depthMs + (s.pending.length / 2 / sampleRate) * 1000]);
-      this.port.postMessage({ levels, buffered, rtt: [...this.rtt] } satisfies ReceiveReport);
+      const output = this.outputPower.map((p) => (p > 0 ? 10 * Math.log10(p) : -120)) as [number, number];
+      this.outputPower = [0, 0];
+      this.port.postMessage({ levels, buffered, rtt: [...this.rtt], output } satisfies ReceiveReport);
     }
     return true;
   }

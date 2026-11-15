@@ -15,8 +15,8 @@ gv_voice *gv_voice_start(const char *const *addrs, int n_addrs, uint32_t session
                          const gv_effect_settings *effects, unsigned period) {
   gv_voice *v = calloc(1, sizeof *v);
   if (!v) return NULL;
-  /* Gryt's choice from the listening test: 192 kbps mono, 256 stereo (GRYT-1818). */
-  if (gv_engine_init(&v->engine, effects, 192000, 256000, NULL, NULL) != 0) goto fail;
+  /* Opus's ceiling for both, as the worklet starts at: a 2.5 ms frame gets about 60 bytes at 192 kbps. */
+  if (gv_engine_init(&v->engine, effects, 510000, 510000, NULL, NULL) != 0) goto fail;
   v->net = gv_net_open(&v->engine, addrs, n_addrs, session, key);
   if (!v->net) goto fail;
   v->device = gv_device_start(&v->engine, NULL, period, NULL, NULL);

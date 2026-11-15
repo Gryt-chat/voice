@@ -226,6 +226,7 @@ function useSfuHook(): SFUInterface {
   const nativeAudioRef = useRef<NativeAudioSession | null>(null);
   // The browser's receive worklet reports levels by sender; kept here for the same getter.
   const workletLevelsRef = useRef(new Map<number, number>());
+  const workletOutputRef = useRef<[number, number] | null>(null);
   // Asked for rather than kept in state: levels change ten times a second, and state would re-render every user of this hook.
   const getTransportLevels = useCallback(() => {
     const native = nativeAudioRef.current;
@@ -238,7 +239,7 @@ function useSfuHook(): SFUInterface {
       if (user) users.set(user, db);
     }
     // A browser's own mic has an analyser of its own, so only the engine says.
-    return { users, mic: heard?.mic ?? -120, micSpeaking: heard?.micSpeaking ?? false };
+    return { users, mic: heard?.mic ?? -120, micSpeaking: heard?.micSpeaking ?? false, output: heard ? null : workletOutputRef.current };
   }, []);
   // Whether this client is on the own transport right now: only then is a WebRTC copy of someone a duplicate.
   const [onTransport, setOnTransport] = useState(false);
@@ -384,6 +385,7 @@ function useSfuHook(): SFUInterface {
         bitrate: transportBitrate(audioRef.current.audio.bitrateKbps, lastChannelSettingsRef.current.maxBitrate),
         onSpeaking: setSpeakingSenders,
         onLevels: (levels) => (workletLevelsRef.current = levels),
+        onOutput: (db) => (workletOutputRef.current = db),
         onBuffered: (buffered) => (workletBufferedRef.current = buffered),
         onRoundTrip: (rtt) => (workletRttRef.current = rtt),
       });

@@ -92,7 +92,8 @@ export interface SFUInterface {
       platforms with no AudioContext. The embedder owns the stream-to-user mapping (GRYT-1831). */
   setDuplicateAudioStreams?: (streamIds: ReadonlySet<string>) => void;
   /** Each user's level heard over the own transport, in dBFS (-120 silent), for a halo; the mic's only on the native engine. Null when off the transport. */
-  getTransportLevels?: () => { users: ReadonlyMap<string, number>; mic: number; micSpeaking: boolean } | null;
+  /** `output` is what plays on each side, left then right in dBFS, on the browser transport only. */
+  getTransportLevels?: () => { users: ReadonlyMap<string, number>; mic: number; micSpeaking: boolean; output: [number, number] | null } | null;
   /** The parts of an own-transport latency estimate this device knows, in ms. Null when off the transport. */
   getTransportLatency?: () => TransportLatency | null;
 }
