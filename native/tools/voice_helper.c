@@ -30,6 +30,11 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 static gv_voice *voice;
+/* The mic with no call, for the Audio page. A call takes over from it. */
+static gv_voice *monitor;
+
+/* The call, or the monitor when there's no call. */
+static gv_voice *active(void) { return voice ? voice : monitor; }
 static gv_effect_settings effects = {100, 0, 200, 0.8, 0, -20, 0, 50, 0};
 static int bitrate;
 /* The chosen devices, empty for the default. Kept across calls, so the next start uses them too. */
@@ -72,6 +77,7 @@ static void parse_effects(char *rest) {
   }
   effects = (gv_effect_settings){v[0], v[1], v[2], v[3], (int)v[4], v[5], (int)v[6], v[7], (int)v[8]};
   if (voice) gv_voice_set_effects(voice, &effects);
+  if (monitor) gv_voice_set_effects(monitor, &effects);
 }
 
 /* start <session> <key> <period> <addr>...: the room_joined offer's udp part. */
@@ -82,6 +88,7 @@ static void start(char *rest) {
   for (char *a; n < MAX_ADDRS && (a = strtok(NULL, " "));) addrs[n++] = a;
   uint8_t k[32];
   if (voice) gv_voice_stop(voice), voice = NULL;
+  if (monitor) gv_voice_stop(monitor), monitor = NULL;
   if (session && key && period && n > 0 && unbase64(key, k, 32) == 32)
     voice = gv_voice_start(addrs, n, (uint32_t)strtoul(session, NULL, 10), k, &effects, (unsigned)atoi(period));
   if (voice && bitrate > 0) gv_voice_set_bitrate(voice, bitrate);
@@ -120,6 +127,16 @@ static void devices(void) {
 static void choose(char *into, const char *rest) {
   snprintf(into, 256, "%s", rest);
   if (voice) gv_voice_use_devices(voice, *mic ? mic : NULL, *speaker ? speaker : NULL);
+  if (monitor) gv_voice_use_devices(monitor, *mic ? mic : NULL, *speaker ? speaker : NULL);
+}
+
+/* monitor 0|1|2: off, the mic's levels, or the levels and your voice back. Ignored during a call. */
+static void monitoring(const char *rest) {
+  int mode = atoi(rest);
+  if (monitor) gv_voice_stop(monitor), monitor = NULL;
+  if (voice || mode <= 0) return;
+  monitor = gv_voice_monitor(&effects, 120, mode == 2);
+  if (monitor && (*mic || *speaker)) gv_voice_use_devices(monitor, *mic ? mic : NULL, *speaker ? speaker : NULL);
 }
 
 static void command(char *line) {
@@ -131,8 +148,9 @@ static void command(char *line) {
   else if (!strcmp(line, "stop")) {
     if (voice) gv_voice_stop(voice), voice = NULL;
   } else if (!strcmp(line, "sending") && voice) gv_voice_set_sending(voice, atoi(rest));
-  else if (!strcmp(line, "output") && voice) gv_voice_set_output_gain(voice, (float)atof(rest));
+  else if (!strcmp(line, "output") && active()) gv_voice_set_output_gain(active(), (float)atof(rest));
   else if (!strcmp(line, "effects")) parse_effects(rest);
+  else if (!strcmp(line, "monitor")) monitoring(rest);
   else if (!strcmp(line, "bitrate")) {
     bitrate = atoi(rest);
     if (voice && bitrate > 0) gv_voice_set_bitrate(voice, bitrate);
@@ -146,8 +164,11 @@ static void command(char *line) {
 
 static double finite_db(float db) { return isfinite(db) ? db : -120; }
 
-/* r <route> <mic_db> <mic_speaking> l=<id>:<db>,... b=<id>:<ms>,... s=<id>,... t=<id>:<rtt ms>,... */
+
+/* r <route> <mic_db> <mic_speaking> l=<id>:<db>,... b=<id>:<ms>,... s=<id>,... t=<id>:<rtt ms>,...
+   w=<raw mic dB> g=<gate level>. The monitor reports the same line with route -1. */
 static void report(void) {
+  gv_voice *voice = active();
   if (!voice) return;
   uint32_t ids[MAX_IDS], speaking[MAX_IDS];
   float db[MAX_IDS], ms[MAX_IDS], mic;
@@ -164,6 +185,9 @@ static void report(void) {
   int nt = gv_voice_rtt(voice, ids, ms, MAX_IDS);
   printf(" t=");
   for (int i = 0; i < nt; i++) printf("%s%u:%.1f", i ? "," : "", ids[i], ms[i]);
+  float raw_db, gate_level;
+  gv_voice_mic_input(voice, &raw_db, &gate_level);
+  printf(" w=%.1f g=%.1f", finite_db(raw_db), gate_level);
   printf("\n");
   fflush(stdout);
 }

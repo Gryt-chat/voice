@@ -1,6 +1,7 @@
 #include "voice.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "device.h"
 #include "net.h"
@@ -10,7 +11,34 @@ struct gv_voice {
   gv_net *net;
   gv_device *device;
   unsigned period;
+  int hear;
 };
+
+/* What the SFU would do with the monitor's packets: the sender's id in front, straight back. */
+static void loopback(void *user, const uint8_t *packet, size_t len) {
+  gv_voice *v = user;
+  if (!v->hear || len > GV_HEADER_BYTES + GV_MAX_OPUS_BYTES) return;
+  uint8_t forwarded[4 + GV_HEADER_BYTES + GV_MAX_OPUS_BYTES] = {0, 0, 0, 1};
+  memcpy(forwarded + 4, packet, len);
+  gv_engine_receive(&v->engine, forwarded, len + 4);
+}
+
+gv_voice *gv_voice_monitor(const gv_effect_settings *effects, unsigned period, int hear) {
+  gv_voice *v = calloc(1, sizeof *v);
+  if (!v) return NULL;
+  v->hear = hear;
+  v->period = period;
+  if (gv_engine_init(&v->engine, effects, 510000, 510000, loopback, v) != 0) goto fail;
+  gv_engine_set_sending(&v->engine, 1);
+  v->device = gv_device_start(&v->engine, NULL, NULL, period, NULL, NULL);
+  if (!v->device) goto fail;
+  return v;
+fail:
+  gv_voice_stop(v);
+  return NULL;
+}
+
+void gv_voice_mic_input(gv_voice *v, float *raw_db, float *gate_level) { gv_engine_mic_input(&v->engine, raw_db, gate_level); }
 
 gv_voice *gv_voice_start(const char *const *addrs, int n_addrs, uint32_t session, const uint8_t key[32],
                          const gv_effect_settings *effects, unsigned period) {
@@ -49,7 +77,7 @@ void gv_voice_set_sending(gv_voice *v, int on) { gv_engine_set_sending(&v->engin
 void gv_voice_set_output_gain(gv_voice *v, float gain) { gv_engine_set_output_gain(&v->engine, gain); }
 void gv_voice_set_effects(gv_voice *v, const gv_effect_settings *effects) { gv_engine_set_effects(&v->engine, effects); }
 void gv_voice_set_bitrate(gv_voice *v, int bitrate) { gv_engine_set_bitrate(&v->engine, bitrate); }
-int gv_voice_route(const gv_voice *v) { return gv_net_chosen(v->net); }
+int gv_voice_route(const gv_voice *v) { return v->net ? gv_net_chosen(v->net) : -1; }
 int gv_voice_speaking(gv_voice *v, uint32_t *ids, int max) { return gv_engine_speaking(&v->engine, ids, max); }
 void gv_voice_set_gains(gv_voice *v, const uint32_t *ids, const float *gains, int n) { gv_engine_set_gains(&v->engine, ids, gains, n); }
 int gv_voice_levels(gv_voice *v, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking) {

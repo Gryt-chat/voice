@@ -77,6 +77,8 @@ typedef struct {
   /* The mic as sent, after the effects: silent when muted or gated. */
   _Atomic float mic_db;
   atomic_bool mic_speaking;
+  /* The mic as heard, before the effects and the mute, and the 0-100 level the gate decides on. */
+  _Atomic float raw_db, gate_level;
   /* One producer (the network thread), one consumer (render, on the audio thread). */
   uint8_t queue[GV_QUEUE_SLOTS][GV_QUEUE_BYTES];
   uint16_t queue_len[GV_QUEUE_SLOTS];
@@ -107,6 +109,8 @@ void gv_engine_set_gains(gv_engine *e, const uint32_t *ids, const float *gains, 
 int gv_engine_speaking(gv_engine *e, uint32_t *ids, int max);
 /* Every sender heard and its level in dBFS, up to max, plus the mic's (GRYT-1830). Safe from any thread. */
 int gv_engine_levels(gv_engine *e, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking);
+/* The mic before the effects and the mute in dBFS, and the gate's level, 0 to 100. */
+void gv_engine_mic_input(gv_engine *e, float *raw_db, float *gate_level);
 /* Every sender heard and how much of their audio is buffered, in ms, up to max. Safe from any thread. */
 int gv_engine_buffered(gv_engine *e, uint32_t *ids, float *ms, int max);
 /* Every sender that answered a ping and the measured round trip to them, in ms, up to max. Safe from any thread. */
