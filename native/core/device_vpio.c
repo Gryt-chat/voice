@@ -51,8 +51,17 @@ static int set(AudioUnit u, AudioUnitPropertyID id, AudioUnitScope scope, AudioU
   return AudioUnitSetProperty(u, id, scope, el, v, size) == noErr;
 }
 
-gv_device *gv_device_start(gv_engine *engine, const char *name, unsigned period, gv_tap_fn tap, void *user) {
-  (void)name;
+/* The voice unit always uses the system's own devices, so there's nothing to choose between. */
+int gv_device_list(void (*each)(void *user, int capture, const char *name), void *user) {
+  (void)each;
+  (void)user;
+  return 0;
+}
+
+gv_device *gv_device_start(gv_engine *engine, const char *capture, const char *playback, unsigned period, gv_tap_fn tap,
+                           void *user) {
+  (void)capture;
+  (void)playback;
   if (!gv_vpio_prepare(period)) return NULL;
 
   gv_device *d = calloc(1, sizeof *d);

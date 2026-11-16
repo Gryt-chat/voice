@@ -9,6 +9,7 @@ struct gv_voice {
   gv_engine engine;
   gv_net *net;
   gv_device *device;
+  unsigned period;
 };
 
 gv_voice *gv_voice_start(const char *const *addrs, int n_addrs, uint32_t session, const uint8_t key[32],
@@ -19,7 +20,8 @@ gv_voice *gv_voice_start(const char *const *addrs, int n_addrs, uint32_t session
   if (gv_engine_init(&v->engine, effects, 510000, 510000, NULL, NULL) != 0) goto fail;
   v->net = gv_net_open(&v->engine, addrs, n_addrs, session, key);
   if (!v->net) goto fail;
-  v->device = gv_device_start(&v->engine, NULL, period, NULL, NULL);
+  v->period = period;
+  v->device = gv_device_start(&v->engine, NULL, NULL, period, NULL, NULL);
   if (!v->device) goto fail;
   return v;
 fail:
@@ -33,6 +35,14 @@ void gv_voice_stop(gv_voice *v) {
   gv_net_close(v->net);
   gv_engine_destroy(&v->engine);
   free(v);
+}
+
+int gv_voice_use_devices(gv_voice *v, const char *capture, const char *playback) {
+  gv_device_stop(v->device);
+  v->device = gv_device_start(&v->engine, capture, playback, v->period, NULL, NULL);
+  /* A name that no longer matches anything falls back to the defaults rather than going silent. */
+  if (!v->device) v->device = gv_device_start(&v->engine, NULL, NULL, v->period, NULL, NULL);
+  return v->device ? 0 : -1;
 }
 
 void gv_voice_set_sending(gv_voice *v, int on) { gv_engine_set_sending(&v->engine, on); }

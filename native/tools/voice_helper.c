@@ -12,6 +12,7 @@
 #include <pthread.h>
 #endif
 
+#include "../core/device.h"
 #include "../core/voice.h"
 
 #define MAX_ADDRS 8
@@ -31,6 +32,8 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static gv_voice *voice;
 static gv_effect_settings effects = {100, 0, 200, 0.8, 0, -20, 0, 50, 0};
 static int bitrate;
+/* The chosen devices, empty for the default. Kept across calls, so the next start uses them too. */
+static char mic[256], speaker[256];
 static volatile int quit;
 
 static int b64(char c) {
@@ -82,6 +85,7 @@ static void start(char *rest) {
   if (session && key && period && n > 0 && unbase64(key, k, 32) == 32)
     voice = gv_voice_start(addrs, n, (uint32_t)strtoul(session, NULL, 10), k, &effects, (unsigned)atoi(period));
   if (voice && bitrate > 0) gv_voice_set_bitrate(voice, bitrate);
+  if (voice && (*mic || *speaker)) gv_voice_use_devices(voice, *mic ? mic : NULL, *speaker ? speaker : NULL);
   printf("started %d\n", voice != NULL);
   fflush(stdout);
 }
@@ -100,6 +104,24 @@ static void gains(char *rest) {
   if (voice) gv_voice_set_gains(voice, ids, g, n);
 }
 
+static void each_device(void *user, int capture, const char *name) {
+  (void)user;
+  printf("device %s %s\n", capture ? "capture" : "playback", name);
+}
+
+/* devices: one "device capture|playback <name>" line each, then "devices <count>". */
+static void devices(void) {
+  int n = gv_device_list(each_device, NULL);
+  printf("devices %d\n", n);
+  fflush(stdout);
+}
+
+/* mic <name> and speaker <name>, a blank name meaning the default. Applied now when a call is running. */
+static void choose(char *into, const char *rest) {
+  snprintf(into, 256, "%s", rest);
+  if (voice) gv_voice_use_devices(voice, *mic ? mic : NULL, *speaker ? speaker : NULL);
+}
+
 static void command(char *line) {
   line[strcspn(line, "\r\n")] = 0;
   char *rest = strchr(line, ' ');
@@ -116,6 +138,9 @@ static void command(char *line) {
     if (voice && bitrate > 0) gv_voice_set_bitrate(voice, bitrate);
   }
   else if (!strcmp(line, "gains")) gains(rest);
+  else if (!strcmp(line, "devices")) devices();
+  else if (!strcmp(line, "mic")) choose(mic, rest);
+  else if (!strcmp(line, "speaker")) choose(speaker, rest);
   else if (!strcmp(line, "quit")) quit = 1;
 }
 

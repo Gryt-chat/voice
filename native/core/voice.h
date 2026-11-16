@@ -13,6 +13,8 @@ typedef struct gv_voice gv_voice;
 gv_voice *gv_voice_start(const char *const *addrs, int n_addrs, uint32_t session, const uint8_t key[32],
                          const gv_effect_settings *effects, unsigned period);
 void gv_voice_stop(gv_voice *v);
+/* Moves to these devices, by a substring of each name or NULL for the default. 0 when they started. */
+int gv_voice_use_devices(gv_voice *v, const char *capture, const char *playback);
 void gv_voice_set_sending(gv_voice *v, int on);
 void gv_voice_set_output_gain(gv_voice *v, float gain);
 void gv_voice_set_effects(gv_voice *v, const gv_effect_settings *effects);
