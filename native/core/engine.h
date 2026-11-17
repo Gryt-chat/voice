@@ -18,6 +18,8 @@
 /* Packets the network thread can hand over between two audio callbacks: a full second at 16 talkers would need 6400. */
 #define GV_QUEUE_SLOTS 512
 #define GV_QUEUE_BYTES (4 + GV_HEADER_BYTES + GV_MAX_OPUS_BYTES)
+/* Packets from a second thread that isn't the network's, such as a share's sound coming in another way. */
+#define GV_LOCAL_SLOTS 128
 
 /* One packet, ready for the host to send to the SFU. Called on the audio thread, so it must not block. */
 typedef void (*gv_send_fn)(void *user, const uint8_t *packet, size_t len);
@@ -83,6 +85,9 @@ typedef struct {
   uint8_t queue[GV_QUEUE_SLOTS][GV_QUEUE_BYTES];
   uint16_t queue_len[GV_QUEUE_SLOTS];
   atomic_uint queue_head, queue_tail;
+  uint8_t local[GV_LOCAL_SLOTS][GV_QUEUE_BYTES];
+  uint16_t local_len[GV_LOCAL_SLOTS];
+  atomic_uint local_head, local_tail;
 } gv_engine;
 
 /* 0 on success. Bitrates in bits per second: Gryt sends 192000 mono, 256000 stereo. */
@@ -94,6 +99,8 @@ void gv_engine_capture(gv_engine *e, const float *in, size_t frames, int channel
 void gv_engine_receive(gv_engine *e, const uint8_t *bytes, size_t len);
 /* gv_engine_receive for another thread: the packet waits for the next render. -1 when the queue is full. */
 int gv_engine_queue(gv_engine *e, const uint8_t *bytes, size_t len);
+/* gv_engine_queue for one more thread, alongside the network's. -1 when full. */
+int gv_engine_queue_local(gv_engine *e, const uint8_t *bytes, size_t len);
 /* Everyone mixed, interleaved stereo. Also moves the engine's clock on. */
 void gv_engine_render(gv_engine *e, float *out, size_t frames);
 void gv_engine_set_sending(gv_engine *e, int on);

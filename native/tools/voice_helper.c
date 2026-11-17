@@ -12,8 +12,11 @@
 #include <pthread.h>
 #endif
 
+#include "../core/codec.h"
 #include "../core/device.h"
+#include "../core/engine.h"
 #include "../core/voice.h"
+#include "share_capture.h"
 
 #define MAX_ADDRS 8
 #define MAX_IDS 64
@@ -27,6 +30,17 @@ static CRITICAL_SECTION lock;
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 #define LOCK() pthread_mutex_lock(&lock)
 #define UNLOCK() pthread_mutex_unlock(&lock)
+#endif
+
+/* The report and a share's packets are written from two threads; a line must not land inside another. */
+#ifdef _WIN32
+static CRITICAL_SECTION out;
+#define OUT_LOCK() EnterCriticalSection(&out)
+#define OUT_UNLOCK() LeaveCriticalSection(&out)
+#else
+static pthread_mutex_t out = PTHREAD_MUTEX_INITIALIZER;
+#define OUT_LOCK() pthread_mutex_lock(&out)
+#define OUT_UNLOCK() pthread_mutex_unlock(&out)
 #endif
 
 static gv_voice *voice;
@@ -66,6 +80,67 @@ static int unbase64(const char *in, uint8_t *out, int max) {
     }
   }
   return n;
+}
+
+static gv_share *share;
+static OpusEncoder *share_encoder;
+static uint16_t share_seq;
+/* Music and film rather than a voice, so the top of what the stereo path sends. */
+#define SHARE_BITRATE 256000
+
+static const char b64chars[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static void base64(const uint8_t *in, int n, char *out) {
+  for (int i = 0; i < n; i += 3) {
+    unsigned v = (unsigned)in[i] << 16 | (i + 1 < n ? (unsigned)in[i + 1] << 8 : 0) | (i + 2 < n ? in[i + 2] : 0);
+    *out++ = b64chars[v >> 18 & 63];
+    *out++ = b64chars[v >> 12 & 63];
+    *out++ = i + 1 < n ? b64chars[v >> 6 & 63] : '=';
+    *out++ = i + 2 < n ? b64chars[v & 63] : '=';
+  }
+  *out = 0;
+}
+
+/* sp <seq> <opus>: one 2.5 ms frame of the share's sound, for the app to send on. */
+static void share_frame(void *user, const float *stereo, int frames) {
+  (void)user;
+  uint8_t opus[GV_MAX_OPUS_BYTES];
+  char text[GV_MAX_OPUS_BYTES * 4 / 3 + 8];
+  int len = gryt_encode(share_encoder, stereo, frames, opus, sizeof opus);
+  if (len <= 0) return;
+  base64(opus, len, text);
+  OUT_LOCK();
+  printf("sp %u %s\n", share_seq++, text);
+  fflush(stdout);
+  OUT_UNLOCK();
+}
+
+static void share_off(void) {
+  gv_share_stop(share);
+  share = NULL;
+  if (share_encoder) gryt_encoder_destroy(share_encoder), share_encoder = NULL;
+}
+
+/* share include|exclude <pid>, or share off: the sound of one process tree, or of everything but one. */
+static void sharing(char *rest) {
+  char *mode = strtok(rest, " "), *pid = strtok(NULL, " ");
+  share_off();
+  if (mode && pid && strcmp(mode, "off")) {
+    share_encoder = gryt_encoder_create(48000, 2, GV_OPUS_RESTRICTED_LOWDELAY, SHARE_BITRATE, 5);
+    if (share_encoder) share = gv_share_start(strtoul(pid, NULL, 10), !strcmp(mode, "include"), GV_FRAME, share_frame, NULL);
+    if (!share) share_off();
+  }
+  OUT_LOCK();
+  printf("share %d\n", share != NULL);
+  fflush(stdout);
+  OUT_UNLOCK();
+}
+
+/* play <forwarded packet>: one that came another way, such as a share's sound alongside its video. */
+static void play(const char *rest) {
+  uint8_t packet[GV_QUEUE_BYTES];
+  int n = unbase64(rest, packet, sizeof packet);
+  if (active() && n > GV_SENDER_BYTES + GV_HEADER_BYTES) gv_voice_queue(active(), packet, (size_t)n);
 }
 
 static void parse_effects(char *rest) {
@@ -159,6 +234,8 @@ static void command(char *line) {
   else if (!strcmp(line, "devices")) devices();
   else if (!strcmp(line, "mic")) choose(mic, rest);
   else if (!strcmp(line, "speaker")) choose(speaker, rest);
+  else if (!strcmp(line, "share")) sharing(rest);
+  else if (!strcmp(line, "play")) play(rest);
   else if (!strcmp(line, "quit")) quit = 1;
 }
 
@@ -174,6 +251,7 @@ static void report(void) {
   float db[MAX_IDS], ms[MAX_IDS], mic;
   int mic_speaking;
   int nl = gv_voice_levels(voice, ids, db, MAX_IDS, &mic, &mic_speaking);
+  OUT_LOCK();
   printf("r %d %.1f %d l=", gv_voice_route(voice), finite_db(mic), mic_speaking);
   for (int i = 0; i < nl; i++) printf("%s%u:%.1f", i ? "," : "", ids[i], finite_db(db[i]));
   int nb = gv_voice_buffered(voice, ids, ms, MAX_IDS);
@@ -190,6 +268,7 @@ static void report(void) {
   printf(" w=%.1f g=%.1f", finite_db(raw_db), gate_level);
   printf("\n");
   fflush(stdout);
+  OUT_UNLOCK();
 }
 
 #ifdef _WIN32
@@ -213,6 +292,7 @@ int main(void) {
   setvbuf(stdout, NULL, _IOLBF, 0);
 #ifdef _WIN32
   InitializeCriticalSection(&lock);
+  InitializeCriticalSection(&out);
   CreateThread(NULL, 0, reader, NULL, 0, NULL);
 #else
   pthread_t t;
@@ -229,6 +309,7 @@ int main(void) {
 #endif
   }
   LOCK();
+  share_off();
   if (voice) gv_voice_stop(voice);
   UNLOCK();
   return 0;
