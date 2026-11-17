@@ -18,6 +18,16 @@
     "./native": {
       "types": "./dist/native.d.ts",
       "default": "./dist/native.js"
+    },
+    "./codec": {
+      "types": "./dist/codec/opus.d.ts",
+      "default": "./dist/codec/opus.js"
+    },
+    "./codec/opus.wasm": "./dist/codec/opus.wasm"
+  },
+  "typesVersions": {
+    "*": {
+      "codec": ["./dist/codec/opus.d.ts"]
     }
   },
   "files": [
