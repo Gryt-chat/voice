@@ -52,6 +52,16 @@ if (sourceExtensions.length > 0) {
   process.exit(1);
 }
 
+// The Gryt server's Discord bridge imports the codec alone, without the React side.
+const pkg = JSON.parse(await readFile(resolve(import.meta.dirname, "../package.json"), "utf8"));
+const codec = pkg.exports?.["./codec"]?.default;
+const wasm = pkg.exports?.["./codec/opus.wasm"];
+if (!codec || !wasm || !("loadOpus" in (await import(resolve(import.meta.dirname, "..", codec))))) {
+  console.error("@gryt/voice/codec must export loadOpus, with ./codec/opus.wasm beside it");
+  process.exit(1);
+}
+await readFile(resolve(import.meta.dirname, "..", wasm));
+
 console.log(
   `public surface ok: ${REQUIRED.length} required, ${Object.keys(mod).length} exported, no source-path URLs`,
 );
