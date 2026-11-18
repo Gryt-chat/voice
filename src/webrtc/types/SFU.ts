@@ -1,4 +1,4 @@
-import type { VideoDemand, VideoRole, VideoSendSettings } from "../hooks/videoDemand";
+import type { VideoCeiling, VideoDemand, VideoRole, VideoSendSettings } from "../hooks/videoDemand";
 
 export interface Streams {
   [id: string]: StreamData;
@@ -77,6 +77,8 @@ export interface SFUInterface {
    * encoding and may send less than these when viewers draw it smaller; null once it stops.
    */
   setVideoSendSettings?: (role: VideoRole, settings: VideoSendSettings | null) => void;
+  /** The server's video ceiling from server_info.video_max, or null for none. */
+  setVideoCeiling?: (ceiling: VideoCeiling | null) => void;
   /**
    * How big this viewer draws a remote stream's video, in device pixels, 0×0 when nobody can
    * see it, or null once it's gone. Keyed by stream id: a receiver's track id can differ from the sender's.

@@ -77,6 +77,8 @@ jobs:
       # go with it, or the share keeps sending a track that is silent for good.
       - name: Check a stopped native audio capture leaves the share
         run: npm run check-native-audio-ends
+      - name: Video ceiling holds the picks
+        run: npm run check-video-ceiling
 
       # A phone has no AudioContext, so `enabled` carries both deafen and the transport
       # duplicate. Written separately, whichever ran last won and voices doubled.

@@ -31,6 +31,30 @@ export interface VideoSendSettings {
   followDemand?: boolean;
 }
 
+/** A server's video ceiling (Gryt Cloud plans), from server_info.video_max. The SFU holds a track to maxKbps. */
+export interface VideoCeiling {
+  maxHeight: number;
+  maxFps: number;
+  maxKbps: number;
+}
+
+/** maxKbps carries the SFU's 1.25 headroom; aiming at the ceiling itself stays clear of its meter. */
+const CEILING_HEADROOM = 1.25;
+
+/** The user's picks held to the server's ceiling. Width is left loose so only height binds. */
+export function clampToCeiling(settings: VideoSendSettings, ceiling: VideoCeiling | null): VideoSendSettings {
+  if (!ceiling) return settings;
+  const height = Math.min(settings.maxSize?.height ?? ceiling.maxHeight, ceiling.maxHeight);
+  const width = settings.maxSize ? Math.round(settings.maxSize.width * (height / settings.maxSize.height)) : ceiling.maxHeight * 4;
+  const bps = Math.round((ceiling.maxKbps * 1000) / CEILING_HEADROOM);
+  return {
+    ...settings,
+    maxSize: { width, height },
+    maxFramerate: Math.min(settings.maxFramerate ?? ceiling.maxFps, ceiling.maxFps),
+    maxBitrate: settings.maxBitrate ? Math.min(settings.maxBitrate, bps) : bps,
+  };
+}
+
 /** What a viewer reports for one remote video, in device pixels. Zero means nobody can see it. */
 export interface VideoDemand {
   width: number;
