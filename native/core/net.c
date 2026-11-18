@@ -25,9 +25,8 @@
 
 #define MAX_ADDRS 8
 
-/* One name per platform difference, so the body below reads the same on both.
-   Winsock's socket is an unsigned handle rather than a small int, so "< 0" is
-   never true for a failed one and INVALID_SOCKET is the only correct test. */
+/* Winsock's socket is an unsigned handle, so "< 0" is never true for a failed
+   one: INVALID_SOCKET is the only correct test. */
 #ifdef _WIN32
 typedef SOCKET gv_socket;
 typedef HANDLE gv_thread;
@@ -58,9 +57,8 @@ struct gv_net {
 };
 
 #ifdef _WIN32
-/* Winsock needs starting once per process and stopping as many times as it was
-   started. Reference counted here rather than left to the caller, so a host
-   that already called WSAStartup is not torn out from under. */
+/* Counted, so WSACleanup matches each WSAStartup and a host that already
+   called WSAStartup isn't torn out from under. */
 static atomic_int wsa_users = 0;
 
 static int wsa_acquire(void) {
