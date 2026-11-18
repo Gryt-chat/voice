@@ -43,7 +43,7 @@ execFileSync(cc, [
   ...(process.platform === "win32" ? [] : ["-D_DEFAULT_SOURCE"]),
   ...["include", "celt", "silk", "silk/float", "."].map((d) => `-I${join(opus, d)}`),
   "-o", out,
-  join(root, "native/tools/voice_helper.c"), ...core, join(root, device), join(root, "codec/opus/shim.c"),
+  join(root, "native/tools/voice_helper.c"), join(root, "native/tools/share_capture.c"), ...core, join(root, device), join(root, "codec/opus/shim.c"),
   join(root, "native/vendor/monocypher/monocypher.c"), ...opusFiles, ...platform, ...libs,
 ], { cwd: root, stdio: "inherit" });
 console.log(out);

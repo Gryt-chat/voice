@@ -307,11 +307,26 @@ int gv_engine_queue(gv_engine *e, const uint8_t *bytes, size_t len) {
   return 0;
 }
 
+int gv_engine_queue_local(gv_engine *e, const uint8_t *bytes, size_t len) {
+  unsigned head = atomic_load_explicit(&e->local_head, memory_order_relaxed);
+  unsigned tail = atomic_load_explicit(&e->local_tail, memory_order_acquire);
+  if (len > GV_QUEUE_BYTES || head - tail >= GV_LOCAL_SLOTS) return -1;
+  memcpy(e->local[head % GV_LOCAL_SLOTS], bytes, len);
+  e->local_len[head % GV_LOCAL_SLOTS] = (uint16_t)len;
+  atomic_store_explicit(&e->local_head, head + 1, memory_order_release);
+  return 0;
+}
+
 void gv_engine_render(gv_engine *e, float *out, size_t frames) {
   unsigned head = atomic_load_explicit(&e->queue_head, memory_order_acquire);
   for (unsigned t = atomic_load_explicit(&e->queue_tail, memory_order_relaxed); t != head; t++) {
     gv_engine_receive(e, e->queue[t % GV_QUEUE_SLOTS], e->queue_len[t % GV_QUEUE_SLOTS]);
     atomic_store_explicit(&e->queue_tail, t + 1, memory_order_release);
+  }
+  head = atomic_load_explicit(&e->local_head, memory_order_acquire);
+  for (unsigned t = atomic_load_explicit(&e->local_tail, memory_order_relaxed); t != head; t++) {
+    gv_engine_receive(e, e->local[t % GV_LOCAL_SLOTS], e->local_len[t % GV_LOCAL_SLOTS]);
+    atomic_store_explicit(&e->local_tail, t + 1, memory_order_release);
   }
   memset(out, 0, frames * 2 * sizeof(float));
   /* shortcut: a change landing mid-copy can mix two lists for one block; volumes move by hand, so that's inaudible. */

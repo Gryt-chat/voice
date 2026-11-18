@@ -3,6 +3,7 @@
 #ifndef GRYT_VOICE_VOICE_H
 #define GRYT_VOICE_VOICE_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "effects.h"
@@ -31,6 +32,8 @@ int gv_voice_route(const gv_voice *v);
 int gv_voice_speaking(gv_voice *v, uint32_t *ids, int max);
 /* Every sender heard with its level in dBFS, and the mic's, for the halo (GRYT-1830). */
 void gv_voice_set_gains(gv_voice *v, const uint32_t *ids, const float *gains, int n);
+/* A forwarded packet that came some other way than the call's socket, played like one that didn't. -1 when full. */
+int gv_voice_queue(gv_voice *v, const uint8_t *bytes, size_t len);
 int gv_voice_levels(gv_voice *v, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking);
 int gv_voice_buffered(gv_voice *v, uint32_t *ids, float *ms, int max);
 /* Measured round trips to each sender that answered a ping, in ms (GRYT-1836). */
