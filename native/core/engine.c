@@ -43,6 +43,8 @@ int gv_engine_init(gv_engine *e, const gv_effect_settings *s, int bitrate, int s
   e->probe_at = -GV_PROBE_EVERY_MS;
   atomic_init(&e->mic_db, -INFINITY);
   atomic_init(&e->mic_speaking, false);
+  atomic_init(&e->raw_db, -INFINITY);
+  atomic_init(&e->gate_level, 0.0f);
   return e->mono && e->stereo ? 0 : -1;
 }
 
@@ -58,6 +60,11 @@ void gv_engine_destroy(gv_engine *e) {
 }
 
 void gv_engine_set_sending(gv_engine *e, int on) { atomic_store(&e->sending, on); }
+
+void gv_engine_mic_input(gv_engine *e, float *raw_db, float *gate_level) {
+  *raw_db = atomic_load(&e->raw_db);
+  *gate_level = atomic_load(&e->gate_level);
+}
 
 int gv_engine_levels(gv_engine *e, uint32_t *ids, float *db, int max, float *mic_db, int *mic_speaking) {
   int n = 0;
@@ -209,7 +216,10 @@ void gv_engine_capture(gv_engine *e, const float *in, size_t frames, int channel
     else if (pl > HEARD && pr > HEARD) e->side = 0;
     if (e->side) e->stereo_for = 0;
     else if (differ) e->stereo_for = STEREO_HOLD_FRAMES;
+    double raw = e->side == 2 ? pr : e->side == 1 ? pl : (pl > pr ? pl : pr);
+    atomic_store(&e->raw_db, raw > 0 ? (float)(10 * log10(raw)) : -INFINITY);
     gv_effects_process(&e->effects, left, channels == 2 ? right : NULL, n);
+    atomic_store(&e->gate_level, (float)e->effects.level);
     int on = atomic_load(&e->sending);
     double sum = 0;
     for (size_t i = 0; i < n; i++) {

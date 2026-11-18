@@ -13,6 +13,13 @@ typedef struct gv_voice gv_voice;
 gv_voice *gv_voice_start(const char *const *addrs, int n_addrs, uint32_t session, const uint8_t key[32],
                          const gv_effect_settings *effects, unsigned period);
 void gv_voice_stop(gv_voice *v);
+/* The mic with no call, for a settings page: levels only, or with hear set, your own voice back through the
+   engine as the far side would get it. */
+gv_voice *gv_voice_monitor(const gv_effect_settings *effects, unsigned period, int hear);
+/* The mic before the effects and the mute in dBFS, and the gate's level, 0 to 100. */
+void gv_voice_mic_input(gv_voice *v, float *raw_db, float *gate_level);
+/* Moves to these devices, by a substring of each name or NULL for the default. 0 when they started. */
+int gv_voice_use_devices(gv_voice *v, const char *capture, const char *playback);
 void gv_voice_set_sending(gv_voice *v, int on);
 void gv_voice_set_output_gain(gv_voice *v, float gain);
 void gv_voice_set_effects(gv_voice *v, const gv_effect_settings *effects);

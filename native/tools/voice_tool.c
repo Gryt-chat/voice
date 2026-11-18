@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     const char *name = argc > 2 ? argv[2] : "BlackHole";
     unsigned period = argc > 3 ? (unsigned)atoi(argv[3]) : 32;
     int secs = argc > 4 ? atoi(argv[4]) : 6;
-    gv_device *d = gv_device_start(&engine, name, period, measure_tap, NULL);
+    gv_device *d = gv_device_start(&engine, name, name, period, measure_tap, NULL);
     if (!d) return fprintf(stderr, "no device matching %s\n", name), 1;
     nanosleep(&(struct timespec){secs, 0}, NULL);
     gv_device_stop(d);
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
            lat[n_lat / 2] * 1000.0 / SR, lat[0] * 1000.0 / SR, lat[n_lat - 1] * 1000.0 / SR, n_lat);
   } else if (argc >= 2 && !strcmp(argv[1], "echo")) {
     unsigned period = argc > 2 ? (unsigned)atoi(argv[2]) : 64;
-    gv_device *d = gv_device_start(&engine, NULL, period, NULL, NULL);
+    gv_device *d = gv_device_start(&engine, NULL, NULL, period, NULL, NULL);
     if (!d) return fprintf(stderr, "no default device\n"), 1;
     printf("You should hear yourself through the engine (mic %s). Use headphones. Enter stops it.\n",
            gv_device_mic_channels(d) == 2 ? "stereo" : "mono");

@@ -37,15 +37,31 @@ static ma_device_id *find(ma_device_info *list, ma_uint32 n, const char *name) {
   return NULL;
 }
 
-gv_device *gv_device_start(gv_engine *engine, const char *name, unsigned period, gv_tap_fn tap, void *user) {
+int gv_device_list(void (*each)(void *user, int capture, const char *name), void *user) {
+  ma_context context;
+  if (ma_context_init(NULL, 0, NULL, &context) != MA_SUCCESS) return -1;
+  ma_device_info *playback, *capture;
+  ma_uint32 np, nc;
+  int n = -1;
+  if (ma_context_get_devices(&context, &playback, &np, &capture, &nc) == MA_SUCCESS) {
+    for (ma_uint32 i = 0; i < nc; i++) each(user, 1, capture[i].name);
+    for (ma_uint32 i = 0; i < np; i++) each(user, 0, playback[i].name);
+    n = (int)(nc + np);
+  }
+  ma_context_uninit(&context);
+  return n;
+}
+
+gv_device *gv_device_start(gv_engine *engine, const char *capture_name, const char *playback_name, unsigned period,
+                           gv_tap_fn tap, void *user) {
   gv_device *d = calloc(1, sizeof *d);
   if (!d || ma_context_init(NULL, 0, NULL, &d->context) != MA_SUCCESS) return free(d), NULL;
   ma_device_info *playback, *capture;
   ma_uint32 np, nc;
   ma_context_get_devices(&d->context, &playback, &np, &capture, &nc);
   ma_device_config c = ma_device_config_init(ma_device_type_duplex);
-  c.playback.pDeviceID = find(playback, np, name);
-  c.capture.pDeviceID = find(capture, nc, name);
+  c.playback.pDeviceID = find(playback, np, playback_name);
+  c.capture.pDeviceID = find(capture, nc, capture_name);
   c.playback.format = c.capture.format = ma_format_f32;
   c.playback.channels = 2;
   /* Up to two: a stereo mic stays stereo, a mono one reports one channel. */
