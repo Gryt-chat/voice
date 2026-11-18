@@ -14,6 +14,8 @@ import {
   type VideoRole,
   type VideoSendSettings,
   type VideoWanted,
+  type VideoCeiling,
+  clampToCeiling,
 } from "./videoDemand";
 import { voiceLog } from "./voiceLogger";
 
@@ -32,6 +34,8 @@ interface Written {
 
 interface RoleState {
   settings: VideoSendSettings | null;
+  /** The embedder's settings before the server's ceiling. */
+  picked: VideoSendSettings | null;
   sender: RTCRtpSender | null;
   state: VideoPlanState;
   /** The last write without its bitrate, which only goes out again once it moves by BITRATE_STEP. */
@@ -120,7 +124,7 @@ export function createVideoSendController(
   getSender: (role: VideoRole) => RTCRtpSender | null,
 ) {
   const fresh = (): RoleState => ({
-    settings: null, sender: null, state: INITIAL_PLAN_STATE, written: null, last: null, changedAt: 0, rate: null, starved: false, limit: null,
+    settings: null, picked: null, sender: null, state: INITIAL_PLAN_STATE, written: null, last: null, changedAt: 0, rate: null, starved: false, limit: null,
   });
   const roles = new Map<VideoRole, RoleState>([["camera", fresh()], ["screen", fresh()]]);
   const roleState = (role: VideoRole): RoleState => {
@@ -136,6 +140,7 @@ export function createVideoSendController(
   let audio = 0;
   let reservedLast = 0;
   let ingestCap: number | null = null;
+  let ceiling: VideoCeiling | null = null;
   let chain: Promise<void> = Promise.resolve();
 
   const write = async (role: VideoRole, sender: RTCRtpSender, plan: VideoEncodingPlan, demand: VideoWanted | null, fps: number) => {
@@ -295,7 +300,8 @@ export function createVideoSendController(
     /** The embedder's settings for one role, or null once that stream has stopped. */
     setSettings(role: VideoRole, settings: VideoSendSettings | null) {
       const r = roleState(role);
-      r.settings = settings;
+      r.picked = settings;
+      r.settings = settings && clampToCeiling(settings, ceiling);
       if (!settings) r.rate = null;
       schedule(false);
     },
@@ -312,6 +318,12 @@ export function createVideoSendController(
     /** The SFU's cap on what this peer sends it, in bits per second, from room_joined. */
     setIngestCap(bps: number | null) {
       ingestCap = bps;
+    },
+    /** The server's video ceiling, or null. Applies to what's already sending as well as what comes next. */
+    setCeiling(next: VideoCeiling | null) {
+      ceiling = next;
+      for (const r of roles.values()) r.settings = r.picked && clampToCeiling(r.picked, ceiling);
+      schedule(false);
     },
     /** Once a second while connected: the estimate, the holds, the pause and the resume check. */
     tick: () => schedule(true),

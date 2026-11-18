@@ -21,8 +21,10 @@ export {
 export {
   cameraBitrate,
   parseVideoWanted,
+  clampToCeiling,
   planVideoEncoding,
   screenBitrate,
+  type VideoCeiling,
   type VideoDemand,
   type VideoEncodingPlan,
   type VideoPlanState,

@@ -16,7 +16,7 @@ import { sfuConnect } from "./sfuConnectFlow";
 import { publishOnSfuSlot, sfuSlots } from "./sfuSlots";
 import { RoomRefusal, type SFUConnectionStateInternal } from "./sfuTypes";
 import { useSFUStreams } from "./useSFUStreams";
-import { createDemandReporter, type VideoDemand, type VideoRole, type VideoSendSettings } from "./videoDemand";
+import { createDemandReporter, type VideoCeiling, type VideoDemand, type VideoRole, type VideoSendSettings } from "./videoDemand";
 import { createVideoSendController } from "./videoSender";
 import { type Phase, voiceLog } from "./voiceLogger";
 
@@ -939,6 +939,7 @@ function useSfuHook(): SFUInterface {
     (role: VideoRole, settings: VideoSendSettings | null) => videoSend.setSettings(role, settings),
     [videoSend],
   );
+  const setVideoCeiling = useCallback((ceiling: VideoCeiling | null) => videoSend.setCeiling(ceiling), [videoSend]);
   const reportVideoDemand = useCallback(
     (streamId: string, size: VideoDemand | null) => demand.report(streamId, size),
     [demand],
@@ -1274,6 +1275,7 @@ function useSfuHook(): SFUInterface {
     stillHere,
     rejoin,
     setVideoSendSettings,
+    setVideoCeiling,
     reportVideoDemand,
     transportSpeaking,
     transportUsers,
@@ -1308,6 +1310,7 @@ const init: SFUInterface = {
   callAloneTimeoutSeconds: null,
   stillHere: () => {},
   setVideoSendSettings: () => {},
+  setVideoCeiling: () => {},
   reportVideoDemand: () => {},
 };
 
