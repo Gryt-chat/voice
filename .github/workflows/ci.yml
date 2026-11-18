@@ -50,6 +50,9 @@ jobs:
       - name: Check the React Native entry stays free of web-only code
         run: npm run check-native-entry
 
+      - name: Every helper source ships in the package
+        run: npm run check-helper-packaged
+
       - name: Check no exported name is declared twice
         run: npm run check-type-names
 
