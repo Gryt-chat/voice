@@ -401,10 +401,9 @@ function useSfuHook(): SFUInterface {
       // The WebRTC copy keeps going until WebRTC audio is gone (GRYT-1831): peers without the transport hear only that one.
       setOnTransport(true);
       void session.closed.then(() => {
-        if (audioTransportRef.current === session) {
-          audioTransportRef.current = null;
-          setOnTransport(false);
-        }
+        if (audioTransportRef.current === session) audioTransportRef.current = null;
+        // performCleanup nulls the ref before this runs, so only a newer session keeps the flag up.
+        if (!audioTransportRef.current) setOnTransport(false);
       });
       voiceLog.ok("TRANSPORT", "start", "Voice on the own transport", { url: session.url, offered: offer.urls });
     } catch (error) {
