@@ -276,7 +276,7 @@ void gv_engine_receive(gv_engine *e, const uint8_t *bytes, size_t len) {
     s->used = 1;
     s->id = id;
     s->last_speaking_ms = -1e9;
-    gv_jitter_init(&s->jitter, FRAME_MS, 5, 60);
+    gv_jitter_init(&s->jitter, FRAME_MS, 5, 120);
   }
   s->last_heard_ms = e->now_ms;
   gv_jitter_push(&s->jitter, &p, e->now_ms);

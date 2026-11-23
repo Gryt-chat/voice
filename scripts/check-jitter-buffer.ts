@@ -17,6 +17,9 @@ interface Net {
   stallAtMs?: number;
   stallMs?: number;
   firstSeq?: number;
+  /** A share of packets held up by spikeMs to 2 * spikeMs, as on a busy Wi-Fi link. */
+  spikeShare?: number;
+  spikeMs?: number;
 }
 
 /** Plays `seconds` of a sender through the network and the buffer; returns each played frame's delay. */
@@ -30,6 +33,7 @@ function simulate(net: Net) {
     if (random() < net.loss) continue;
     const sentAt = k * FRAME_MS;
     let at = sentAt + net.baseMs + random() * net.jitterMs;
+    if (net.spikeShare && random() < net.spikeShare) at += (net.spikeMs ?? 0) * (1 + random());
     // A stall: nothing gets through for a while, then it all lands at once.
     const stallEnd = (net.stallAtMs ?? 0) + (net.stallMs ?? 0);
     if (net.stallAtMs !== undefined && at >= net.stallAtMs && at < stallEnd) at = stallEnd;
@@ -70,6 +74,15 @@ const between = (d: { at: number; delay: number }[], from: number, to: number) =
   assert.ok(early <= 3 + 6 + 10, `6 ms of jitter cost ${early} ms`);
   const lostShare = jb.stats.lost / (60000 / FRAME_MS);
   assert.ok(lostShare > 0.01 && lostShare < 0.04, `lost frames were ${(lostShare * 100).toFixed(1)}% with 2% loss`);
+}
+
+// Late, not lost (GRYT-2231): 3% of packets spike by 20-40 ms and none are lost. The buffer deepens to cover
+// them instead of making up frames for packets that were only late, then dropping those when they land.
+{
+  const { jb } = simulate({ seconds: 30, baseMs: 3, jitterMs: 4, loss: 0, spikeShare: 0.03, spikeMs: 20 });
+  const madeUp = jb.stats.lost / (30000 / FRAME_MS);
+  console.log(`late-not-lost: ${(madeUp * 100).toFixed(2)}% made up`);
+  assert.ok(madeUp < 0.015, `${(madeUp * 100).toFixed(1)}% of frames were made up with nothing lost`);
 }
 
 // A 150 ms stall, then everything at once: the buffer drains back instead of keeping the extra delay.

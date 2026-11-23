@@ -28,6 +28,9 @@ typedef struct {
   gv_slot slots[GV_JITTER_SLOTS];
   size_t queued;
   int has_next, playing;
+  /* The hole held for once to deepen the buffer (GRYT-2231). */
+  int held;
+  uint16_t held_seq;
   uint16_t next;
   int concealed, over;
   double transits[GV_JITTER_WINDOW];
