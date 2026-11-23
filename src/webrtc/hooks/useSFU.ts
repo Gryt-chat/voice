@@ -291,6 +291,7 @@ function useSfuHook(): SFUInterface {
   speakersRef.current = { audioContext, remoteBusNode };
   const workletBufferedRef = useRef(new Map<number, number>());
   const workletRttRef = useRef(new Map<number, number>());
+  const workletConcealedRef = useRef(new Map<number, number>());
   const getTransportLatency = useCallback((): TransportLatency | null => {
     const native = nativeAudioRef.current;
     const n = native?.latency();
@@ -305,7 +306,8 @@ function useSfuHook(): SFUInterface {
     };
     const bufferedByUser = byUser(n ? new Map(n.ids.map((id, i) => [id, n.bufferedMs[i]])) : workletBufferedRef.current);
     const rttByUser = byUser(n ? new Map(n.ids.map((id, i) => [id, n.rttMs[i]])) : workletRttRef.current);
-    if (n) return { frameMs: TRANSPORT_FRAME_MS, inputMs: n.inputMs + n.ioBufferMs, outputMs: n.outputMs + n.ioBufferMs, bufferedByUser, rttByUser, sampleRate: n.sampleRate };
+    const concealedByUser = byUser(n ? new Map(n.ids.map((id, i) => [id, n.concealed?.[i] ?? -1])) : workletConcealedRef.current);
+    if (n) return { frameMs: TRANSPORT_FRAME_MS, inputMs: n.inputMs + n.ioBufferMs, outputMs: n.outputMs + n.ioBufferMs, bufferedByUser, rttByUser, concealedByUser, sampleRate: n.sampleRate };
     const ctx = speakersRef.current.audioContext as (AudioContext & { outputLatency?: number }) | null;
     return {
       frameMs: TRANSPORT_FRAME_MS,
@@ -313,6 +315,7 @@ function useSfuHook(): SFUInterface {
       outputMs: typeof ctx?.outputLatency === "number" ? ctx.outputLatency * 1000 : null,
       bufferedByUser,
       rttByUser,
+      concealedByUser,
       sampleRate: null,
     };
   }, []);
@@ -388,6 +391,7 @@ function useSfuHook(): SFUInterface {
         onOutput: (db) => (workletOutputRef.current = db),
         onBuffered: (buffered) => (workletBufferedRef.current = buffered),
         onRoundTrip: (rtt) => (workletRttRef.current = rtt),
+        onConcealed: (frames) => (workletConcealedRef.current = frames),
       });
       audioTransportRef.current?.close();
       audioTransportRef.current = session;

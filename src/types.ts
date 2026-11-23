@@ -206,6 +206,8 @@ export interface NativeLatency {
   sampleRate: number;
   /** Measured round trips to each sender, in ms, aligned with ids; -1 where none has come back yet (GRYT-1836). */
   rttMs: number[];
+  /** Frames made up for each sender, late or lost, aligned with ids; missing on engines built before GRYT-2231. */
+  concealed?: number[];
 }
 
 export interface CameraConstraints {

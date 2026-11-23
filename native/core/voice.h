@@ -38,5 +38,7 @@ int gv_voice_levels(gv_voice *v, uint32_t *ids, float *db, int max, float *mic_d
 int gv_voice_buffered(gv_voice *v, uint32_t *ids, float *ms, int max);
 /* Measured round trips to each sender that answered a ping, in ms (GRYT-1836). */
 int gv_voice_rtt(gv_voice *v, uint32_t *ids, float *ms, int max);
+/* Frames made up for each sender, late or lost, for the call timeline (GRYT-2231). */
+int gv_voice_concealed(gv_voice *v, uint32_t *ids, uint32_t *frames, int max);
 
 #endif

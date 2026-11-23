@@ -243,7 +243,7 @@ static double finite_db(float db) { return isfinite(db) ? db : -120; }
 
 
 /* r <route> <mic_db> <mic_speaking> l=<id>:<db>,... b=<id>:<ms>,... s=<id>,... t=<id>:<rtt ms>,...
-   w=<raw mic dB> g=<gate level>. The monitor reports the same line with route -1. */
+   w=<raw mic dB> g=<gate level> c=<id>:<frames made up>,.... The monitor reports the same line with route -1. */
 static void report(void) {
   gv_voice *voice = active();
   if (!voice) return;
@@ -266,6 +266,10 @@ static void report(void) {
   float raw_db, gate_level;
   gv_voice_mic_input(voice, &raw_db, &gate_level);
   printf(" w=%.1f g=%.1f", finite_db(raw_db), gate_level);
+  uint32_t frames[MAX_IDS];
+  int nc = gv_voice_concealed(voice, ids, frames, MAX_IDS);
+  printf(" c=");
+  for (int i = 0; i < nc; i++) printf("%s%u:%u", i ? "," : "", ids[i], frames[i]);
   printf("\n");
   fflush(stdout);
   OUT_UNLOCK();
