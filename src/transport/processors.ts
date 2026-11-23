@@ -144,7 +144,7 @@ const LEVELS_EVERY_S = 0.05;
 
 /** What the receive worklet tells the page: who is speaking when that changes, and levels in dBFS by sender.
     `output` is the loudest left and right of the whole mix since the last report, before the output volume. */
-export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][]; rtt: [number, number][]; output: [number, number] };
+export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][]; rtt: [number, number][]; concealed: [number, number][]; output: [number, number] };
 
 /** How many of this client's pings wait for answers; older ones are forgotten. */
 const MAX_PINGS = 8;
@@ -263,7 +263,8 @@ class ReceiveProcessor extends AudioWorkletProcessor {
       const buffered = [...this.senders].map(([id, s]): [number, number] => [id, s.jitter.depthMs + (s.pending.length / 2 / sampleRate) * 1000]);
       const output = this.outputPower.map((p) => (p > 0 ? 10 * Math.log10(p) : -120)) as [number, number];
       this.outputPower = [0, 0];
-      this.port.postMessage({ levels, buffered, rtt: [...this.rtt], output } satisfies ReceiveReport);
+      const concealed = [...this.senders].map(([id, s]): [number, number] => [id, s.jitter.stats.late + s.jitter.stats.lost]);
+      this.port.postMessage({ levels, buffered, rtt: [...this.rtt], concealed, output } satisfies ReceiveReport);
     }
     return true;
   }

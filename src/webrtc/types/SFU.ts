@@ -112,4 +112,6 @@ export interface TransportLatency {
   sampleRate: number | null;
   /** Measured round trip to each user through the SFU: a ping out, their pong back, minus how long they held it (GRYT-1836). */
   rttByUser: ReadonlyMap<string, number>;
+  /** Frames made up for each user since they were first heard, late or lost: what sounds watery (GRYT-2231). */
+  concealedByUser: ReadonlyMap<string, number>;
 }

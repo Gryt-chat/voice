@@ -156,6 +156,9 @@ int main(void) {
   float rtt[GV_MAX_SENDERS];
   assert(gv_engine_rtt(&engine, ids, rtt, GV_MAX_SENDERS) == 1 && ids[0] == 7);
   assert(fabsf(rtt[0]) < 0.1f); /* the hold goes in tenths of a ms */
+  /* Made-up frames (GRYT-2231): a clean loopback has none for sender 7. */
+  uint32_t made_up[GV_MAX_SENDERS];
+  assert(gv_engine_concealed(&engine, ids, made_up, GV_MAX_SENDERS) == 1 && ids[0] == 7 && made_up[0] == 0);
   /* Per-sender volume (GRYT-1831): sender 7 at half plays at half, measured on what was heard before the gain. */
   uint32_t seven = 7;
   float half = 0.5f, peak_half = 0;

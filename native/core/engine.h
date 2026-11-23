@@ -69,6 +69,8 @@ typedef struct {
   _Atomic float level_db[GV_MAX_SENDERS];
   /* How much of each slot's audio is waiting to play, in ms: its jitter buffer plus decoded samples. */
   _Atomic float buffered_ms[GV_MAX_SENDERS];
+  /* Frames Opus had to make up for each slot, late or lost, since that sender was first heard. */
+  atomic_uint concealed[GV_MAX_SENDERS];
   /* Round-trip probes (GRYT-1836), all on the audio thread but the results: pings this engine sent, pongs it owes,
      and the measured round trip to each sender that answered, in ms. */
   uint32_t ping_nonce[GV_PINGS], pong_nonce[GV_PINGS], rng;
@@ -122,5 +124,7 @@ void gv_engine_mic_input(gv_engine *e, float *raw_db, float *gate_level);
 int gv_engine_buffered(gv_engine *e, uint32_t *ids, float *ms, int max);
 /* Every sender that answered a ping and the measured round trip to them, in ms, up to max. Safe from any thread. */
 int gv_engine_rtt(gv_engine *e, uint32_t *ids, float *ms, int max);
+/* Every sender heard and how many of their frames were made up, late or lost, up to max. Safe from any thread. */
+int gv_engine_concealed(gv_engine *e, uint32_t *ids, uint32_t *frames, int max);
 
 #endif

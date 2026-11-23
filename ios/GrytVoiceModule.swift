@@ -94,11 +94,17 @@ public final class GrytVoiceModule: Module {
       var rttMs = [Float](repeating: 0, count: 16)
       let nr = self.voice.map { Int(gv_voice_rtt($0, &rttIds, &rttMs, Int32(rttIds.count))) } ?? 0
       let rttById = Dictionary(zip(rttIds.prefix(nr), rttMs.prefix(nr)), uniquingKeysWith: { a, _ in a })
+      // Frames made up for each sender, late or lost (GRYT-2231).
+      var cIds = [UInt32](repeating: 0, count: 16)
+      var frames = [UInt32](repeating: 0, count: 16)
+      let nc = self.voice.map { Int(gv_voice_concealed($0, &cIds, &frames, Int32(cIds.count))) } ?? 0
+      let concealedById = Dictionary(zip(cIds.prefix(nc), frames.prefix(nc)), uniquingKeysWith: { a, _ in a })
       let session = AVAudioSession.sharedInstance()
       return [
         "ids": ids.prefix(n).map { Int($0) },
         "bufferedMs": ms.prefix(n).map { Double($0) },
         "rttMs": ids.prefix(n).map { Double(rttById[$0] ?? -1) },
+        "concealed": ids.prefix(n).map { Int(concealedById[$0] ?? 0) },
         "inputMs": session.inputLatency * 1000,
         "outputMs": session.outputLatency * 1000,
         "ioBufferMs": session.ioBufferDuration * 1000,
