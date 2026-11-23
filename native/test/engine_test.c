@@ -169,6 +169,21 @@ int main(void) {
   assert(peak_half > 0.2f && peak_half < 0.3f);
   gv_engine_set_gains(&engine, NULL, NULL, 0);
 
+  /* Gated (GRYT-2225): a closed gate still sends, but the far side reads silence rather than the quiet left over. */
+  gv_effect_settings gated = off;
+  gated.gate_threshold = 100;
+  gv_engine_set_effects(&engine, &gated);
+  int sent_gated = sent;
+  for (int t = 0; t < SR / 2; t += BLOCK) {
+    for (int i = 0; i < BLOCK; i++) tone[i] = 0.05f * sinf(2 * (float)M_PI * 1000 * (t + i) / SR);
+    gv_engine_capture(&engine, tone, BLOCK, 1);
+    gv_engine_render(&engine, out2, BLOCK);
+  }
+  assert(sent > sent_gated);
+  assert(gv_engine_speaking(&engine, ids, GV_MAX_SENDERS) == 0);
+  assert(gv_engine_levels(&engine, ids, db, GV_MAX_SENDERS, &mic_db, &mic_speaking) == 1 && isinf(db[0]));
+  gv_engine_set_effects(&engine, &off);
+
   /* Muted: the timestamp keeps moving, but nothing is sent. */
   gv_engine_set_sending(&engine, 0);
   int before = sent;
