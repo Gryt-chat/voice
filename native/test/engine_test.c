@@ -171,7 +171,7 @@ int main(void) {
 
   /* Gated (GRYT-2225): a closed gate still sends, but the far side reads silence rather than the quiet left over. */
   gv_effect_settings gated = off;
-  gated.gate_threshold = 100;
+  gated.gate_threshold = 101; /* the level tops out at 100, so this gate never opens */
   gv_engine_set_effects(&engine, &gated);
   int sent_gated = sent;
   /* A second clears the gate's release, the speaking hold and the buffer, with room to spare. */
