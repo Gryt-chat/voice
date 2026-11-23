@@ -357,8 +357,10 @@ void gv_engine_render(gv_engine *e, float *out, size_t frames) {
       done += take;
     }
     /* A muted sender stops sending, so the ring goes out this long after its last speaking packet. */
-    atomic_store(&e->speaking[i], e->now_ms - s->last_speaking_ms < SPEAKING_HOLD_MS ? s->id : 0);
-    atomic_store(&e->level_db[i], sum > 0 ? (float)(10 * log10(sum / (double)(frames * 2))) : -INFINITY);
+    int talking = e->now_ms - s->last_speaking_ms < SPEAKING_HOLD_MS;
+    atomic_store(&e->speaking[i], talking ? s->id : 0);
+    /* A closed gate still sends quiet packets, so the level follows the speaking flag too. */
+    atomic_store(&e->level_db[i], talking && sum > 0 ? (float)(10 * log10(sum / (double)(frames * 2))) : -INFINITY);
     atomic_store(&e->buffered_ms[i], (float)(gv_jitter_depth_ms(&s->jitter) + s->pending_frames * 1000.0 / SAMPLE_RATE));
     atomic_store(&e->slot_id[i], s->id);
   }

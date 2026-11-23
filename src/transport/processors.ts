@@ -258,7 +258,11 @@ class ReceiveProcessor extends AudioWorkletProcessor {
     }
     if (currentTime - this.levelsAt >= LEVELS_EVERY_S) {
       this.levelsAt = currentTime;
-      const levels = [...this.senders].map(([id, s]): [number, number] => [id, s.power > 0 ? 10 * Math.log10(s.power) : -120]);
+      // A closed gate still sends quiet packets, so a level counts only while that sender is speaking.
+      const levels = [...this.senders].map(([id, s]): [number, number] => [
+        id,
+        s.power > 0 && currentTime - s.lastSpeaking < SPEAKING_HOLD_S ? 10 * Math.log10(s.power) : -120,
+      ]);
       // Waiting to play, in ms: the jitter buffer plus decoded samples not out yet. For the latency estimate.
       const buffered = [...this.senders].map(([id, s]): [number, number] => [id, s.jitter.depthMs + (s.pending.length / 2 / sampleRate) * 1000]);
       const output = this.outputPower.map((p) => (p > 0 ? 10 * Math.log10(p) : -120)) as [number, number];
