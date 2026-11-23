@@ -30,7 +30,7 @@ double gv_jitter_target_ms(const gv_jitter *j) {
   double sorted[GV_JITTER_WINDOW];
   memcpy(sorted, j->transits, j->n_transits * sizeof(double));
   qsort(sorted, j->n_transits, sizeof(double), cmp);
-  double spread = sorted[(size_t)(j->n_transits * 0.95)] - sorted[0] + j->frame_ms;
+  double spread = sorted[(size_t)(j->n_transits * 0.99)] - sorted[0] + j->frame_ms;
   if (spread < j->min_ms) spread = j->min_ms;
   return spread > j->max_ms ? j->max_ms : spread;
 }
@@ -118,9 +118,15 @@ gv_pull_kind gv_jitter_pull(gv_jitter *j, gv_packet *out) {
   }
 
   if (j->queued > 0 && j->concealed < MAX_CONCEALED) {
-    j->next++;
     j->concealed++;
     j->stats.lost++;
+    /* Under target, a hole is held for once, so the buffer deepens and a packet that's only late still plays. */
+    if (gv_jitter_depth_ms(j) < target && !(j->held && j->held_seq == j->next)) {
+      j->held = 1;
+      j->held_seq = j->next;
+      return GV_PULL_LOST;
+    }
+    j->next++;
     return GV_PULL_LOST;
   }
 

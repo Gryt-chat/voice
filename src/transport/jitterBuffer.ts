@@ -27,6 +27,7 @@ export class JitterBuffer {
   private readonly frameMs: number;
   private readonly minMs: number;
   private readonly maxMs: number;
+  private heldFor: number | null = null;
   private readonly queue = new Map<number, AudioPacket>();
   private next: number | null = null;
   private playing = false;
@@ -35,7 +36,7 @@ export class JitterBuffer {
   private transits: number[] = [];
   readonly stats = { late: 0, duplicate: 0, lost: 0, drained: 0, rebuffered: 0 };
 
-  constructor({ frameMs, minMs = 5, maxMs = 60 }: JitterBufferOptions) {
+  constructor({ frameMs, minMs = 5, maxMs = 120 }: JitterBufferOptions) {
     this.frameMs = frameMs;
     this.minMs = minMs;
     this.maxMs = maxMs;
@@ -45,7 +46,7 @@ export class JitterBuffer {
   get targetMs(): number {
     if (this.transits.length < 10) return Math.max(this.minMs, 2 * this.frameMs);
     const sorted = [...this.transits].sort((a, b) => a - b);
-    const spread = sorted[Math.floor(sorted.length * 0.95)] - sorted[0];
+    const spread = sorted[Math.floor(sorted.length * 0.99)] - sorted[0];
     return Math.min(this.maxMs, Math.max(this.minMs, spread + this.frameMs));
   }
 
@@ -102,10 +103,15 @@ export class JitterBuffer {
     }
 
     if (this.queue.size > 0 && this.concealed < MAX_CONCEALED) {
-      // A hole with later packets behind it: Opus fills this one frame.
-      this.next = (this.next + 1) & 0xffff;
+      // A hole with later packets behind it: Opus fills this one frame. Under target, the hole is held for
+      // once, so the buffer deepens and a packet that's only late still plays (GRYT-2231).
       this.concealed++;
       this.stats.lost++;
+      if (this.depthMs < this.targetMs && this.heldFor !== this.next) {
+        this.heldFor = this.next;
+        return { kind: "lost" };
+      }
+      this.next = (this.next + 1) & 0xffff;
       return { kind: "lost" };
     }
 
