@@ -159,6 +159,7 @@ export function useVoiceLatency(enabled: boolean) {
       if (pc && isConnected) {
         try {
           const report = await pc.getStats();
+          let audioBytesSent: number | null = null;
           const codecMap = new Map<string, string>();
           const candidateMap = new Map<string, { address: string; port: number; candidateType: string; protocol: string }>();
 
@@ -205,23 +206,21 @@ export function useVoiceLatency(enabled: boolean) {
               if (typeof stat.packetsSent === "number") {
                 packetsSent = stat.packetsSent;
               }
-              if (typeof stat.bytesSent === "number") {
-                const now = performance.now();
-                const prev = prevBytesRef.current;
-                if (prev) {
-                  const dtSec = (now - prev.ts) / 1000;
-                  if (dtSec > 0) {
-                    bitrateKbps = ((stat.bytesSent - prev.bytes) * 8) / dtSec / 1000;
-                  }
-                }
-                prevBytesRef.current = { bytes: stat.bytesSent, ts: now };
-              }
+              if (typeof stat.bytesSent === "number") audioBytesSent = (audioBytesSent ?? 0) + stat.bytesSent;
               if (!codec && stat.codecId && codecMap.has(stat.codecId)) {
                 codec = codecMap.get(stat.codecId) || null;
               }
             }
           });
 
+          // Summed over every outbound audio stream: one stream's delta against another's total read as 45 Mbps, or negative.
+          if (audioBytesSent !== null) {
+            const now = performance.now();
+            const prev = prevBytesRef.current;
+            const dtSec = prev ? (now - prev.ts) / 1000 : 0;
+            if (prev && dtSec > 0 && audioBytesSent >= prev.bytes) bitrateKbps = ((audioBytesSent - prev.bytes) * 8) / dtSec / 1000;
+            prevBytesRef.current = { bytes: audioBytesSent, ts: now };
+          }
           receiveStreams = readReceiveStreams(report.values(), counters);
           jitterMs = worst(receiveStreams.map((r) => r.jitterMs));
           jitterBufferMs = worst(receiveStreams.map((r) => r.jitterBufferMs));
