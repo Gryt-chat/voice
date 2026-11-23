@@ -174,7 +174,8 @@ int main(void) {
   gated.gate_threshold = 100;
   gv_engine_set_effects(&engine, &gated);
   int sent_gated = sent;
-  for (int t = 0; t < SR / 2; t += BLOCK) {
+  /* A second clears the gate's release, the speaking hold and the buffer, with room to spare. */
+  for (int t = 0; t < SR; t += BLOCK) {
     for (int i = 0; i < BLOCK; i++) tone[i] = 0.05f * sinf(2 * (float)M_PI * 1000 * (t + i) / SR);
     gv_engine_capture(&engine, tone, BLOCK, 1);
     gv_engine_render(&engine, out2, BLOCK);
