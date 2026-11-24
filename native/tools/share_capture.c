@@ -3,7 +3,166 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#ifndef _WIN32
+#if defined(__APPLE__)
+
+#include <CoreAudio/CoreAudio.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <libproc.h>
+#include <objc/message.h>
+#include <objc/runtime.h>
+#include <unistd.h>
+
+/* Only declared for Objective-C; weak, so before macOS 14.2 there's no share sound rather than no helper. */
+extern OSStatus AudioHardwareCreateProcessTap(void *description, AudioObjectID *tap) __attribute__((weak_import));
+extern OSStatus AudioHardwareDestroyProcessTap(AudioObjectID tap) __attribute__((weak_import));
+
+struct gv_share {
+  AudioObjectID tap, device;
+  AudioDeviceIOProcID proc;
+  int frames, filled;
+  gv_share_fn fn;
+  void *user;
+  float *block;
+  /* Input samples per 48 kHz output sample, where the next output falls, and the sample before it. */
+  double step, pos;
+  float last[2];
+};
+
+static AudioObjectPropertyAddress at(AudioObjectPropertySelector what, AudioObjectPropertyScope scope) {
+  return (AudioObjectPropertyAddress){what, scope, kAudioObjectPropertyElementMain};
+}
+
+static int descends_from(pid_t p, pid_t root) {
+  for (int hops = 0; p > 1 && hops < 64; hops++) {
+    if (p == root) return 1;
+    struct proc_bsdinfo info;
+    if (proc_pidinfo(p, PROC_PIDTBSDINFO, 0, &info, sizeof info) != sizeof info) return 0;
+    p = (pid_t)info.pbi_ppid;
+  }
+  return p == root;
+}
+
+/* Core Audio's process objects for root and everything under it, as Windows' loopback takes a tree. */
+static CFArrayRef tree(pid_t root) {
+  AudioObjectPropertyAddress list = at(kAudioHardwarePropertyProcessObjectList, kAudioObjectPropertyScopeGlobal);
+  AudioObjectPropertyAddress pid_of = at(kAudioProcessPropertyPID, kAudioObjectPropertyScopeGlobal);
+  CFMutableArrayRef out = CFArrayCreateMutable(NULL, 0, &kCFTypeArrayCallBacks);
+  UInt32 size = 0;
+  if (AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &list, 0, NULL, &size) != noErr || !size) return out;
+  AudioObjectID *all = malloc(size);
+  if (all && AudioObjectGetPropertyData(kAudioObjectSystemObject, &list, 0, NULL, &size, all) == noErr) {
+    for (UInt32 i = 0; i < size / sizeof *all; i++) {
+      pid_t pid = 0;
+      UInt32 n = sizeof pid;
+      if (AudioObjectGetPropertyData(all[i], &pid_of, 0, NULL, &n, &pid) != noErr || !descends_from(pid, root)) continue;
+      int64_t id = all[i];
+      CFNumberRef number = CFNumberCreate(NULL, kCFNumberSInt64Type, &id);
+      CFArrayAppendValue(out, number);
+      CFRelease(number);
+    }
+  }
+  free(all);
+  return out;
+}
+
+static void push(gv_share *s, float l, float r) {
+  /* Linear, from the output device's rate when it isn't 48 kHz. */
+  for (; s->pos <= 1.0; s->pos += s->step) {
+    float t = (float)s->pos;
+    s->block[s->filled * 2] = s->last[0] + (l - s->last[0]) * t;
+    s->block[s->filled * 2 + 1] = s->last[1] + (r - s->last[1]) * t;
+    if (++s->filled == s->frames) s->fn(s->user, s->block, s->frames), s->filled = 0;
+  }
+  s->pos -= 1.0;
+  s->last[0] = l, s->last[1] = r;
+}
+
+static OSStatus io(AudioObjectID device, const AudioTimeStamp *now, const AudioBufferList *in, const AudioTimeStamp *in_time,
+                   AudioBufferList *out, const AudioTimeStamp *out_time, void *arg) {
+  (void)device, (void)now, (void)in_time, (void)out, (void)out_time;
+  gv_share *s = arg;
+  if (!in || !in->mNumberBuffers) return noErr;
+  const AudioBuffer *b = in->mBuffers;
+  if (in->mNumberBuffers == 1) {
+    UInt32 ch = b[0].mNumberChannels ? b[0].mNumberChannels : 1, n = b[0].mDataByteSize / sizeof(float) / ch;
+    const float *d = b[0].mData;
+    for (UInt32 i = 0; i < n; i++) push(s, d[i * ch], d[i * ch + (ch > 1)]);
+  } else {
+    const float *l = b[0].mData, *r = b[1].mData;
+    for (UInt32 i = 0, n = b[0].mDataByteSize / sizeof(float); i < n; i++) push(s, l[i], r[i]);
+  }
+  return noErr;
+}
+
+static CFDictionaryRef dict(const void **keys, const void **values, CFIndex n) {
+  return CFDictionaryCreate(NULL, keys, values, n, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+}
+
+/* A private tap of the processes, and a private aggregate device it shows up as the input of. */
+static int open_tap(gv_share *s, pid_t pid, int include) {
+  Class cls = objc_getClass("CATapDescription");
+  if (!AudioHardwareCreateProcessTap || !cls) return 0;
+  CFArrayRef processes = tree(pid);
+  id description = ((id(*)(id, SEL))objc_msgSend)((id)cls, sel_registerName("alloc"));
+  SEL init = sel_registerName(include ? "initStereoMixdownOfProcesses:" : "initStereoGlobalTapButExcludeProcesses:");
+  description = ((id(*)(id, SEL, CFArrayRef))objc_msgSend)(description, init, processes);
+  CFRelease(processes);
+  if (!description) return 0;
+  ((void (*)(id, SEL, BOOL))objc_msgSend)(description, sel_registerName("setPrivate:"), YES);
+  OSStatus made = AudioHardwareCreateProcessTap(description, &s->tap);
+  ((void (*)(id, SEL))objc_msgSend)(description, sel_registerName("release"));
+  if (made != noErr) return 0;
+
+  CFStringRef tap_uid = NULL;
+  UInt32 n = sizeof tap_uid;
+  AudioObjectPropertyAddress uid_of = at(kAudioTapPropertyUID, kAudioObjectPropertyScopeGlobal);
+  if (AudioObjectGetPropertyData(s->tap, &uid_of, 0, NULL, &n, &tap_uid) != noErr || !tap_uid) return 0;
+  int one = 1;
+  CFNumberRef yes = CFNumberCreate(NULL, kCFNumberIntType, &one);
+  const void *sub_keys[] = {CFSTR(kAudioSubTapUIDKey), CFSTR(kAudioSubTapDriftCompensationKey)};
+  const void *sub_values[] = {tap_uid, yes};
+  CFDictionaryRef sub = dict(sub_keys, sub_values, 2);
+  CFArrayRef taps = CFArrayCreate(NULL, (const void **)&sub, 1, &kCFTypeArrayCallBacks);
+  CFStringRef uid = CFStringCreateWithFormat(NULL, NULL, CFSTR("chat.gryt.voice.share.%d.%u"), getpid(), s->tap);
+  const void *keys[] = {CFSTR(kAudioAggregateDeviceUIDKey), CFSTR(kAudioAggregateDeviceNameKey), CFSTR(kAudioAggregateDeviceIsPrivateKey),
+                        CFSTR(kAudioAggregateDeviceTapAutoStartKey), CFSTR(kAudioAggregateDeviceTapListKey)};
+  const void *values[] = {uid, CFSTR("Gryt share"), yes, yes, taps};
+  CFDictionaryRef aggregate = dict(keys, values, 5);
+  OSStatus built = AudioHardwareCreateAggregateDevice(aggregate, &s->device);
+  CFRelease(aggregate), CFRelease(uid), CFRelease(taps), CFRelease(sub), CFRelease(yes), CFRelease(tap_uid);
+  if (built != noErr) return 0;
+
+  Float64 rate = 48000;
+  AudioObjectPropertyAddress nominal = at(kAudioDevicePropertyNominalSampleRate, kAudioObjectPropertyScopeGlobal);
+  AudioObjectSetPropertyData(s->device, &nominal, 0, NULL, sizeof rate, &rate);
+  n = sizeof rate;
+  if (AudioObjectGetPropertyData(s->device, &nominal, 0, NULL, &n, &rate) != noErr || rate <= 0) return 0;
+  s->step = rate / 48000.0;
+  return AudioDeviceCreateIOProcID(s->device, io, s, &s->proc) == noErr && AudioDeviceStart(s->device, s->proc) == noErr;
+}
+
+gv_share *gv_share_start(unsigned long pid, int include, int frames, gv_share_fn fn, void *user) {
+  gv_share *s = calloc(1, sizeof *s);
+  if (!s) return NULL;
+  s->frames = frames, s->fn = fn, s->user = user;
+  s->block = calloc((size_t)frames * 2, sizeof(float));
+  if (!s->block || !open_tap(s, (pid_t)pid, include)) {
+    gv_share_stop(s);
+    return NULL;
+  }
+  return s;
+}
+
+void gv_share_stop(gv_share *s) {
+  if (!s) return;
+  if (s->proc) AudioDeviceStop(s->device, s->proc), AudioDeviceDestroyIOProcID(s->device, s->proc);
+  if (s->device) AudioHardwareDestroyAggregateDevice(s->device);
+  if (s->tap) AudioHardwareDestroyProcessTap(s->tap);
+  free(s->block);
+  free(s);
+}
+
+#elif !defined(_WIN32)
 
 gv_share *gv_share_start(unsigned long pid, int include, int frames, gv_share_fn fn, void *user) {
   (void)pid, (void)include, (void)frames, (void)fn, (void)user;

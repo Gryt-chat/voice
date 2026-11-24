@@ -21,7 +21,7 @@ const core = ["voice", "net", "seal", "engine", "effects", "jitter", "packet"].m
 // macOS gets Apple's voice-processing unit for echo cancellation; elsewhere miniaudio, with none yet.
 const device = process.platform === "darwin" ? "native/core/device_vpio.c" : "native/core/device.c";
 const libs = {
-  darwin: ["-framework", "AudioToolbox", "-framework", "CoreAudio", "-framework", "CoreFoundation"],
+  darwin: ["-framework", "AudioToolbox", "-framework", "CoreAudio", "-framework", "CoreFoundation", "-lobjc"],
   linux: ["-lpthread", "-ldl"],
   win32: ["-lws2_32", "-lole32", "-lwinmm"],
 }[process.platform] ?? [];
