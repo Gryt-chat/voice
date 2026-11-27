@@ -116,6 +116,8 @@ export interface Demand {
   fps: number;
   /** Share of pieces asked for again, 0 to 1: the viewer's, or the worst of them coming back. */
   loss?: number;
+  /** Queueing delay in ms, sent in 4 ms steps: how far frames arrive behind the quickest one lately. */
+  delay?: number;
 }
 
 export function demandRequest(sender: number, track: number, d: Demand): Uint8Array {
@@ -125,6 +127,7 @@ export function demandRequest(sender: number, track: number, d: Demand): Uint8Ar
   v.setUint16(10, Math.min(0xffff, d.height));
   v.setUint16(12, Math.min(0xffff, d.fps));
   b[14] = Math.round(Math.min(1, Math.max(0, d.loss ?? 0)) * 255);
+  b[15] = Math.round(Math.min(255, Math.max(0, (d.delay ?? 0) / 4)));
   return b;
 }
 
@@ -143,7 +146,7 @@ export function readForwardedVideo(b: Uint8Array): Forwarded | null {
     if (rest[1] === CONTROL_KEYFRAME) return { kind: "keyframe", track: rest[2] };
     if (rest[1] !== CONTROL_DEMAND) return null;
     const v = new DataView(rest.buffer, rest.byteOffset, rest.byteLength);
-    return { kind: "demand", track: rest[2], watchers: rest[3], demand: { width: v.getUint16(8), height: v.getUint16(10), fps: v.getUint16(12), loss: rest[14] / 255 } };
+    return { kind: "demand", track: rest[2], watchers: rest[3], demand: { width: v.getUint16(8), height: v.getUint16(10), fps: v.getUint16(12), loss: rest[14] / 255, delay: rest[15] * 4 } };
   }
   const head = readPiece(rest);
   return head ? { kind: "piece", sender, piece: rest, head } : null;

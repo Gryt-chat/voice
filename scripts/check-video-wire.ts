@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 
-import { LayerControl, RateControl } from "../dist/transport/rateControl.js";
+import { LayerControl, QueueDelay, RateControl } from "../dist/transport/rateControl.js";
 import { GIVE_UP_MS, KEYFRAME_EVERY_MS, RESEND_AFTER_MS, RESEND_EVERY_MS, VideoAssembler } from "../dist/transport/videoAssembly.js";
 import {
   CONTROL_KEYFRAME, CONTROL_RESEND, frameAfter, keyframeRequest, LAYERS_NONE, layersRequest, MAX_PIECE, MAX_PIECES, MAX_RESEND,
@@ -151,12 +151,14 @@ assert.deepEqual(a.push(8, frame(1, false, 10)[0], t), [], "another sender's del
 a.forget(9);
 assert.deepEqual(feed(a, frame(1, false, 10), t), [], "a forgotten sender carried on");
 
-// Demand, the control proposed to the Rust SFU: what a viewer draws out, the max over viewers back.
+// Demand (SFU.md in client-rs): what a viewer draws, its loss and queueing out, the max over viewers back.
 assert.deepEqual([...demandRequest(5, 1, { width: 1920, height: 1080, fps: 60, loss: 0.1 })], [3, 4, 1, 0, 0, 0, 0, 5, 7, 128, 4, 56, 0, 60, 26, 0]);
+// The bytes client-rs's demands_match_the_sfu sends.
+assert.deepEqual([...demandRequest(5, 1, { width: 1280, height: 720, fps: 30, loss: 10 / 255, delay: 12 })], [3, 4, 1, 0, 0, 0, 0, 5, 5, 0, 2, 208, 0, 30, 10, 3]);
 const back = new Uint8Array(4 + VIDEO_HEADER);
 back.set(demandRequest(0, 1, { width: 640, height: 360, fps: 30 }), 4);
 back[4 + 3] = 2;
-assert.deepEqual(readForwardedVideo(back), { kind: "demand", track: 1, watchers: 2, demand: { width: 640, height: 360, fps: 30, loss: 0 } });
+assert.deepEqual(readForwardedVideo(back), { kind: "demand", track: 1, watchers: 2, demand: { width: 640, height: 360, fps: 30, loss: 0, delay: 0 } });
 
 // The sender's rate: backs off to below what went on loss, queueing or drops, holds, then grows to the ceiling.
 const link = (at: number, mbit: number, extra: Partial<Parameters<RateControl["update"]>[0]> = {}) =>
@@ -172,6 +174,21 @@ assert.ok(rc.update(link(3100, 6, { packetsLost: 3100 * 0.1 })) < cut, "ignored 
 const floor = new RateControl(4e5, 3e5, 8e6);
 floor.update(link(0, 0.1));
 assert.equal(floor.update(link(500, 0.1, { viewerLoss: 0.2 })), 3e5, "went under the floor on a viewer's loss");
+const queued = new RateControl(8e6, 3e5, 8e6);
+queued.update(link(0, 6));
+const byViewer = queued.update(link(500, 6, { viewerDelay: 110 }));
+assert.ok(byViewer < 6e6 && byViewer > 4e6, `a viewer's queueing cut to ${byViewer}`);
+// client-rs's a_full_link_cuts_deep_once_then_as_usual.
+const full = new RateControl(6e6, 3e5, 6e6);
+full.update(link(0, 6));
+assert.equal(full.update(link(500, 6, { viewerLoss: 1 })), 6e6 * 0.85 * 0.5, "a full link's first cut wasn't deeper");
+assert.equal(full.update(link(1000, 6, { viewerLoss: 1 })), 6e6 * 0.85 * 0.5 * 0.85, "the rest of the spell cut deep too");
+
+// Queueing delay, as client-rs's a_tally_gives_resends_and_queueing_once_a_second: the later half 40 ms behind.
+const qd = new QueueDelay();
+for (let i = 0; i < 90; i++) qd.arrived(7_000_000 + i * 10_000, i * 10 + (i >= 45 ? 40 : 0));
+assert.equal(qd.take(), 20, "queueing isn't the mean over the quickest");
+assert.equal(qd.take(), 0, "a second take kept the last one's");
 
 // A viewer's layers: drop one after 2 s of resends, raise after 5 s clean.
 const lc = new LayerControl(3, 0);
