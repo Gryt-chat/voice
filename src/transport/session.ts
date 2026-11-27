@@ -15,6 +15,8 @@ export interface AudioTransportOffer {
   ticket: string;
   /** The native engine's plain UDP (GRYT-1822), when the SFU runs it. */
   udp?: AudioUDPOffer;
+  /** The video hub's /video and its own ticket, when the SFU runs it (GRYT-2261). */
+  video?: { urls: string[]; ticket: string };
 }
 
 /** A session id and its key; a packet that opens with the key is the only proof the SFU needs. */
@@ -98,15 +100,17 @@ const WEBTRANSPORT_WAIT_MS = 3000;
 const WS_MAX_BUFFERED = 16 * 1024;
 
 /** Packets both ways to the SFU, over WebTransport datagrams or the WebSocket fallback (GRYT-1831). */
-interface Pipe {
+export interface Pipe {
   url: string;
   send(packet: Uint8Array): void;
+  /** WebTransport's own numbers, where the browser has getStats(). */
+  stats?(): Promise<WebTransportConnectionStats>;
   listen(onPacket: (packet: Uint8Array) => void): void;
   close(): void;
   closed: Promise<void>;
 }
 
-async function dialWebTransport(offer: AudioTransportOffer): Promise<Pipe> {
+export async function dialWebTransport(offer: Pick<AudioTransportOffer, "urls" | "certHash" | "ticket">): Promise<Pipe> {
   const value = Uint8Array.from(atob(offer.certHash), (c) => c.charCodeAt(0));
   const dialed = new Map<WebTransport, string>();
   const dial = (url: string) => {
@@ -136,6 +140,7 @@ async function dialWebTransport(offer: AudioTransportOffer): Promise<Pipe> {
     url: dialed.get(wt) ?? offer.urls[0],
     // A full queue or a closed session loses the packet; audio doesn't wait.
     send: (packet) => void writer.write(packet).catch(() => undefined),
+    ...("getStats" in wt ? { stats: () => (wt as WebTransport & { getStats(): Promise<WebTransportConnectionStats> }).getStats() } : {}),
     listen(onPacket) {
       const reader = wt.datagrams.readable.getReader();
       void (async () => {
