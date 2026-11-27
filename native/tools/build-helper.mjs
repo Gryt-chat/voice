@@ -17,11 +17,11 @@ const opusFiles = ["celt", "silk", "silk/float", "src"].flatMap((dir) =>
     .filter((f) => f.endsWith(".c") && !/^(opus_demo|opus_compare|repacketizer_demo|opus_custom_demo)\.c$/.test(f))
     .map((f) => join(opus, dir, f)),
 );
-const core = ["voice", "net", "ws", "seal", "engine", "effects", "jitter", "packet"].map((f) => join(root, `native/core/${f}.c`));
+const core = ["voice", "net", "ws", "tls", "tls_apple", "seal", "engine", "effects", "jitter", "packet"].map((f) => join(root, `native/core/${f}.c`));
 // macOS gets Apple's voice-processing unit for echo cancellation; elsewhere miniaudio, with none yet.
 const device = process.platform === "darwin" ? "native/core/device_vpio.c" : "native/core/device.c";
 const libs = {
-  darwin: ["-framework", "AudioToolbox", "-framework", "CoreAudio", "-framework", "CoreFoundation", "-lobjc"],
+  darwin: ["-framework", "AudioToolbox", "-framework", "CoreAudio", "-framework", "CoreFoundation", "-framework", "Network", "-framework", "Security", "-lobjc"],
   linux: ["-lpthread", "-ldl"],
   win32: ["-lws2_32", "-lole32", "-lwinmm"],
 }[process.platform] ?? [];
