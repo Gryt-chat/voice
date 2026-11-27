@@ -352,7 +352,8 @@ function useSfuHook(): SFUInterface {
     try {
       const hub = await startVideoTransport({
         offer: { ...offer.video, certHash: offer.certHash },
-        wsUrl: sfuUrl ? new URL("/video-ws", sfuUrl).toString() : undefined,
+        // The Go SFU has no /video-ws and would answer it as signalling, hence the offer's flag.
+        wsUrl: sfuUrl && offer.video.ws ? new URL("/video-ws", sfuUrl).toString() : undefined,
         onStream: (sender, track, stream) => setHubStreams((prev) => {
           const next = new Map(prev);
           if (stream) next.set(`${sender}/${track}`, { sender, track, stream });

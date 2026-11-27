@@ -15,8 +15,8 @@ export interface AudioTransportOffer {
   ticket: string;
   /** The native engine's plain UDP (GRYT-1822), when the SFU runs it. */
   udp?: AudioUDPOffer;
-  /** The video hub's /video and its own ticket, when the SFU runs it (GRYT-2261). */
-  video?: { urls: string[]; ticket: string };
+  /** The video hub's /video and its own ticket, when the SFU runs it (GRYT-2261). `ws` when it also serves /video-ws. */
+  video?: { urls: string[]; ticket: string; ws?: boolean };
 }
 
 /** A session id and its key; a packet that opens with the key is the only proof the SFU needs. */

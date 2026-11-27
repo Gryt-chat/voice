@@ -107,12 +107,12 @@ function parseAudioTransport(value: unknown): AudioTransportOffer | null {
   return { urls: https, certHash, ticket, ...(udp ? { udp } : {}), ...(video ? { video } : {}) };
 }
 
-function parseVideo(value: unknown): { urls: string[]; ticket: string } | undefined {
+function parseVideo(value: unknown): { urls: string[]; ticket: string; ws?: boolean } | undefined {
   if (typeof value !== "object" || value === null) return undefined;
-  const { urls, ticket } = value as Record<string, unknown>;
+  const { urls, ticket, ws } = value as Record<string, unknown>;
   if (!Array.isArray(urls) || typeof ticket !== "string" || !ticket) return undefined;
   const https = urls.filter((u): u is string => typeof u === "string" && u.startsWith("https://"));
-  return https.length > 0 ? { urls: https, ticket } : undefined;
+  return https.length > 0 ? { urls: https, ticket, ...(ws === true ? { ws } : {}) } : undefined;
 }
 
 /** The native engine's part of the offer (GRYT-1822): host:port addresses, a u32 session, a 32-byte base64 key. */
