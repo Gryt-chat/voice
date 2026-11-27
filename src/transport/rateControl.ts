@@ -93,6 +93,8 @@ const BASE_WINDOW_MS = 5000;
 const TICK_MS = 1000;
 /** While loss or queueing is up, a demand goes this often: the sender can't cut on what it hasn't heard. */
 export const FAST_TICK_MS = 250;
+/** The SFU counts one demand per viewer and track in 100 ms. */
+const EARLY_GAP_MS = 100;
 
 /** One stream's pieces and frames since the last tick, on the viewer: the demand's loss and queueing delay.
     `Tally` in client-rs's video_rate.rs, number for number. */
@@ -106,6 +108,8 @@ export class Tally {
   private excess = 0;
   private frames = 0;
   private fast = false;
+  /** The last two frames' queueing, µs, newest first. */
+  private latest: [number, number] = [0, 0];
 
   received(): void {
     this.got++;
@@ -128,16 +132,20 @@ export class Tally {
     }
     const nowMin = this.base[0] === null ? rel : Math.min(this.base[0], rel);
     this.base[0] = nowMin;
-    this.excess += rel - (this.base[1] === null ? nowMin : Math.min(this.base[1], nowMin));
+    this.latest = [rel - (this.base[1] === null ? nowMin : Math.min(this.base[1], nowMin)), this.latest[0]];
+    this.excess += this.latest[0];
     this.frames++;
   }
 
   /** Called often: the demand's loss (0 to 1) and delay (ms) once a tick, or null if it isn't due or nothing came. */
   tick(now: number): { loss: number; delay: number } | null {
     this.since ??= now;
-    if (now - this.since < (this.fast ? FAST_TICK_MS : TICK_MS)) return null;
+    const waited = now - this.since;
+    // Two frames in a row queued: that goes out at once, as the last saw it, since the window's mean is mostly from before.
+    const early = !this.fast && this.frames > 1 && waited >= EARLY_GAP_MS && Math.min(...this.latest) >= DELAY_FLOOR_MS * 1000;
+    if (waited < (this.fast ? FAST_TICK_MS : TICK_MS) && !early) return null;
     const loss = this.got > 0 ? Math.min(1, this.asked / this.got) : 0;
-    const delay = this.frames > 0 ? this.excess / this.frames / 1000 : 0;
+    const delay = early ? this.latest[0] / 1000 : this.frames > 0 ? this.excess / this.frames / 1000 : 0;
     this.fast = loss > LOSS_LIMIT || delay >= FAST_DELAY_MS;
     const out = this.got > 0 ? { loss, delay } : null;
     this.since = now;

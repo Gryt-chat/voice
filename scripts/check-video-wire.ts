@@ -194,23 +194,33 @@ rtt.update(link(0, 6));
 const byRtt = rtt.update({ ...link(250, 6), smoothedRtt: 120 });
 assert.ok(byRtt < 6e6 && byRtt > 4e6, `the browser's own queueing cut to ${byRtt}`);
 
-// A viewer's tally, as client-rs's a_tally_gives_resends_and_queueing_once_a_second: the later half 40 ms behind.
+// A viewer's tally, as client-rs's a_tally_gives_resends_and_queueing_once_a_second: the later half 20 ms behind.
 const tally = new Tally();
 assert.equal(tally.tick(0), null);
 for (let i = 0; i < 90; i++) {
   tally.received();
-  tally.arrived(7_000_000 + i * 10_000, i * 10 + (i >= 45 ? 40 : 0));
+  tally.arrived(7_000_000 + i * 10_000, i * 10 + (i >= 45 ? 20 : 0));
 }
 tally.resent(9);
 const sent = (r: Viewer | null) => r && [Math.round(r.loss * 255), Math.round(r.delay / 4)];
 assert.equal(tally.tick(500), null, "inside the second");
-assert.deepEqual(sent(tally.tick(1000)), [26, 5], "10% asked again, 20 ms behind");
+assert.deepEqual(sent(tally.tick(1000)), [26, 3], "10% asked again, 10 ms behind");
 tally.received();
 assert.deepEqual(sent(tally.tick(1000 + FAST_TICK_MS)), [0, 0], "waited a second after a lossy one");
 tally.received();
 assert.equal(tally.tick(1000 + FAST_TICK_MS * 2), null, "hurried after a clean one");
 assert.deepEqual(sent(tally.tick(2000 + FAST_TICK_MS)), [0, 0], "a second after the clean one");
 assert.equal(tally.tick(4000), null, "nothing came");
+
+// As client-rs's a_queue_starting_to_build_is_reported_at_once: 6 and 7 come 30 and 40 ms late, 4 alone 50 ms late.
+const early = new Tally();
+assert.equal(early.tick(0), null);
+[0, 0, 0, 0, 50, 0, 30, 40].forEach((late, i) => {
+  early.received();
+  early.arrived(i * 10_000, i * 10 + late);
+  assert.deepEqual(sent(early.tick(100 + i)), i === 7 ? [0, 10] : null, `frame ${i}`);
+});
+assert.equal(early.tick(200), null, "fast now, and not due");
 
 // As client-rs's queueing_is_timed_on_a_frames_first_piece: a last piece resent 57 ms late isn't queueing.
 const timed = new VideoAssembler();
