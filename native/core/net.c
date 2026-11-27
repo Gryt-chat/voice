@@ -15,6 +15,7 @@
 #include <windows.h>
 #else
 #include <netdb.h>
+#include <netinet/in.h>
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/time.h>
