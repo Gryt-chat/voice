@@ -1,3 +1,4 @@
+import type { VideoTransportStats } from "../../transport/videoSession";
 import type { VideoCeiling, VideoDemand, VideoRole, VideoSendSettings } from "../hooks/videoDemand";
 
 export interface Streams {
@@ -84,6 +85,10 @@ export interface SFUInterface {
    * see it, or null once it's gone. Keyed by stream id: a receiver's track id can differ from the sender's.
    */
   reportVideoDemand?: (streamId: string, size: VideoDemand | null) => void;
+  /** What to announce for shared window `index` while shares go out on the video hub: `gryt-video:<track>`. Null on WebRTC. */
+  getOwnVideoStreamId?: (index?: number) => string | null;
+  /** The video hub's numbers, or null when this call isn't on it (GRYT-2261). */
+  getVideoTransportStats?: () => VideoTransportStats | null;
   /** User ids heard speaking over the own voice transport, which has no WebRTC track to watch (GRYT-1830). */
   transportSpeaking?: ReadonlySet<string>;
   /** User ids heard over the own transport while this client is on it too: their WebRTC copy is a duplicate to silence (GRYT-1831). */

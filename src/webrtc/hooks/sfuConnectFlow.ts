@@ -529,6 +529,7 @@ export interface ConnectParams {
   onIngestCap?: (bps: number | null) => void;
   onAudioTransport?: (offer: AudioTransportOffer) => void;
   onAudioSenders?: (senders: Map<number, string>) => void;
+  onVideoSenders?: (senders: Map<number, string>) => void;
   onWebRTCAudioWanted?: (wanted: boolean) => void;
 }
 
@@ -561,6 +562,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     onIngestCap,
     onAudioTransport,
     onAudioSenders,
+    onVideoSenders,
     onWebRTCAudioWanted,
   } = params;
   const {
@@ -1048,6 +1050,9 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
           },
           onAudioSenders: (senders) => {
             if (!isStale()) onAudioSenders?.(senders);
+          },
+          onVideoSenders: (senders) => {
+            if (!isStale()) onVideoSenders?.(senders);
           },
           onWebRTCAudioWanted: (wanted) => {
             if (!isStale()) onWebRTCAudioWanted?.(wanted);

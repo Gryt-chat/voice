@@ -71,6 +71,10 @@ assert.deepEqual(
 );
 const udpOnly = { urls: [], certHash: "", ticket: "", udp: { addrs: ["192.0.2.1:4486"], session: 7, key: `${"A".repeat(43)}=` } };
 assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: udpOnly })).audioTransport, udpOnly);
+// The video hub's part (GRYT-2261): kept with https URLs and a ticket; the Rust SFU's empty one is dropped.
+const video = { urls: ["https://192.0.2.1:4433/video"], ticket: "dmlkZW8=" };
+assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: { ...offer, video } })).audioTransport, { ...offer, video });
+assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: { ...offer, video: { urls: [], ticket: "" } } })).audioTransport, offer);
 for (const bad of [null, "x", {}, { ...offer, urls: [] }, { ...offer, urls: ["ws://a"] }, { ...offer, ticket: 1 }, { ...offer, certHash: null }]) {
   assert.equal(parseRoomJoined(JSON.stringify({ audio_transport: bad })).audioTransport, null, `offer ${JSON.stringify(bad)} was accepted`);
 }
@@ -87,4 +91,4 @@ assert.equal(parseWebRTCAudioWanted('{"wanted":false}'), false);
 assert.equal(parseWebRTCAudioWanted('{"wanted":true}'), true);
 for (const bad of ["", "null", "{", '{"wanted":"no"}', "{}"]) assert.equal(parseWebRTCAudioWanted(bad), null, bad);
 
-console.log("room_joined ok: the timeout and the ingest cap survive the wire, and an SFU that says nothing says null; audio_senders and webrtc_audio_wanted parsed");
+console.log("room_joined ok: the timeout and the ingest cap survive the wire, and an SFU that says nothing says null; audio_senders, webrtc_audio_wanted and the video offer parsed");
