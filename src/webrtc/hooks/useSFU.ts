@@ -348,9 +348,11 @@ function useSfuHook(): SFUInterface {
   const { ownVideoTransport } = config.connection;
   const startVideoHub = useCallback(async (offer: AudioTransportOffer) => {
     if (!offer.video || !ownVideoTransport || !videoTransportSupported()) return;
+    const sfuUrl = activeSfuUrlRef.current;
     try {
       const hub = await startVideoTransport({
         offer: { ...offer.video, certHash: offer.certHash },
+        wsUrl: sfuUrl ? new URL("/video-ws", sfuUrl).toString() : undefined,
         onStream: (sender, track, stream) => setHubStreams((prev) => {
           const next = new Map(prev);
           if (stream) next.set(`${sender}/${track}`, { sender, track, stream });

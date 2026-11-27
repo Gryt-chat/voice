@@ -1,7 +1,7 @@
 /** The browser's end of the SFU's video hub (GRYT-2261): one WebTransport session at /video carrying our tracks
     out and everyone else's in, with the requests that keep them whole. client-rs video_receive.rs is the twin. */
 
-import { dialWebTransport, type Pipe } from "./session";
+import { dialPipe, type Pipe } from "./session";
 import { LayerControl, QueueDelay, RateControl } from "./rateControl";
 import { VideoAssembler } from "./videoAssembly";
 import { startVideoReceive, type VideoReceiver, type VideoReceiveStats } from "./videoReceive";
@@ -46,16 +46,21 @@ const STATS_MS = 500;
 /** A request for nobody, as client-rs sends: keeps an idle session from timing out. */
 const HELLO_MS = 5000;
 
+/** A keyframe's pieces fit under this; past it pieces drop and viewers ask for a resend. */
+const WS_MAX_BUFFERED = 1024 * 1024;
+
+/** WebTransport is optional: without it, or with UDP blocked, the session goes over `wsUrl`. */
 export const videoTransportSupported = (): boolean =>
-  typeof WebTransport === "function" && typeof VideoEncoder === "function" && typeof MediaStreamTrackProcessor === "function"
-  && typeof MediaStreamTrackGenerator === "function";
+  typeof VideoEncoder === "function" && typeof MediaStreamTrackProcessor === "function" && typeof MediaStreamTrackGenerator === "function";
 
 export async function startVideoTransport(o: {
   offer: VideoTransportOffer;
+  /** The SFU's /video-ws, for when WebTransport is missing or blocked. */
+  wsUrl?: string;
   /** A stream from a member's track appeared, or went (null). */
   onStream: (sender: number, track: number, stream: MediaStream | null) => void;
 }): Promise<VideoTransportSession> {
-  const pipe: Pipe = await dialWebTransport(o.offer);
+  const pipe: Pipe = await dialPipe(o.offer, o.wsUrl, WS_MAX_BUFFERED);
   const senders = new Map<number, { sender: VideoSender; options: VideoSendOptions; wanted: Demand | null }>();
   // The user's ceiling, lowered to what viewers draw once the SFU says.
   const applied = (s: { options: VideoSendOptions; wanted: Demand | null }): VideoSendOptions => (!s.wanted ? s.options : {
