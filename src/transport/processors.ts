@@ -146,6 +146,15 @@ const LEVELS_EVERY_S = 0.05;
     `output` is the loudest left and right of the whole mix since the last report, before the output volume. */
 export type ReceiveReport = { speaking: number[] } | { levels: [number, number][]; buffered: [number, number][]; rtt: [number, number][]; concealed: [number, number][]; output: [number, number] };
 
+/** A packet that doesn't decode is treated as lost; a throw here would stop the processor for good (GRYT-2429). */
+function conceal(decoder: OpusDecoder, packet: Uint8Array | null): Float32Array<ArrayBufferLike> | null {
+  try {
+    return decoder.decode(packet);
+  } catch {
+    return null;
+  }
+}
+
 /** How many of this client's pings wait for answers; older ones are forgotten. */
 const MAX_PINGS = 8;
 
@@ -223,10 +232,10 @@ class ReceiveProcessor extends AudioWorkletProcessor {
         const next = s.jitter.pull();
         let pcm: Float32Array<ArrayBufferLike> = new Float32Array(this.frameSize * 2);
         if (next.kind === "packet") {
-          pcm = s.decoder.decode(next.packet.opus);
+          pcm = conceal(s.decoder, next.packet.opus) ?? conceal(s.decoder, null) ?? pcm;
           if (next.packet.flags & FLAG_SPEAKING) s.lastSpeaking = currentTime;
         }
-        else if (next.kind === "lost") pcm = s.decoder.decode(null);
+        else if (next.kind === "lost") pcm = conceal(s.decoder, null) ?? pcm;
         const joined = new Float32Array(s.pending.length + pcm.length);
         joined.set(s.pending);
         joined.set(pcm, s.pending.length);

@@ -219,15 +219,13 @@ export async function startAudioTransport(o: {
 
   const bitrate = clampBitrate(o.bitrate ?? TRANSPORT_BITRATE.max);
   const sendOptions: SendOptions = { wasm: o.wasm.slice(0), frame: FRAME, bitrate, stereoBitrate: stereoFor(bitrate), settings: o.effects };
-  const receiveOptions: ReceiveOptions = { wasm: o.wasm.slice(0), frame: FRAME };
   const send = new AudioWorkletNode(o.context, SEND_PROCESSOR, { processorOptions: sendOptions });
-  const receive = new AudioWorkletNode(o.context, RECEIVE_PROCESSOR, { numberOfInputs: 0, outputChannelCount: [2], processorOptions: receiveOptions });
   // A node nothing pulls from never runs, so the send worklet ends in a silent gain.
   const sink = o.context.createGain();
   sink.gain.value = 0;
   send.connect(sink).connect(o.context.destination);
   const gain = o.context.createGain();
-  receive.connect(gain).connect(o.output);
+  gain.connect(o.output);
 
   let source = o.context.createMediaStreamSource(o.input);
   source.connect(send);
@@ -237,7 +235,8 @@ export async function startAudioTransport(o: {
     if (e.data instanceof Uint8Array) pipe.send(e.data);
     else receive.port.postMessage(e.data);
   };
-  receive.port.onmessage = (e: MessageEvent<ReceiveReport | { ping: number; at: number }>) => {
+  let senderGains: [number, number][] = [];
+  const onReport = (e: MessageEvent<ReceiveReport | { ping: number; at: number }>) => {
     if ("ping" in e.data) send.port.postMessage({ type: "pong", nonce: e.data.ping, at: e.data.at });
     else if ("speaking" in e.data) o.onSpeaking?.(e.data.speaking);
     else {
@@ -248,11 +247,27 @@ export async function startAudioTransport(o: {
       o.onOutput?.(e.data.output);
     }
   };
+  // A processor that throws stops for good (AudioWorklet spec), so a fresh one takes its place (GRYT-2429).
+  const makeReceive = (): AudioWorkletNode => {
+    const node = new AudioWorkletNode(o.context, RECEIVE_PROCESSOR, { numberOfInputs: 0, outputChannelCount: [2], processorOptions: { wasm: o.wasm.slice(0), frame: FRAME } satisfies ReceiveOptions });
+    node.connect(gain);
+    node.port.onmessage = onReport;
+    node.onprocessorerror = () => {
+      node.port.onmessage = null;
+      node.disconnect();
+      if (receive !== node) return;
+      receive = makeReceive();
+      receive.port.postMessage({ gains: senderGains });
+    };
+    return node;
+  };
+  let receive = makeReceive();
   pipe.listen((d) => receive.port.postMessage(d, [d.buffer]));
 
   const closed = pipe.closed.finally(() => {
     send.port.onmessage = null;
     receive.port.onmessage = null;
+    receive.onprocessorerror = null;
     o.onSpeaking?.([]);
     o.onLevels?.(new Map());
     o.onBuffered?.(new Map());
@@ -287,7 +302,8 @@ export async function startAudioTransport(o: {
       gain.gain.setValueAtTime(g, o.context.currentTime);
     },
     setSenderGains(gains) {
-      receive.port.postMessage({ gains: [...gains] });
+      senderGains = [...gains];
+      receive.port.postMessage({ gains: senderGains });
     },
     close() {
       pipe.close();
