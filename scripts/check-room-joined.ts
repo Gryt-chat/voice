@@ -69,6 +69,8 @@ assert.deepEqual(
   parseRoomJoined(JSON.stringify({ audio_transport: { ...offer, urls: ["http://192.0.2.1:4433/voice", offer.urls[0]] } })).audioTransport,
   offer,
 );
+const udpOnly = { urls: [], certHash: "", ticket: "", udp: { addrs: ["192.0.2.1:4486"], session: 7, key: `${"A".repeat(43)}=` } };
+assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: udpOnly })).audioTransport, udpOnly);
 for (const bad of [null, "x", {}, { ...offer, urls: [] }, { ...offer, urls: ["ws://a"] }, { ...offer, ticket: 1 }, { ...offer, certHash: null }]) {
   assert.equal(parseRoomJoined(JSON.stringify({ audio_transport: bad })).audioTransport, null, `offer ${JSON.stringify(bad)} was accepted`);
 }

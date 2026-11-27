@@ -97,8 +97,9 @@ function parseAudioTransport(value: unknown): AudioTransportOffer | null {
   const { urls, certHash, ticket } = value as Record<string, unknown>;
   if (!Array.isArray(urls) || typeof certHash !== "string" || typeof ticket !== "string") return null;
   const https = urls.filter((u): u is string => typeof u === "string" && u.startsWith("https://"));
-  if (https.length === 0) return null;
   const udp = parseUdp((value as Record<string, unknown>).udp);
+  // The Rust SFU has no WebTransport: its offer is the UDP session alone, which only the native engine takes.
+  if (https.length === 0 && !udp) return null;
   return udp ? { urls: https, certHash, ticket, udp } : { urls: https, certHash, ticket };
 }
 
