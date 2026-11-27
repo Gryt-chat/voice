@@ -3,6 +3,7 @@
 import assert from "node:assert/strict";
 
 import { LayerControl, QueueDelay, RateControl } from "../dist/transport/rateControl.js";
+import { Pacer } from "../dist/transport/videoPacer.js";
 import { GIVE_UP_MS, KEYFRAME_EVERY_MS, RESEND_AFTER_MS, RESEND_EVERY_MS, VideoAssembler } from "../dist/transport/videoAssembly.js";
 import {
   CONTROL_KEYFRAME, CONTROL_RESEND, frameAfter, keyframeRequest, LAYERS_NONE, layersRequest, MAX_PIECE, MAX_PIECES, MAX_RESEND,
@@ -189,6 +190,23 @@ const qd = new QueueDelay();
 for (let i = 0; i < 90; i++) qd.arrived(7_000_000 + i * 10_000, i * 10 + (i >= 45 ? 40 : 0));
 assert.equal(qd.take(), 20, "queueing isn't the mean over the quickest");
 assert.equal(qd.take(), 0, "a second take kept the last one's");
+
+// As client-rs's queueing_is_timed_on_a_frames_first_piece: a last piece resent 57 ms late isn't queueing.
+const timed = new VideoAssembler();
+const starts: number[] = [];
+const late = frame(1, false, 3000);
+assert.ok(late.length > 1);
+for (const [p, at] of [[frame(0, true, 10)[0], 0], ...late.slice(0, -1).map((p) => [p, 3] as const), [late[late.length - 1], 60], [frame(2, false, 10)[0], 6]] as const) {
+  timed.push(9, p, at, (stamp) => starts.push(stamp, at));
+}
+assert.deepEqual(starts, [0, 0, 3000, 3, 6000, 6], "a frame was timed on other than its first piece");
+
+// As client-rs's pieces_spread_over_the_frame_interval, in ms.
+const pacer = new Pacer();
+assert.deepEqual(pacer.plan(1, 2, 0), [0, 25], "a first frame spreads over 50 ms");
+assert.deepEqual(pacer.plan(1, 4, 40), [40, 50, 60, 70], "over the 40 ms since the last");
+assert.deepEqual(pacer.plan(2, 2, 50), [70, 75], "another track waits behind what's queued");
+assert.deepEqual(pacer.plan(1, 1, 500), [500], "a lone piece waited");
 
 // A viewer's layers: drop one after 2 s of resends, raise after 5 s clean.
 const lc = new LayerControl(3, 0);

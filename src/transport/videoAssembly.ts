@@ -44,9 +44,11 @@ interface Stream {
   strict: boolean;
   pending: Partial[];
   keyframeAsked: number | null;
+  /** The newest frame number a piece came for. */
+  newest: number | null;
 }
 
-const newStream = (strict = true): Stream => ({ last: null, broken: true, strict, pending: [], keyframeAsked: null });
+const newStream = (strict = true): Stream => ({ last: null, broken: true, strict, pending: [], keyframeAsked: null, newest: null });
 const placeholder = (frame: number, now: number): Partial => ({ frame, head: null, parts: [], have: 0, seen: now, touched: now, asked: null });
 const whole = (p: Partial) => p.head !== null && p.have === p.parts.length;
 
@@ -117,8 +119,9 @@ export class VideoAssembler {
     for (const [k, e] of this.streams) if (e.sender === sender) this.streams.delete(k);
   }
 
-  /** One forwarded piece, sender id already taken off. Returns the frames it finished, oldest first. */
-  push(sender: number, piece: Uint8Array, now: number): AssembledFrame[] {
+  /** One forwarded piece, sender id already taken off. Returns the frames it finished, oldest first. `started`
+      hears each frame's capture stamp on its first piece, as client-rs's Tally does. */
+  push(sender: number, piece: Uint8Array, now: number, started?: (timestamp: number) => void): AssembledFrame[] {
     const h = readPiece(piece);
     if (!h) return [];
     let s = this.stream(sender, h.track);
@@ -127,6 +130,11 @@ export class VideoAssembler {
       const fresh = newStream(s.strict);
       this.streams.set(`${sender}/${h.track}`, { sender, track: h.track, s: fresh });
       s = fresh;
+    }
+    // Queueing is timed on a frame's first piece: the last can be a resend, and a broken stream completes none.
+    if (s.newest === null || frameAfter(h.frame, s.newest) || ((s.newest - h.frame) & 0xffff) >= RESTART_GAP) {
+      s.newest = h.frame;
+      started?.(h.timestamp);
     }
     if (s.strict && !s.broken) {
       const last = s.last ?? s.pending[s.pending.length - 1]?.frame ?? null;
