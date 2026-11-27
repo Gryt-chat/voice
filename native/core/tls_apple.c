@@ -26,8 +26,12 @@ struct gv_tls {
   uint8_t in[IN_CAP];
 };
 
-/* GV_TLS_CA names one DER certificate trusted on top of the system's, for a test SFU. The host is still checked. */
+/* Test builds only (-DGV_TEST_TLS_CA): GV_TLS_CA names one DER certificate trusted on top of the system's. A
+   shipped helper must never read it, or whoever sets its environment could intercept voice. */
 static CFArrayRef test_anchors(void) {
+#ifndef GV_TEST_TLS_CA
+  return NULL;
+#else
   const char *path = getenv("GV_TLS_CA");
   FILE *f = path ? fopen(path, "rb") : NULL;
   if (!f) return NULL;
@@ -41,6 +45,7 @@ static CFArrayRef test_anchors(void) {
   CFArrayRef a = CFArrayCreate(NULL, (const void **)&cert, 1, &kCFTypeArrayCallBacks);
   CFRelease(cert);
   return a;
+#endif
 }
 
 static void receive(gv_tls *t) {
