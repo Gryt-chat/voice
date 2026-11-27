@@ -71,6 +71,9 @@ assert.deepEqual(
 );
 const udpOnly = { urls: [], certHash: "", ticket: "", udp: { addrs: ["192.0.2.1:4486"], session: 7, key: `${"A".repeat(43)}=` } };
 assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: udpOnly })).audioTransport, udpOnly);
+const udpWs = { ...udpOnly, udp: { ...udpOnly.udp, ws: true } };
+assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: udpWs })).audioTransport, udpWs);
+assert.equal(parseRoomJoined(JSON.stringify({ audio_transport: { ...udpOnly, udp: { ...udpOnly.udp, ws: 1 } } })).audioTransport?.udp?.ws, undefined);
 // The video hub's part (GRYT-2261): kept with https URLs and a ticket; the Rust SFU's empty one is dropped.
 const video = { urls: ["https://192.0.2.1:4433/video"], ticket: "dmlkZW8=" };
 assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: { ...offer, video } })).audioTransport, { ...offer, video });

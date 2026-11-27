@@ -16,14 +16,14 @@ class GrytVoiceModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("GrytVoice")
 
-    AsyncFunction("start") { addrs: List<String>, session: Double, key: String, effects: Map<String, Double> ->
+    AsyncFunction("start") { addrs: List<String>, session: Double, key: String, effects: Map<String, Double>, wsUrl: String ->
       stopVoice()
       val keyBytes = runCatching { Base64.decode(key, Base64.DEFAULT) }.getOrNull()
       if (keyBytes == null || keyBytes.size != 32 || addrs.isEmpty()) return@AsyncFunction false
       // The platform's echo canceller only runs in communication mode.
       audio?.mode = AudioManager.MODE_IN_COMMUNICATION
       // 192 frames is 4 ms; AAudio rounds it to its burst.
-      voice = Native.start(addrs.toTypedArray(), session.toLong().toInt(), keyBytes, settings(effects), 192)
+      voice = Native.start(addrs.toTypedArray(), session.toLong().toInt(), keyBytes, settings(effects), 192, wsUrl)
       if (voice == 0L) audio?.mode = AudioManager.MODE_NORMAL
       voice != 0L
     }
@@ -119,7 +119,7 @@ class GrytVoiceModule : Module() {
 
   private object Native {
     init { System.loadLibrary("gryt_voice") }
-    @JvmStatic external fun start(addrs: Array<String>, session: Int, key: ByteArray, effects: DoubleArray, period: Int): Long
+    @JvmStatic external fun start(addrs: Array<String>, session: Int, key: ByteArray, effects: DoubleArray, period: Int, wsUrl: String): Long
     @JvmStatic external fun stop(h: Long)
     @JvmStatic external fun setSending(h: Long, on: Boolean)
     @JvmStatic external fun setOutputGain(h: Long, gain: Float)

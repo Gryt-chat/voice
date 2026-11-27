@@ -11,7 +11,7 @@ public final class GrytVoiceModule: Module {
 
     /// The room_joined offer's udp part, and the effects as `transportEffects` gives them. False if it didn't start.
     /// Async, so off the JS thread: the voice-processing unit takes about two seconds to start.
-    AsyncFunction("start") { (addrs: [String], session: Double, key: String, effects: [String: Double]) -> Bool in
+    AsyncFunction("start") { (addrs: [String], session: Double, key: String, effects: [String: Double], wsUrl: String) -> Bool in
       self.stopVoice()
       Self.webRTCAudio(enabled: false)
       guard let keyData = Data(base64Encoded: key), keyData.count == 32, !addrs.isEmpty else { return false }
@@ -22,7 +22,8 @@ public final class GrytVoiceModule: Module {
       // 64 frames is 1.3 ms; iOS rounds it to what the hardware takes.
       self.voice = keyData.withUnsafeBytes { raw in
         pointers.withUnsafeBufferPointer { list in
-          gv_voice_start(list.baseAddress, Int32(list.count), UInt32(session), raw.bindMemory(to: UInt8.self).baseAddress, &settings, 64, nil)
+          gv_voice_start(list.baseAddress, Int32(list.count), UInt32(session), raw.bindMemory(to: UInt8.self).baseAddress, &settings, 64,
+                         wsUrl.isEmpty ? nil : wsUrl)
         }
       }
       if self.voice == nil { Self.webRTCAudio(enabled: true) }

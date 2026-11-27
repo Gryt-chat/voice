@@ -16,7 +16,7 @@ static gv_effect_settings settings(JNIEnv *env, jdoubleArray a) {
 }
 
 JNIEXPORT jlong JNICALL FN(start)(JNIEnv *env, jclass cls, jobjectArray addrs, jint session, jbyteArray key,
-                                  jdoubleArray effects, jint period) {
+                                  jdoubleArray effects, jint period, jstring ws_url) {
   (void)cls;
   int n = (*env)->GetArrayLength(env, addrs);
   if (n <= 0 || n > 16 || (*env)->GetArrayLength(env, key) != 32) return 0;
@@ -29,7 +29,9 @@ JNIEXPORT jlong JNICALL FN(start)(JNIEnv *env, jclass cls, jobjectArray addrs, j
   uint8_t k[32];
   (*env)->GetByteArrayRegion(env, key, 0, 32, (jbyte *)k);
   gv_effect_settings s = settings(env, effects);
-  gv_voice *v = gv_voice_start(list, n, (uint32_t)session, k, &s, (unsigned)period, NULL);
+  const char *ws = (*env)->GetStringUTFChars(env, ws_url, NULL);
+  gv_voice *v = gv_voice_start(list, n, (uint32_t)session, k, &s, (unsigned)period, ws && *ws ? ws : NULL);
+  if (ws) (*env)->ReleaseStringUTFChars(env, ws_url, ws);
   for (int i = 0; i < n; i++) (*env)->ReleaseStringUTFChars(env, strs[i], list[i]);
   return (jlong)(intptr_t)v;
 }

@@ -118,11 +118,11 @@ function parseVideo(value: unknown): { urls: string[]; ticket: string; ws?: bool
 /** The native engine's part of the offer (GRYT-1822): host:port addresses, a u32 session, a 32-byte base64 key. */
 function parseUdp(value: unknown): AudioUDPOffer | undefined {
   if (typeof value !== "object" || value === null) return undefined;
-  const { addrs, session, key } = value as Record<string, unknown>;
+  const { addrs, session, key, ws } = value as Record<string, unknown>;
   if (!Array.isArray(addrs) || typeof session !== "number" || typeof key !== "string") return undefined;
   if (!Number.isInteger(session) || session <= 0 || session > 0xffffffff || !/^[A-Za-z0-9+/]{43}=$/.test(key)) return undefined;
   const hosts = addrs.filter((a): a is string => typeof a === "string" && /:\d+$/.test(a));
-  return hosts.length > 0 ? { addrs: hosts, session, key } : undefined;
+  return hosts.length > 0 ? { addrs: hosts, session, key, ...(ws === true ? { ws } : {}) } : undefined;
 }
 
 /**

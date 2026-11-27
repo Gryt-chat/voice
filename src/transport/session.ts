@@ -24,6 +24,8 @@ export interface AudioUDPOffer {
   addrs: string[];
   session: number;
   key: string;
+  /** The SFU answers a keep-alive and serves /audio-ws, so the engine may fall back to it (GRYT-2431). */
+  ws?: boolean;
 }
 
 export interface AudioTransportSession {

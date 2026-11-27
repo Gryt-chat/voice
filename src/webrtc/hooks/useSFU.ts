@@ -381,7 +381,9 @@ function useSfuHook(): SFUInterface {
     // The phone: the native engine owns the mic and speaker, so WebRTC sends no audio at all (GRYT-1822).
     const platform = getVoicePlatform();
     if (nativeAudio && offer.udp && platform.startNativeAudio) {
-      const native = await platform.startNativeAudio(offer.udp, transportEffects(audioRef.current.audio, audioRef.current.eSports));
+      const sfuUrl = activeSfuUrlRef.current;
+      const wsUrl = offer.udp.ws && sfuUrl ? `${new URL("/audio-ws", sfuUrl).toString()}?ticket=${encodeURIComponent(offer.ticket)}` : undefined;
+      const native = await platform.startNativeAudio(offer.udp, transportEffects(audioRef.current.audio, audioRef.current.eSports), wsUrl);
       if (!native) {
         voiceLog.warn("TRANSPORT", "Native engine didn't start, staying on WebRTC audio");
         return;

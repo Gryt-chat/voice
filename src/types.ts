@@ -178,7 +178,7 @@ export interface VoicePlatform {
 
   /* The native voice engine, where the app ships it: the phone's GrytVoice module (GRYT-1822). Null if it won't start.
      Async: Apple's voice-processing unit takes about two seconds to start, too long to hold the JS thread. */
-  startNativeAudio?(offer: AudioUDPOffer, effects: VoiceEffectSettings): Promise<NativeAudioSession | null>;
+  startNativeAudio?(offer: AudioUDPOffer, effects: VoiceEffectSettings, wsUrl?: string): Promise<NativeAudioSession | null>;
 }
 
 export interface NativeAudioSession {
