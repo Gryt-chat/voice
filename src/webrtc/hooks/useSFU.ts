@@ -347,7 +347,7 @@ function useSfuHook(): SFUInterface {
   }, []);
   const { ownVideoTransport } = config.connection;
   const startVideoHub = useCallback(async (offer: AudioTransportOffer) => {
-    if (!offer.video || !ownVideoTransport || !videoTransportSupported()) return;
+    if (!offer.video || !ownVideoTransport || !(await videoTransportSupported())) return;
     const sfuUrl = activeSfuUrlRef.current;
     try {
       const hub = await startVideoTransport({

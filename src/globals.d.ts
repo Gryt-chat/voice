@@ -9,7 +9,7 @@ interface Worker {
   postMessage(message: MediaStreamTrack, transfer: MediaStreamTrack[]): void;
 }
 interface Window {
-  postMessage(message: MediaStreamTrack | VideoFrame | null, options?: { transfer: (MediaStreamTrack | VideoFrame)[] }): void;
+  postMessage(message: MediaStreamTrack | VideoFrame | boolean | null, options?: { transfer: (MediaStreamTrack | VideoFrame)[] }): void;
 }
 
 /* The spec's worker-only generator, which is what Safari has. */

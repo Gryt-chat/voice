@@ -3,11 +3,10 @@
 
 const onMainThread = () => typeof MediaStreamTrackProcessor === "function" && typeof MediaStreamTrackGenerator === "function";
 
-export const frameTracksSupported = (): boolean => onMainThread() || typeof Worker === "function";
-
 // Runs in the worker, from its source text, so it may use nothing from this module.
 function workerMain() {
   self.onmessage = ({ data }) => {
+    if (data === "probe") return self.postMessage(typeof MediaStreamTrackProcessor === "function" && typeof VideoTrackGenerator === "function");
     if (data === "generate") {
       const generator = new VideoTrackGenerator();
       const writer = generator.writable.getWriter();
@@ -40,6 +39,24 @@ function workerMain() {
 
 const startWorker = () =>
   new Worker(URL.createObjectURL(new Blob([`(${String(workerMain)})()`], { type: "text/javascript" })));
+
+let probed: Promise<boolean> | undefined;
+
+/** Whether this browser can do both, asked of a worker once. Safari before 18 has WebCodecs and no worker processor. */
+export function frameTracksSupported(): Promise<boolean> {
+  if (onMainThread()) return Promise.resolve(true);
+  if (typeof Worker !== "function") return Promise.resolve(false);
+  probed ??= new Promise<boolean>((resolve) => {
+    const worker = startWorker();
+    const done = (ok: boolean) => (clearTimeout(timer), worker.terminate(), resolve(ok));
+    // A worker that never answers, a blocked blob: URL say, counts as no.
+    const timer = setTimeout(() => done(false), 2000);
+    worker.onmessage = ({ data }: MessageEvent<boolean>) => done(data === true);
+    worker.onerror = () => done(false);
+    worker.postMessage("probe");
+  });
+  return probed;
+}
 
 /** The track's frames. A clone goes to the worker, so `track` itself keeps playing where it's shown. */
 export function readFrames(track: MediaStreamTrack): ReadableStream<VideoFrame> {

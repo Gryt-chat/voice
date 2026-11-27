@@ -151,6 +151,9 @@ jobs:
       # The video hub's pieces and requests as client-rs and the SFU write them (GRYT-2261).
       - name: Check the video wire and reassembly
         run: npm run check-video-wire
+      # Safari before 18 has WebCodecs but no worker track processor, so it must stay on WebRTC video (GRYT-2431).
+      - name: Check which browsers take the own video path
+        run: npm run check-frame-track
 
       # The native engine's C core: packets as the TypeScript writes them, sealing as OpenSSL does it (GRYT-1822).
       - name: Check the native core against TypeScript and OpenSSL

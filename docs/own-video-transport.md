@@ -23,7 +23,7 @@ Track 1 and up are shared windows, 0 is left for a camera, and the top bit is a 
 - A keyframe goes out on start, after a pause, and when the SFU passes on a viewer's request.
 - Frame numbers run per track, and pieces go out as datagrams with nothing held back.
 
-Safari (18 and up) has `MediaStreamTrackProcessor` and `VideoTrackGenerator` only in a dedicated worker, so `frameTrack.ts` runs them in one and passes the frames over. The send side gets a clone of the track, so the local preview keeps playing. Everything else is the same code as Chromium. Safari has no `L1T3`, so it sends `L1T2`.
+Safari (18 and up) has `MediaStreamTrackProcessor` and `VideoTrackGenerator` only in a dedicated worker, so `frameTrack.ts` runs them in one and passes the frames over. The send side gets a clone of the track, so the local preview keeps playing. Everything else is the same code as Chromium. Safari has no `L1T3`, so it sends `L1T2`. Safari before 18 has WebCodecs but no worker processor; `videoTransportSupported()` asks a worker once, so those stay on WebRTC video.
 
 AV1 has a codec byte and a decoder entry, but nothing sends it yet. Rust only decodes H.264.
 
@@ -72,7 +72,6 @@ So in Electron the viewers' `demand` is the sender's only congestion signal, and
 - A share's sound (`AUDIO_TRACK`) still goes over WebRTC. Rust viewers don't hear an Electron share yet.
 - Camera on track 0.
 - The WebSocket fallback when UDP is blocked. The audio transport has `/audio-ws`, and video would need a `/video-ws`.
-- Safari before 18 has WebCodecs but no worker track processor. It's let through and its video doesn't start.
 - Work happens on the main thread. Moving the session and codecs into a worker would take React's jank out of the latency.
 - The capture stamp is the sender's wall clock in µs. Rust stamps the voice server's clock, so latency read across two machines is off by their offset.
 

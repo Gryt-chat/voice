@@ -52,8 +52,8 @@ const HELLO_MS = 5000;
 const WS_MAX_BUFFERED = 1024 * 1024;
 
 /** WebTransport is optional: without it, or with UDP blocked, the session goes over `wsUrl`. */
-export const videoTransportSupported = (): boolean =>
-  typeof VideoEncoder === "function" && typeof VideoDecoder === "function" && frameTracksSupported();
+export const videoTransportSupported = async (): Promise<boolean> =>
+  typeof VideoEncoder === "function" && typeof VideoDecoder === "function" && (await frameTracksSupported());
 
 export async function startVideoTransport(o: {
   offer: VideoTransportOffer;
