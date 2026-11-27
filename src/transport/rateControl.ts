@@ -145,7 +145,8 @@ export class Tally {
     const early = !this.fast && this.frames > 1 && waited >= EARLY_GAP_MS && Math.min(...this.latest) >= DELAY_FLOOR_MS * 1000;
     if (waited < (this.fast ? FAST_TICK_MS : TICK_MS) && !early) return null;
     const loss = this.got > 0 ? Math.min(1, this.asked / this.got) : 0;
-    const delay = early ? this.latest[0] / 1000 : this.frames > 0 ? this.excess / this.frames / 1000 : 0;
+    const mean = this.frames > 0 ? this.excess / this.frames / 1000 : 0;
+    const delay = early ? this.latest[0] / 1000 : mean;
     this.fast = loss > LOSS_LIMIT || delay >= FAST_DELAY_MS;
     const out = this.got > 0 ? { loss, delay } : null;
     this.since = now;
