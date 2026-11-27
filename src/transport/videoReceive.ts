@@ -1,6 +1,7 @@
 /** One incoming video stream from the video hub (GRYT-2261): whole frames into WebCodecs, pictures out as a
     MediaStreamTrack, so a tile draws it like any WebRTC track. */
 
+import { writeFrames } from "./frameTrack";
 import type { AssembledFrame } from "./videoAssembly";
 import { CODEC_AV1, CODEC_H264 } from "./videoWire";
 
@@ -17,7 +18,8 @@ export interface VideoReceiveStats {
 }
 
 export interface VideoReceiver {
-  stream: MediaStream;
+  /** Waits on Safari, where the track is made in a worker. */
+  stream: Promise<MediaStream>;
   push(frame: AssembledFrame): void;
   stats(): VideoReceiveStats;
   close(): void;
@@ -27,8 +29,8 @@ const CODECS: Record<number, string> = { [CODEC_H264]: "avc1.42E033", [CODEC_AV1
 
 /** `now` and the frame's stamp in µs, low 32 bits. `onBroken` asks for a keyframe after a decoder error. */
 export function startVideoReceive(o: { onBroken: () => void; clock?: () => number }): VideoReceiver {
-  const generator = new MediaStreamTrackGenerator({ kind: "video" });
-  const writer = generator.writable.getWriter();
+  const out = writeFrames();
+  const writer = out.writable.getWriter();
   const clock = o.clock ?? (() => Math.round((performance.timeOrigin + performance.now()) * 1000) >>> 0);
   const s: VideoReceiveStats = { width: 0, height: 0, frames: 0, bytes: 0, dropped: 0, latencyMs: null, decodeMs: 0 };
   let decoder: VideoDecoder | null = null;
@@ -62,7 +64,7 @@ export function startVideoReceive(o: { onBroken: () => void; clock?: () => numbe
   };
 
   return {
-    stream: new MediaStream([generator]),
+    stream: out.track.then((t) => new MediaStream([t])),
     push(f) {
       if (f.codec !== codec) {
         reset();
@@ -101,7 +103,7 @@ export function startVideoReceive(o: { onBroken: () => void; clock?: () => numbe
     close() {
       reset();
       void writer.close().catch(() => undefined);
-      generator.stop();
+      void out.track.then((t) => t.stop(), () => undefined);
     },
   };
 }

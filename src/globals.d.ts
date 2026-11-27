@@ -4,6 +4,20 @@ declare class MediaStreamTrackGenerator extends MediaStreamTrack {
   readonly writable: WritableStream<VideoFrame>;
 }
 
+/* Tracks are transferable to and from a dedicated worker; the DOM lib doesn't list them. */
+interface Worker {
+  postMessage(message: MediaStreamTrack, transfer: MediaStreamTrack[]): void;
+}
+interface Window {
+  postMessage(message: MediaStreamTrack | VideoFrame | boolean | null, options?: { transfer: (MediaStreamTrack | VideoFrame)[] }): void;
+}
+
+/* The spec's worker-only generator, which is what Safari has. */
+declare class VideoTrackGenerator {
+  readonly writable: WritableStream<VideoFrame>;
+  readonly track: MediaStreamTrack;
+}
+
 declare class MediaStreamTrackProcessor {
   constructor(init: { track: MediaStreamTrack });
   readonly readable: ReadableStream<VideoFrame>;

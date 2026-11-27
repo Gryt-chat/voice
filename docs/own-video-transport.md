@@ -23,6 +23,8 @@ Track 1 and up are shared windows, 0 is left for a camera, and the top bit is a 
 - A keyframe goes out on start, after a pause, and when the SFU passes on a viewer's request.
 - Frame numbers run per track, and pieces go out as datagrams with nothing held back.
 
+Safari (18 and up) has `MediaStreamTrackProcessor` and `VideoTrackGenerator` only in a dedicated worker, so `frameTrack.ts` runs them in one and passes the frames over. The send side gets a clone of the track, so the local preview keeps playing. Everything else is the same code as Chromium. Safari has no `L1T3`, so it sends `L1T2`. Safari before 18 has WebCodecs but no worker processor; `videoTransportSupported()` asks a worker once, so those stay on WebRTC video.
+
 AV1 has a codec byte and a decoder entry, but nothing sends it yet. Rust only decodes H.264.
 
 ## Receiving
