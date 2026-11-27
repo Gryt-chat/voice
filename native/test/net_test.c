@@ -21,7 +21,7 @@
 #define BLOCK 128
 static const uint8_t KEY[32] = {1, 2, 3};
 static int sfu_fd;
-static volatile int sfu_stop;
+static volatile int sfu_stop, keep_alives;
 
 static void *fake_sfu(void *arg) {
   (void)arg;
@@ -37,6 +37,10 @@ static void *fake_sfu(void *arg) {
     uint8_t *secret;
     size_t secret_len;
     if (gv_open(KEY, GV_TO_SFU, buf, (size_t)got, GV_HEADER_BYTES, &replay, &session, &secret, &secret_len) != 0) continue;
+    if (secret_len == 0) {
+      keep_alives++;
+      continue;
+    }
     uint8_t clear[4 + GV_HEADER_BYTES] = {0, 0, 0, 7};
     memcpy(clear + 4, buf + GV_SEAL_PREFIX, GV_HEADER_BYTES);
     size_t n = gv_seal(KEY, GV_FROM_SFU, session, ++counter, clear, sizeof clear, secret, secret_len, out, sizeof out);
@@ -87,6 +91,8 @@ int main(void) {
   assert(onset > 0);
   assert(peak > 0.4f && peak < 0.6f);
   assert(gv_net_chosen(net) == 1);
+  /* One on the first route check, and nothing that makes a second before 2 s. */
+  assert(keep_alives == 1);
   double delay = (onset - SR / 2) * 1000.0 / SR;
 
   gv_net_close(net);
@@ -94,6 +100,6 @@ int main(void) {
   pthread_join(t, NULL);
   close(sfu_fd);
   gv_engine_destroy(&engine);
-  printf("native net ok: a beep over real UDP through a fake SFU in %.1f ms, at %.2f; the live address won the race\n", delay, peak);
+  printf("native net ok: a beep over real UDP through a fake SFU in %.1f ms, at %.2f; the live address won the race; %d keep-alive\n", delay, peak, keep_alives);
   return 0;
 }

@@ -18,6 +18,7 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <time.h>
 #include <unistd.h>
 #endif
 
@@ -42,15 +43,21 @@ typedef socklen_t gv_socklen;
 #endif
 
 #define GV_RECV_TIMEOUT_MS 200
+/* The SFU learns an address only from a sealed packet, so a muted listener on a new network must send one. */
+#define GV_KEEPALIVE_MS 2000
+#define GV_ROUTE_CHECK_MS 200
 
 struct gv_net {
   gv_engine *engine;
-  gv_socket fd;
+  gv_socket fd, route_fd;
   struct sockaddr_storage addrs[MAX_ADDRS];
   gv_socklen addr_len[MAX_ADDRS];
   int n_addrs;
   atomic_int chosen, stop;
-  uint32_t session, counter;
+  uint32_t session;
+  /* Bumped from the audio thread and the receive thread: a repeated counter reuses a nonce. */
+  _Atomic uint32_t counter;
+  struct sockaddr_in local;
   uint8_t key[GV_KEY_BYTES];
   gv_replay replay;
   gv_thread thread;
@@ -100,6 +107,16 @@ static int resolve(const char *addr, struct sockaddr_storage *out, gv_socklen *l
   return 0;
 }
 
+static uint64_t now_ms(void) {
+#ifdef _WIN32
+  return GetTickCount64();
+#else
+  struct timespec t;
+  clock_gettime(CLOCK_MONOTONIC, &t);
+  return (uint64_t)t.tv_sec * 1000 + (uint64_t)t.tv_nsec / 1000000;
+#endif
+}
+
 static int same(const struct sockaddr_storage *a, const struct sockaddr_storage *b, gv_socklen len) {
   return memcmp(a, b, (size_t)len) == 0;
 }
@@ -107,7 +124,7 @@ static int same(const struct sockaddr_storage *a, const struct sockaddr_storage 
 static void send_packet(void *user, const uint8_t *packet, size_t len) {
   gv_net *n = user;
   uint8_t out[GV_SEAL_PREFIX + GV_QUEUE_BYTES + GV_TAG_BYTES];
-  size_t sealed = gv_seal(n->key, GV_TO_SFU, n->session, ++n->counter, packet, GV_HEADER_BYTES,
+  size_t sealed = gv_seal(n->key, GV_TO_SFU, n->session, atomic_fetch_add(&n->counter, 1) + 1, packet, GV_HEADER_BYTES,
                           packet + GV_HEADER_BYTES, len - GV_HEADER_BYTES, out, sizeof out);
   if (!sealed) return;
   int chosen = atomic_load(&n->chosen);
@@ -119,9 +136,38 @@ static void send_packet(void *user, const uint8_t *packet, size_t len) {
       sendto(n->fd, (const char *)out, (int)sealed, 0, (struct sockaddr *)&n->addrs[i], (int)n->addr_len[i]);
 }
 
+/* Which local address the OS would send from now. UDP connect only looks the route up. */
+static int moved(gv_net *n) {
+  int c = atomic_load(&n->chosen);
+  int i = c < 0 ? 0 : c;
+  struct sockaddr_in here;
+  gv_socklen len = sizeof here;
+  if (connect(n->route_fd, (struct sockaddr *)&n->addrs[i], (int)n->addr_len[i]) != 0 ||
+      getsockname(n->route_fd, (struct sockaddr *)&here, &len) != 0)
+    return 0;
+  int changed = here.sin_addr.s_addr != n->local.sin_addr.s_addr;
+  n->local = here;
+  return changed;
+}
+
+/* A header and no payload: it opens, so the SFU follows it, and the hub forwards nothing that short. */
+static void keep_alive(gv_net *n) {
+  static const uint8_t header[GV_HEADER_BYTES] = {0};
+  send_packet(n, header, sizeof header);
+}
+
 static void receive_loop_body(gv_net *n) {
   uint8_t buf[2048];
+  uint64_t check_at = 0, kept_at = 0;
   while (!atomic_load(&n->stop)) {
+    uint64_t t = now_ms();
+    if (t >= check_at) {
+      check_at = t + GV_ROUTE_CHECK_MS;
+      if (moved(n) || t - kept_at >= GV_KEEPALIVE_MS) {
+        keep_alive(n);
+        kept_at = t;
+      }
+    }
     struct sockaddr_storage from;
     gv_socklen from_len = sizeof from;
     int got = (int)recvfrom(n->fd, (char *)buf, (int)sizeof buf, 0, (struct sockaddr *)&from, &from_len);
@@ -197,7 +243,7 @@ gv_net *gv_net_open(gv_engine *engine, const char *const *addrs, int n_addrs, ui
   }
   n->engine = engine;
   n->session = session;
-  n->fd = GV_BAD_SOCKET;
+  n->fd = n->route_fd = GV_BAD_SOCKET;
   memcpy(n->key, key, GV_KEY_BYTES);
   atomic_init(&n->chosen, -1);
   atomic_init(&n->stop, 0);
@@ -205,8 +251,11 @@ gv_net *gv_net_open(gv_engine *engine, const char *const *addrs, int n_addrs, ui
     if (resolve(addrs[i], &n->addrs[n->n_addrs], &n->addr_len[n->n_addrs]) == 0) n->n_addrs++;
   /* One socket for both families: an IPv6 socket that also takes IPv4 would differ per OS, so v4 only for now. */
   n->fd = socket(AF_INET, SOCK_DGRAM, 0);
-  if (n->n_addrs == 0 || n->fd == GV_BAD_SOCKET || set_recv_timeout(n->fd) != 0 || start_thread(n) != 0) {
+  n->route_fd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (n->n_addrs == 0 || n->fd == GV_BAD_SOCKET || n->route_fd == GV_BAD_SOCKET || set_recv_timeout(n->fd) != 0 ||
+      start_thread(n) != 0) {
     if (n->fd != GV_BAD_SOCKET) gv_close_socket(n->fd);
+    if (n->route_fd != GV_BAD_SOCKET) gv_close_socket(n->route_fd);
     free(n);
     wsa_release();
     return NULL;
@@ -221,6 +270,7 @@ void gv_net_close(gv_net *n) {
   atomic_store(&n->stop, 1);
   join_thread(n);
   gv_close_socket(n->fd);
+  gv_close_socket(n->route_fd);
   n->engine->send = NULL;
   free(n);
   wsa_release();
