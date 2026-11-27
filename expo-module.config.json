@@ -1,7 +1,10 @@
 {
-  "platforms": ["apple"],
+  "platforms": ["apple", "android"],
   "apple": {
     "modules": ["GrytVoiceModule"],
     "podspecPath": "GrytVoice.podspec"
+  },
+  "android": {
+    "modules": ["chat.gryt.voice.GrytVoiceModule"]
   }
 }
