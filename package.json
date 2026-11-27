@@ -37,6 +37,8 @@
     "GrytVoice.podspec",
     "expo-module.config.json",
     "ios",
+    "android/build.gradle",
+    "android/src",
     "native/core",
     "native/tools/voice_helper.c",
     "native/tools/share_capture.c",

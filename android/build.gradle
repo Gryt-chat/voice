@@ -1,0 +1,35 @@
+apply plugin: 'com.android.library'
+
+group = 'chat.gryt.voice'
+version = '0.1.0'
+
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
+apply from: expoModulesCorePlugin
+applyKotlinExpoModulesCorePlugin()
+useCoreDependencies()
+useDefaultAndroidSdkVersions()
+
+// libopus's C source, unpacked from the pinned tarball the iOS pod uses. A published package already has it.
+def opusSource = file("../native/build/opus-src/include/opus.h")
+task unpackOpus(type: Exec) {
+  workingDir file("..")
+  commandLine "sh", "native/opus/source.sh"
+  onlyIf { !opusSource.exists() }
+}
+preBuild.dependsOn unpackOpus
+
+android {
+  namespace "chat.gryt.voice"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  externalNativeBuild {
+    cmake {
+      path "src/main/cpp/CMakeLists.txt"
+    }
+  }
+  lintOptions {
+    abortOnError false
+  }
+}

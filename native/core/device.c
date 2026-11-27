@@ -70,6 +70,14 @@ gv_device *gv_device_start(gv_engine *engine, const char *capture_name, const ch
   c.periodSizeInFrames = period;
   c.periods = 2;
   c.performanceProfile = ma_performance_profile_low_latency;
+#ifdef __ANDROID__
+  /* A call, so the platform's echo canceller and noise suppressor run on the mic. */
+  c.aaudio.usage = ma_aaudio_usage_voice_communication;
+  c.aaudio.contentType = ma_aaudio_content_type_speech;
+  c.aaudio.inputPreset = ma_aaudio_input_preset_voice_communication;
+  c.opensl.streamType = ma_opensl_stream_type_voice;
+  c.opensl.recordingPreset = ma_opensl_recording_preset_voice_communication;
+#endif
   c.dataCallback = callback;
   c.pUserData = d;
   d->engine = engine;

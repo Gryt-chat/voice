@@ -162,6 +162,13 @@ jobs:
         run: npm run check-native-engine
       - name: Build the native engine on real devices
         run: npm run check-native-device
+      # The Android module's library, from the runner image's NDK (GRYT-2391).
+      - name: Build the native engine for Android
+        run: |
+          sh native/opus/source.sh
+          cmake -S android/src/main/cpp -B native/build/android -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=24 \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake"
+          cmake --build native/build/android -j4
       - name: Check the native engine over real UDP
         run: npm run check-native-net
       - name: Build the desktop's voice helper and check its protocol
