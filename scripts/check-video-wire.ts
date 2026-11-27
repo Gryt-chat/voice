@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 
+import { LayerControl, RateControl } from "../dist/transport/rateControl.js";
 import { GIVE_UP_MS, KEYFRAME_EVERY_MS, RESEND_AFTER_MS, RESEND_EVERY_MS, VideoAssembler } from "../dist/transport/videoAssembly.js";
 import {
   CONTROL_KEYFRAME, CONTROL_RESEND, frameAfter, keyframeRequest, LAYERS_NONE, layersRequest, MAX_PIECE, MAX_PIECES, MAX_RESEND,
@@ -157,4 +158,28 @@ back.set(demandRequest(0, 1, { width: 640, height: 360, fps: 30 }), 4);
 back[4 + 3] = 2;
 assert.deepEqual(readForwardedVideo(back), { kind: "demand", track: 1, watchers: 2, demand: { width: 640, height: 360, fps: 30, loss: 0 } });
 
-console.log("video wire: pieces, requests and reassembly match client-rs and the SFU");
+// The sender's rate: backs off to below what went on loss, queueing or drops, holds, then grows to the ceiling.
+const link = (at: number, mbit: number, extra: Partial<Parameters<RateControl["update"]>[0]> = {}) =>
+  ({ at, bytesSent: (mbit * 1e6 * at) / 8000, packetsSent: at, packetsLost: 0, smoothedRtt: 20, minRtt: 10, dropped: 0, viewerLoss: 0, ...extra });
+const rc = new RateControl(8e6, 3e5, 8e6);
+rc.update(link(0, 6));
+assert.equal(rc.update(link(500, 6)), 8e6, "grew past its ceiling");
+const cut = rc.update(link(1000, 6, { smoothedRtt: 120 }));
+assert.ok(cut < 6e6 && cut > 4e6, `a queue cut to ${cut}, not below what went`);
+assert.equal(rc.update(link(1500, 6)), cut, "grew inside the hold");
+assert.ok(rc.update(link(2600, 6)) > cut, "never grew again");
+assert.ok(rc.update(link(3100, 6, { packetsLost: 3100 * 0.1 })) < cut, "ignored 10% loss");
+const floor = new RateControl(4e5, 3e5, 8e6);
+floor.update(link(0, 0.1));
+assert.equal(floor.update(link(500, 0.1, { viewerLoss: 0.2 })), 3e5, "went under the floor on a viewer's loss");
+
+// A viewer's layers: drop one after 2 s of resends, raise after 5 s clean.
+const lc = new LayerControl(3, 0);
+const second = (at: number, got: number, asked: number) => (lc.received(got), lc.resent(asked), lc.tick(at));
+assert.equal(second(1000, 100, 20), null);
+assert.equal(second(2000, 100, 20), null);
+assert.equal(second(3000, 100, 20), 1, "kept every layer through 3 s of loss");
+assert.equal(second(4000, 100, 0), null);
+assert.equal(second(9000, 100, 0), 2, "never raised again");
+
+console.log("video wire: pieces, requests and reassembly match client-rs and the SFU; rate and layer control react");
