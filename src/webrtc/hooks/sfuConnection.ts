@@ -49,6 +49,9 @@ interface SFUConnectionOptions {
   /** Which own-transport sender id is which user, each time someone joins or leaves it (GRYT-1830). */
   onAudioSenders?: (senders: Map<number, string>) => void;
 
+  /** The same for the video hub, whose ids are its own (GRYT-2261). */
+  onVideoSenders?: (senders: Map<number, string>) => void;
+
   /** Whether anyone in the room is off the own transport and still needs WebRTC audio (GRYT-1853). */
   onWebRTCAudioWanted?: (wanted: boolean) => void;
 }
@@ -98,9 +101,18 @@ function parseAudioTransport(value: unknown): AudioTransportOffer | null {
   if (!Array.isArray(urls) || typeof certHash !== "string" || typeof ticket !== "string") return null;
   const https = urls.filter((u): u is string => typeof u === "string" && u.startsWith("https://"));
   const udp = parseUdp((value as Record<string, unknown>).udp);
+  const video = parseVideo((value as Record<string, unknown>).video);
   // The Rust SFU has no WebTransport: its offer is the UDP session alone, which only the native engine takes.
   if (https.length === 0 && !udp) return null;
-  return udp ? { urls: https, certHash, ticket, udp } : { urls: https, certHash, ticket };
+  return { urls: https, certHash, ticket, ...(udp ? { udp } : {}), ...(video ? { video } : {}) };
+}
+
+function parseVideo(value: unknown): { urls: string[]; ticket: string } | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const { urls, ticket } = value as Record<string, unknown>;
+  if (!Array.isArray(urls) || typeof ticket !== "string" || !ticket) return undefined;
+  const https = urls.filter((u): u is string => typeof u === "string" && u.startsWith("https://"));
+  return https.length > 0 ? { urls: https, ticket } : undefined;
 }
 
 /** The native engine's part of the offer (GRYT-1822): host:port addresses, a u32 session, a 32-byte base64 key. */
@@ -533,6 +545,11 @@ export async function connectToSfuWebSocket(
 
           case "audio_senders": {
             options.onAudioSenders?.(parseAudioSenders(message.data));
+            break;
+          }
+
+          case "video_senders": {
+            options.onVideoSenders?.(parseAudioSenders(message.data));
             break;
           }
 

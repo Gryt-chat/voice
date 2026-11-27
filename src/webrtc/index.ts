@@ -11,7 +11,8 @@ export {
   warmSfuSelection,
 } from "./hooks/selectBestSfuUrl";
 export type { SFUConnectionStateInternal } from "./hooks/sfuTypes";
-export { useSFU } from "./hooks/useSFU";
+export { hubStreamId, useSFU } from "./hooks/useSFU";
+export type { VideoTransportStats } from "../transport/videoSession";
 export { useSFUStreams } from "./hooks/useSFUStreams";
 export {
   type InboundVideoStats,

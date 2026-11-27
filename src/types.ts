@@ -80,6 +80,8 @@ export interface VoiceConfig {
     audioTransportWasm?: () => Promise<ArrayBuffer>;
     /** Use the native voice engine when the platform has one and the SFU offers UDP (GRYT-1822). */
     nativeAudio?: boolean;
+    /** Send shared windows over the SFU's video hub instead of WebRTC, when it offers one (GRYT-2261). */
+    ownVideoTransport?: boolean;
   };
 }
 

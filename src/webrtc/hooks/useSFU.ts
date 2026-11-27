@@ -8,6 +8,8 @@ import { useVoiceConfig, useVoiceTarget, type VoiceTarget } from "../../config";
 import { sliderToOutputGain } from "../../shared/audioVolume";
 import { getVoicePlatform } from "../../platform/index";
 import { singletonHook } from "../../shared/singletonHook";
+import { startVideoTransport, videoTransportSupported, type VideoTransportSession } from "../../transport/videoSession";
+import type { VideoSendOptions } from "../../transport/videoSend";
 import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, PASS_THROUGH, startAudioTransport, TRANSPORT_BITRATE, TRANSPORT_FRAME_MS, transportEffects } from "../../transport/session";
 
 import { SFUConnectionState, type SFUInterface, type Streams, type StreamSources, type TransportLatency, type VideoStreams } from "../types/SFU";
@@ -45,6 +47,19 @@ const REANNOUNCE_BACKOFF_MS = [0, 2000, 5000];
 interface ActiveCall {
   target: VoiceTarget;
   stunHosts: string[];
+}
+
+/** A member's shared window on the video hub, as `videoStreams` names it: the id they announce, then theirs. */
+export const hubStreamId = (track: number, userId: string): string => `gryt-video:${track}@${userId}`;
+
+/** The user's picks for a window, or what the track says when there are none yet. */
+function hubOptions(track: MediaStreamTrack, settings: VideoSendSettings | null | undefined): VideoSendOptions {
+  const own = track.getSettings();
+  return {
+    maxBitrate: settings?.maxBitrate ?? 8_000_000,
+    maxFramerate: settings?.maxFramerate ?? own.frameRate ?? 30,
+    maxHeight: settings?.maxSize?.height,
+  };
 }
 
 function useSfuHook(): SFUInterface {
@@ -128,6 +143,13 @@ function useSfuHook(): SFUInterface {
   const { microphoneBuffer, isAcquiring } = useMicrophone(isConnecting || isConnected);
   const microphoneBufferRef = useRef(microphoneBuffer);
   const audioTransportRef = useRef<AudioTransportSession | null>(null);
+  // The video hub (GRYT-2261): shared windows by track out, everyone else's tracks in by `sender/track`.
+  const videoHubRef = useRef<VideoTransportSession | null>(null);
+  const hubSendingRef = useRef(new Set<number>());
+  const hubSourcesRef = useRef(new Map<number, MediaStreamTrack>());
+  const hubSettingsRef = useRef(new Map<VideoRole, VideoSendSettings | null>());
+  const [hubStreams, setHubStreams] = useState<ReadonlyMap<string, { sender: number; track: number; stream: MediaStream }>>(() => new Map());
+  const [videoSenderUsers, setVideoSenderUsers] = useState<ReadonlyMap<number, string>>(() => new Map());
   // The channel's eSports mode and bitrate, which a recovery reconnect has to pass again.
   const lastChannelSettingsRef = useRef<{ eSportsMode?: boolean; maxBitrate?: number | null }>({});
   // Read when the transport starts or the pipeline is rebuilt, which can be before a render.
@@ -185,6 +207,9 @@ function useSfuHook(): SFUInterface {
   const performCleanup = useCallback(async (skipServerUpdate = false) => {
     audioTransportRef.current?.close();
     audioTransportRef.current = null;
+    videoHubRef.current?.close();
+    videoHubRef.current = null;
+    hubSendingRef.current.clear();
     await performSfuCleanup(cleanupRefs, {
       room,
       setStreamSources,
@@ -319,7 +344,32 @@ function useSfuHook(): SFUInterface {
       sampleRate: null,
     };
   }, []);
+  const { ownVideoTransport } = config.connection;
+  const startVideoHub = useCallback(async (offer: AudioTransportOffer) => {
+    if (!offer.video || !ownVideoTransport || !videoTransportSupported()) return;
+    try {
+      const hub = await startVideoTransport({
+        offer: { ...offer.video, certHash: offer.certHash },
+        onStream: (sender, track, stream) => setHubStreams((prev) => {
+          const next = new Map(prev);
+          if (stream) next.set(`${sender}/${track}`, { sender, track, stream });
+          else next.delete(`${sender}/${track}`);
+          return next;
+        }),
+      });
+      videoHubRef.current?.close();
+      videoHubRef.current = hub;
+      void hub.closed.then(() => {
+        if (videoHubRef.current === hub) videoHubRef.current = null;
+      });
+      voiceLog.ok("TRANSPORT", "video", "Shared windows on the video hub", { url: hub.url });
+    } catch (error) {
+      voiceLog.warn("TRANSPORT", "Video hub failed, shares stay on WebRTC", error);
+    }
+  }, [ownVideoTransport]);
+
   const startTransport = useCallback(async (offer: AudioTransportOffer) => {
+    void startVideoHub(offer);
     // The phone: the native engine owns the mic and speaker, so WebRTC sends no audio at all (GRYT-1822).
     const platform = getVoicePlatform();
     if (nativeAudio && offer.udp && platform.startNativeAudio) {
@@ -409,7 +459,7 @@ function useSfuHook(): SFUInterface {
     } catch (error) {
       voiceLog.warn("TRANSPORT", "Own transport failed, staying on WebRTC audio", error);
     }
-  }, [audioTransportWasm, nativeAudio, feedTransport, applyUserGains]);
+  }, [audioTransportWasm, nativeAudio, feedTransport, applyUserGains, startVideoHub]);
 
   useEffect(() => {
     const session = audioTransportRef.current;
@@ -523,6 +573,7 @@ function useSfuHook(): SFUInterface {
       onIngestCap: videoSend.setIngestCap,
       onAudioTransport: (offer) => void startTransport(offer),
       onAudioSenders: setSenderUsers,
+      onVideoSenders: setVideoSenderUsers,
       onWebRTCAudioWanted: setWebRTCAudioWanted,
     }).catch((error: unknown) => {
       // Refused is ended on purpose, or signalling coming back asks for the room again.
@@ -834,6 +885,13 @@ function useSfuHook(): SFUInterface {
   }, [addExtraScreenTrack]);
 
   const addScreenVideoTrack = useCallback((track: MediaStreamTrack, stream: MediaStream, preferredCodec?: string, index = 0) => {
+    const hub = videoHubRef.current;
+    if (hub) {
+      hub.send(index + 1, track, hubOptions(track, hubSettingsRef.current.get(index === 0 ? "screen" : `screen:${index}`)));
+      hubSendingRef.current.add(index + 1);
+      hubSourcesRef.current.set(index + 1, track);
+      return;
+    }
     if (index > 0) {
       addExtraScreenTrack(index, track, stream, preferredCodec);
       return;
@@ -869,6 +927,10 @@ function useSfuHook(): SFUInterface {
   }, [sendRenegotiate, applyVideoCodecPreferences, publishRole, videoSend, addExtraScreenTrack]);
 
   const removeScreenVideoTrack = useCallback((index = 0) => {
+    if (hubSendingRef.current.delete(index + 1)) {
+      videoHubRef.current?.stopSending(index + 1);
+      return;
+    }
     if (index > 0) {
       removeExtraScreenTrack(index, "video");
       return;
@@ -938,15 +1000,37 @@ function useSfuHook(): SFUInterface {
     return () => clearInterval(timer);
   }, [isConnected, videoSend, demand]);
 
-  const setVideoSendSettings = useCallback(
-    (role: VideoRole, settings: VideoSendSettings | null) => videoSend.setSettings(role, settings),
-    [videoSend],
-  );
+  const setVideoSendSettings = useCallback((role: VideoRole, settings: VideoSendSettings | null) => {
+    hubSettingsRef.current.set(role, settings);
+    const track = role.startsWith("screen") ? Number(role.slice(7) || 0) + 1 : 0;
+    const source = hubSendingRef.current.has(track) ? hubSourcesRef.current.get(track) : undefined;
+    if (source) videoHubRef.current?.configure(track, hubOptions(source, settings));
+    videoSend.setSettings(role, settings);
+  }, [videoSend]);
   const setVideoCeiling = useCallback((ceiling: VideoCeiling | null) => videoSend.setCeiling(ceiling), [videoSend]);
-  const reportVideoDemand = useCallback(
-    (streamId: string, size: VideoDemand | null) => demand.report(streamId, size),
-    [demand],
+  // Who is on the video hub as which user, and their streams under the ids the embedder looks them up by.
+  useEffect(() => {
+    for (const { sender } of hubStreams.values()) if (videoSenderUsers.size && !videoSenderUsers.has(sender)) videoHubRef.current?.forget(sender);
+  }, [videoSenderUsers, hubStreams]);
+  const hubVideoStreams = useMemo(() => {
+    const out: VideoStreams = {};
+    for (const { sender, track, stream } of hubStreams.values()) {
+      const user = videoSenderUsers.get(sender);
+      if (user) out[hubStreamId(track, user)] = stream;
+    }
+    return out;
+  }, [hubStreams, videoSenderUsers]);
+  const allVideoStreams = useMemo(
+    () => (hubStreams.size ? { ...videoStreams, ...hubVideoStreams } : videoStreams),
+    [videoStreams, hubVideoStreams, hubStreams.size],
   );
+  const reportVideoDemand = useCallback((streamId: string, size: VideoDemand | null) => {
+    const hub = [...hubStreams.values()].find((h) => h.stream.id === streamId || hubVideoStreams[streamId] === h.stream);
+    if (hub) videoHubRef.current?.watch(hub.sender, hub.track, size && { width: size.width, height: size.height, fps: size.fps ?? 0 });
+    else demand.report(streamId, size);
+  }, [demand, hubStreams, hubVideoStreams]);
+  const getOwnVideoStreamId = useCallback((index = 0) => (videoHubRef.current ? `gryt-video:${index + 1}` : null), []);
+  const getVideoTransportStats = useCallback(() => videoHubRef.current?.stats() ?? null, []);
 
   const connectionStateRef = useRef(connectionState);
   useEffect(() => { connectionStateRef.current = connectionState; }, [connectionState]);
@@ -1254,7 +1338,7 @@ function useSfuHook(): SFUInterface {
     streams,
     error: connectionState.error,
     streamSources,
-    videoStreams,
+    videoStreams: allVideoStreams,
     connect,
     disconnect,
     addVideoTrack,
@@ -1280,6 +1364,8 @@ function useSfuHook(): SFUInterface {
     setVideoSendSettings,
     setVideoCeiling,
     reportVideoDemand,
+    getOwnVideoStreamId,
+    getVideoTransportStats,
     transportSpeaking,
     transportUsers,
     getTransportLevels,
