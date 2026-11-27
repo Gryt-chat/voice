@@ -17,7 +17,7 @@ const opusFiles = ["celt", "silk", "silk/float", "src"].flatMap((dir) =>
     .filter((f) => f.endsWith(".c") && !/^(opus_demo|opus_compare|repacketizer_demo|opus_custom_demo)\.c$/.test(f))
     .map((f) => join(opus, dir, f)),
 );
-const core = ["voice", "net", "seal", "engine", "effects", "jitter", "packet"].map((f) => join(root, `native/core/${f}.c`));
+const core = ["voice", "net", "ws", "seal", "engine", "effects", "jitter", "packet"].map((f) => join(root, `native/core/${f}.c`));
 // macOS gets Apple's voice-processing unit for echo cancellation; elsewhere miniaudio, with none yet.
 const device = process.platform === "darwin" ? "native/core/device_vpio.c" : "native/core/device.c";
 const libs = {

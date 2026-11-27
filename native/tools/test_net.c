@@ -20,7 +20,7 @@ int main(void) {
   const char *addrs[] = {"127.0.0.1:5005"};
   uint8_t key[32] = {0};
   printf("net_open ... ");
-  gv_net *n = gv_net_open(engine, addrs, 1, 42, key);
+  gv_net *n = gv_net_open(engine, addrs, 1, 42, key, NULL);
   if (!n) { printf("FAILED\n"); gv_engine_destroy(engine); return 1; }
   printf("ok, chosen=%d\n", gv_net_chosen(n));
 

@@ -155,17 +155,20 @@ static void parse_effects(char *rest) {
   if (monitor) gv_voice_set_effects(monitor, &effects);
 }
 
-/* start <session> <key> <period> <addr>...: the room_joined offer's udp part. */
+/* start <session> <key> <period> <addr>... [ws://.../audio-ws?ticket=...]: the room_joined offer's udp part, and
+   the fallback for when UDP is blocked. An older helper takes the URL for an address that doesn't resolve. */
 static void start(char *rest) {
-  char *session = strtok(rest, " "), *key = strtok(NULL, " "), *period = strtok(NULL, " ");
+  char *session = strtok(rest, " "), *key = strtok(NULL, " "), *period = strtok(NULL, " "), *ws = NULL;
   const char *addrs[MAX_ADDRS];
   int n = 0;
-  for (char *a; n < MAX_ADDRS && (a = strtok(NULL, " "));) addrs[n++] = a;
+  for (char *a; n < MAX_ADDRS && (a = strtok(NULL, " "));)
+    if (!strncmp(a, "ws://", 5) || !strncmp(a, "wss://", 6)) ws = a;
+    else addrs[n++] = a;
   uint8_t k[32];
   if (voice) gv_voice_stop(voice), voice = NULL;
   if (monitor) gv_voice_stop(monitor), monitor = NULL;
   if (session && key && period && n > 0 && unbase64(key, k, 32) == 32)
-    voice = gv_voice_start(addrs, n, (uint32_t)strtoul(session, NULL, 10), k, &effects, (unsigned)atoi(period));
+    voice = gv_voice_start(addrs, n, (uint32_t)strtoul(session, NULL, 10), k, &effects, (unsigned)atoi(period), ws);
   if (voice && bitrate > 0) gv_voice_set_bitrate(voice, bitrate);
   if (voice && (*mic || *speaker)) gv_voice_use_devices(voice, *mic ? mic : NULL, *speaker ? speaker : NULL);
   printf("started %d\n", voice != NULL);

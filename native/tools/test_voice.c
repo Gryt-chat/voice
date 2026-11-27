@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
   gv_effect_settings fx = {100, 0, 200, 0.8f, 0, -20, 0, 50, 0};
 
   printf("voice_start(period=%u) ... ", period);
-  gv_voice *v = gv_voice_start(addrs, 1, 42, key, &fx, period);
+  gv_voice *v = gv_voice_start(addrs, 1, 42, key, &fx, period, NULL);
   if (!v) { printf("returned NULL\n"); return 1; }
   printf("ok, route=%d\n", gv_voice_route(v));
 

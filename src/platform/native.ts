@@ -55,7 +55,8 @@ function createPassthroughPipeline({
 
 /** The GrytVoice Expo module (ios/GrytVoiceModule.swift), as the app's native side exposes it. */
 interface GrytVoiceModule {
-  start(addrs: string[], session: number, key: string, effects: Record<string, number>): Promise<boolean>;
+  /** wsUrl is "" for UDP only. */
+  start(addrs: string[], session: number, key: string, effects: Record<string, number>, wsUrl: string): Promise<boolean>;
   stop(): void;
   setSending(on: boolean): void;
   setOutputGain(gain: number): void;
@@ -85,8 +86,8 @@ const asNumbers = (e: VoiceEffectSettings): Record<string, number> => ({
 export const nativePlatform: VoicePlatform = {
   name: "react-native",
 
-  async startNativeAudio(offer, effects) {
-    if (!grytVoice || !(await grytVoice.start(offer.addrs, offer.session, offer.key, asNumbers(effects)))) return null;
+  async startNativeAudio(offer, effects, wsUrl) {
+    if (!grytVoice || !(await grytVoice.start(offer.addrs, offer.session, offer.key, asNumbers(effects), wsUrl ?? ""))) return null;
     nativeRunning = true;
     grytVoice.setSending(!micMuted);
     return {
