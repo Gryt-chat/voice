@@ -348,9 +348,12 @@ function useSfuHook(): SFUInterface {
   const { ownVideoTransport } = config.connection;
   const startVideoHub = useCallback(async (offer: AudioTransportOffer) => {
     if (!offer.video || !ownVideoTransport || !videoTransportSupported()) return;
+    const sfuUrl = activeSfuUrlRef.current;
     try {
       const hub = await startVideoTransport({
         offer: { ...offer.video, certHash: offer.certHash },
+        // The Go SFU has no /video-ws and would answer it as signalling, hence the offer's flag.
+        wsUrl: sfuUrl && offer.video.ws ? new URL("/video-ws", sfuUrl).toString() : undefined,
         onStream: (sender, track, stream) => setHubStreams((prev) => {
           const next = new Map(prev);
           if (stream) next.set(`${sender}/${track}`, { sender, track, stream });

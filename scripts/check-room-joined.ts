@@ -75,6 +75,8 @@ assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: udpOnly })).a
 const video = { urls: ["https://192.0.2.1:4433/video"], ticket: "dmlkZW8=" };
 assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: { ...offer, video } })).audioTransport, { ...offer, video });
 assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: { ...offer, video: { urls: [], ticket: "" } } })).audioTransport, offer);
+assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: { ...offer, video: { ...video, ws: true } } })).audioTransport, { ...offer, video: { ...video, ws: true } });
+assert.deepEqual(parseRoomJoined(JSON.stringify({ audio_transport: { ...offer, video: { ...video, ws: "yes" } } })).audioTransport, { ...offer, video });
 for (const bad of [null, "x", {}, { ...offer, urls: [] }, { ...offer, urls: ["ws://a"] }, { ...offer, ticket: 1 }, { ...offer, certHash: null }]) {
   assert.equal(parseRoomJoined(JSON.stringify({ audio_transport: bad })).audioTransport, null, `offer ${JSON.stringify(bad)} was accepted`);
 }
@@ -91,4 +93,4 @@ assert.equal(parseWebRTCAudioWanted('{"wanted":false}'), false);
 assert.equal(parseWebRTCAudioWanted('{"wanted":true}'), true);
 for (const bad of ["", "null", "{", '{"wanted":"no"}', "{}"]) assert.equal(parseWebRTCAudioWanted(bad), null, bad);
 
-console.log("room_joined ok: the timeout and the ingest cap survive the wire, and an SFU that says nothing says null; audio_senders, webrtc_audio_wanted and the video offer parsed");
+console.log("room_joined ok: the timeout and the ingest cap survive the wire, and an SFU that says nothing says null; audio_senders, webrtc_audio_wanted and the video offer parsed, /video-ws flag included");

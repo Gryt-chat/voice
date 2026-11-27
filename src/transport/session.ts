@@ -15,8 +15,8 @@ export interface AudioTransportOffer {
   ticket: string;
   /** The native engine's plain UDP (GRYT-1822), when the SFU runs it. */
   udp?: AudioUDPOffer;
-  /** The video hub's /video and its own ticket, when the SFU runs it (GRYT-2261). */
-  video?: { urls: string[]; ticket: string };
+  /** The video hub's /video and its own ticket, when the SFU runs it (GRYT-2261). `ws` when it also serves /video-ws. */
+  video?: { urls: string[]; ticket: string; ws?: boolean };
 }
 
 /** A session id and its key; a packet that opens with the key is the only proof the SFU needs. */
@@ -156,17 +156,17 @@ export async function dialWebTransport(offer: Pick<AudioTransportOffer, "urls" |
   };
 }
 
-function dialWebSocket(url: string, ticket: string): Promise<Pipe> {
+function dialWebSocket(url: string, ticket: string, maxBuffered: number): Promise<Pipe> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`${url}?ticket=${encodeURIComponent(ticket)}`);
     ws.binaryType = "arraybuffer";
     const closed = new Promise<void>((done) => ws.addEventListener("close", () => done()));
-    ws.addEventListener("error", () => reject(new Error("audio WebSocket failed")), { once: true });
-    ws.addEventListener("close", () => reject(new Error("audio WebSocket closed")), { once: true });
+    ws.addEventListener("error", () => reject(new Error("WebSocket failed")), { once: true });
+    ws.addEventListener("close", () => reject(new Error("WebSocket closed")), { once: true });
     ws.addEventListener("open", () => resolve({
       url,
       send(packet) {
-        if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < WS_MAX_BUFFERED) ws.send(packet);
+        if (ws.readyState === WebSocket.OPEN && ws.bufferedAmount < maxBuffered) ws.send(packet);
       },
       listen(onPacket) {
         ws.addEventListener("message", (e: MessageEvent<ArrayBuffer>) => onPacket(new Uint8Array(e.data)));
@@ -178,7 +178,9 @@ function dialWebSocket(url: string, ticket: string): Promise<Pipe> {
 }
 
 /** WebTransport where it works, else the WebSocket fallback at `wsUrl` when there is one. */
-async function dialPipe(offer: AudioTransportOffer, wsUrl: string | undefined): Promise<Pipe> {
+export async function dialPipe(
+  offer: Pick<AudioTransportOffer, "urls" | "certHash" | "ticket">, wsUrl: string | undefined, maxBuffered = WS_MAX_BUFFERED,
+): Promise<Pipe> {
   if (audioTransportSupported()) {
     try {
       return await dialWebTransport(offer);
@@ -187,7 +189,7 @@ async function dialPipe(offer: AudioTransportOffer, wsUrl: string | undefined): 
     }
   }
   if (!wsUrl) throw new Error("no WebTransport and no WebSocket fallback");
-  return dialWebSocket(wsUrl, offer.ticket);
+  return dialWebSocket(wsUrl, offer.ticket, maxBuffered);
 }
 
 /** Dial the SFU and start sending `input` and playing into `output`. Rejects if the handshake fails. */
