@@ -84,7 +84,7 @@ static int set_nonblocking(gv_socket fd) {
 #endif
 }
 
-static gv_socket dial(const char *host, const char *port, int ms) {
+gv_socket gv_ws_dial(const char *host, const char *port, int ms) {
   struct addrinfo hints = {.ai_family = AF_UNSPEC, .ai_socktype = SOCK_STREAM}, *res, *a;
   if (getaddrinfo(host, port, &hints, &res) != 0) return GV_BAD_SOCKET;
   gv_socket fd = GV_BAD_SOCKET;
@@ -227,7 +227,7 @@ gv_ws *gv_ws_connect(const char *url, int timeout_ms) {
   if (!w) return NULL;
   w->fd = GV_BAD_SOCKET;
   if (tls) w->tls = gv_tls_open(name, port, timeout_ms);
-  else w->fd = dial(name, port, timeout_ms);
+  else w->fd = gv_ws_dial(name, port, timeout_ms);
   if ((tls ? !w->tls : w->fd == GV_BAD_SOCKET) || handshake(w, host, port, where, timeout_ms) != 0) {
     if (w->tls) gv_tls_close(w->tls);
     if (w->fd != GV_BAD_SOCKET) gv_close_socket(w->fd);

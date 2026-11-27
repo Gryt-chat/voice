@@ -1,6 +1,6 @@
 #include "tls.h"
 
-#if !defined(__APPLE__) && !defined(__ANDROID__)
+#if !defined(__APPLE__) && !defined(__ANDROID__) && !defined(_WIN32)
 gv_tls *gv_tls_open(const char *host, const char *port, int timeout_ms) {
   (void)host, (void)port, (void)timeout_ms;
   return NULL;
