@@ -13,6 +13,7 @@ import type { VideoSendOptions } from "../../transport/videoSend";
 import { type AudioTransportOffer, type AudioTransportSession, audioTransportSupported, PASS_THROUGH, startAudioTransport, TRANSPORT_BITRATE, TRANSPORT_FRAME_MS, transportEffects } from "../../transport/session";
 
 import { SFUConnectionState, type SFUInterface, type Streams, type StreamSources, type TransportLatency, type VideoStreams } from "../types/SFU";
+import { peerConnectedSettles } from "./connectionProgress";
 import { type CleanupRefs,performSfuCleanup, performUnmountCleanup } from "./sfuCleanup";
 import { sfuConnect } from "./sfuConnectFlow";
 import { publishOnSfuSlot, sfuSlots } from "./sfuSlots";
@@ -368,6 +369,10 @@ function useSfuHook(): SFUInterface {
     }
   }, [ownVideoTransport]);
 
+  // Voice on the own transport is the call being up; WebRTC may never connect (the Rust SFU has none).
+  const settleOnTransport = useCallback(() => {
+    setConnectionState((prev) => (peerConnectedSettles(prev.state) ? { ...prev, state: SFUConnectionState.CONNECTED } : prev));
+  }, []);
   const startTransport = useCallback(async (offer: AudioTransportOffer) => {
     void startVideoHub(offer);
     // The phone: the native engine owns the mic and speaker, so WebRTC sends no audio at all (GRYT-1822).
@@ -417,6 +422,7 @@ function useSfuHook(): SFUInterface {
       session.setSending(microphoneBufferRef.current.sending ?? true);
       await registeredTracksRef.current.find((s) => s.track?.kind === "audio")?.replaceTrack(null);
       voiceLog.ok("TRANSPORT", "start", "Voice on the native engine", { offered: offer.udp.addrs });
+      settleOnTransport();
       return;
     }
     const { input } = transportInput(microphoneBufferRef.current, audioRef.current);
@@ -451,15 +457,23 @@ function useSfuHook(): SFUInterface {
       // The WebRTC copy keeps going until WebRTC audio is gone (GRYT-1831): peers without the transport hear only that one.
       setOnTransport(true);
       void session.closed.then(() => {
-        if (audioTransportRef.current === session) audioTransportRef.current = null;
+        if (audioTransportRef.current === session) {
+          audioTransportRef.current = null;
+          // Gone on its own, not by cleanup: with no WebRTC behind it the call has nothing left.
+          if (peerConnectionRef.current?.connectionState !== "connected") {
+            setConnectionState((prev) => (prev.state === SFUConnectionState.DISCONNECTED ? prev : { ...prev, state: SFUConnectionState.FAILED, error: "Connection lost" }));
+            performCleanup(true).catch(() => undefined);
+          }
+        }
         // performCleanup nulls the ref before this runs, so only a newer session keeps the flag up.
         if (!audioTransportRef.current) setOnTransport(false);
       });
       voiceLog.ok("TRANSPORT", "start", "Voice on the own transport", { url: session.url, offered: offer.urls });
+      settleOnTransport();
     } catch (error) {
       voiceLog.warn("TRANSPORT", "Own transport failed, staying on WebRTC audio", error);
     }
-  }, [audioTransportWasm, nativeAudio, feedTransport, applyUserGains, startVideoHub]);
+  }, [audioTransportWasm, nativeAudio, feedTransport, applyUserGains, startVideoHub, settleOnTransport, performCleanup]);
 
   useEffect(() => {
     const session = audioTransportRef.current;
@@ -575,6 +589,7 @@ function useSfuHook(): SFUInterface {
       onAudioSenders: setSenderUsers,
       onVideoSenders: setVideoSenderUsers,
       onWebRTCAudioWanted: setWebRTCAudioWanted,
+      ownAudioUp: () => audioTransportRef.current !== null,
     }).catch((error: unknown) => {
       // Refused is ended on purpose, or signalling coming back asks for the room again.
       if (error instanceof RoomRefusal) intentionalDisconnectRef.current = true;

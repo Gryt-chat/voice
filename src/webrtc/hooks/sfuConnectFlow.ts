@@ -168,6 +168,8 @@ export interface SetupPeerConnectionDeps {
   setStreams: Dispatch<SetStateAction<Streams>>;
   setConnectionState: Dispatch<SetStateAction<SFUConnectionStateInternal>>;
   performCleanup?: (skipServerUpdate?: boolean) => Promise<void>;
+  /** True while the own audio transport carries the call: then WebRTC failing doesn't end it. */
+  ownAudioUp?: () => boolean;
 }
 
 export function setupPeerConnection(
@@ -182,6 +184,7 @@ export function setupPeerConnection(
     setStreams,
     setConnectionState,
     performCleanup,
+    ownAudioUp,
   } = deps;
 
   const config: RTCConfiguration = {
@@ -411,7 +414,8 @@ export function setupPeerConnection(
           if (
             pc.connectionState !== "connected" &&
             pc.connectionState !== "closed" &&
-            !isDisconnectingRef.current
+            !isDisconnectingRef.current &&
+            !ownAudioUp?.()
           ) {
             voiceLog.fail(
               "WEBRTC",
@@ -443,7 +447,9 @@ export function setupPeerConnection(
         }
         voiceLog.fail("WEBRTC", "PC", `Connection state → ${state}`, detail);
         dumpIceOnce(`pc-${state}`);
-        if (!isDisconnectingRef.current) {
+        if (!isDisconnectingRef.current && ownAudioUp?.()) {
+          voiceLog.warn("WEBRTC", "WebRTC is down, voice stays on the own transport");
+        } else if (!isDisconnectingRef.current) {
           setConnectionState((prev) => ({
             ...prev,
             state: SFUConnectionState.FAILED,
@@ -531,6 +537,7 @@ export interface ConnectParams {
   onAudioSenders?: (senders: Map<number, string>) => void;
   onVideoSenders?: (senders: Map<number, string>) => void;
   onWebRTCAudioWanted?: (wanted: boolean) => void;
+  ownAudioUp?: () => boolean;
 }
 
 /* The SFU rejects explicit nulls where it accepts an absent key. */
@@ -564,6 +571,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
     onAudioSenders,
     onVideoSenders,
     onWebRTCAudioWanted,
+    ownAudioUp,
   } = params;
   const {
     isConnectingRef,
@@ -891,6 +899,7 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
         setStreams,
         setConnectionState,
         performCleanup,
+        ownAudioUp,
       },
       eSportsModeEnabled,
     );
@@ -905,7 +914,8 @@ export async function sfuConnect(params: ConnectParams): Promise<void> {
       if (
         pc &&
         !isDisconnectingRef.current &&
-        pc.connectionState !== "connected"
+        pc.connectionState !== "connected" &&
+        !ownAudioUp?.()
       ) {
         voiceLog.fail(
           "CONNECT",

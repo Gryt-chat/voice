@@ -91,6 +91,7 @@
     "check-video-budget": "node scripts/check-video-budget.ts",
     "check-room-refusals": "node scripts/check-room-refusals.ts",
     "check-native-ptt": "node scripts/check-native-ptt.ts",
+    "check-own-audio-settles": "node scripts/check-own-audio-settles.ts",
     "check-native-core": "node scripts/check-native-core.ts",
     "check-native-jitter": "node scripts/check-native-jitter.ts",
     "check-native-effects": "node scripts/check-native-effects.ts",

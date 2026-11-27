@@ -223,3 +223,8 @@ jobs:
       # did nothing there and the microphone stayed open (GRYT-1536).
       - name: Check push to talk gates the phone's microphone
         run: npm run check-native-ptt
+
+      # Voice on the own transport is a connected call. On an SFU with no WebRTC the phone
+      # waited for a peer connection that never came and rejoined every 20 s (GRYT-2325).
+      - name: Check own-transport voice settles the call
+        run: npm run check-own-audio-settles
