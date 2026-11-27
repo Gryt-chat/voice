@@ -148,6 +148,9 @@ jobs:
         run: npm run check-jitter-buffer
       - name: Check the transport worklets end to end
         run: npm run check-transport-worklets
+      # The video hub's pieces and requests as client-rs and the SFU write them (GRYT-2261).
+      - name: Check the video wire and reassembly
+        run: npm run check-video-wire
 
       # The native engine's C core: packets as the TypeScript writes them, sealing as OpenSSL does it (GRYT-1822).
       - name: Check the native core against TypeScript and OpenSSL

@@ -78,6 +78,7 @@
     "check-voice-latency": "node scripts/check-voice-latency.ts",
     "check-opus-wasm": "node scripts/check-opus-wasm.ts",
     "check-transport-packet": "node scripts/check-transport-packet.ts",
+    "check-video-wire": "node scripts/check-video-wire.ts",
     "check-jitter-buffer": "node scripts/check-jitter-buffer.ts",
     "check-transport-worklets": "node scripts/check-transport-worklets.ts",
     "check-voice-effects": "node scripts/check-voice-effects.ts",
