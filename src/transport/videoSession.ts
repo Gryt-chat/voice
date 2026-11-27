@@ -102,6 +102,8 @@ export async function startVideoTransport(o: {
       s.sender.pause(got.watchers === 0);
       s.wanted = got.watchers > 0 ? got.demand : null;
       s.sender.setOptions(applied(s));
+      // A report is read as it comes, so a cut doesn't wait for the next reading.
+      read();
       return;
     }
     const { sender, head } = got;
@@ -160,7 +162,7 @@ export async function startVideoTransport(o: {
     pieces.forEach((piece, i) => paced.push({ at: due[i], piece }));
     if (!pacing) flush();
   };
-  const readStats = setInterval(() => {
+  const read = () => {
     if (!senders.size) return;
     const stats = pipe.stats ? pipe.stats().catch(() => ({})) : Promise.resolve({});
     void stats.then((st: WebTransportConnectionStats) => {
@@ -180,7 +182,8 @@ export async function startVideoTransport(o: {
       viewer = undefined;
       for (const s of senders.values()) s.sender.setBitrate((target * s.options.maxBitrate) / max);
     }, () => undefined);
-  }, STATS_MS);
+  };
+  const readStats = setInterval(read, STATS_MS);
 
   const closed = pipe.closed.finally(() => {
     clearInterval(poll);
