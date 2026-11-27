@@ -41,12 +41,12 @@ fail:
 void gv_voice_mic_input(gv_voice *v, float *raw_db, float *gate_level) { gv_engine_mic_input(&v->engine, raw_db, gate_level); }
 
 gv_voice *gv_voice_start(const char *const *addrs, int n_addrs, uint32_t session, const uint8_t key[32],
-                         const gv_effect_settings *effects, unsigned period) {
+                         const gv_effect_settings *effects, unsigned period, const char *ws_url) {
   gv_voice *v = calloc(1, sizeof *v);
   if (!v) return NULL;
   /* Opus's ceiling for both, as the worklet starts at: a 2.5 ms frame gets about 60 bytes at 192 kbps. */
   if (gv_engine_init(&v->engine, effects, 510000, 510000, NULL, NULL) != 0) goto fail;
-  v->net = gv_net_open(&v->engine, addrs, n_addrs, session, key);
+  v->net = gv_net_open(&v->engine, addrs, n_addrs, session, key, ws_url);
   if (!v->net) goto fail;
   v->period = period;
   v->device = gv_device_start(&v->engine, NULL, NULL, period, NULL, NULL);

@@ -29,7 +29,7 @@ JNIEXPORT jlong JNICALL FN(start)(JNIEnv *env, jclass cls, jobjectArray addrs, j
   uint8_t k[32];
   (*env)->GetByteArrayRegion(env, key, 0, 32, (jbyte *)k);
   gv_effect_settings s = settings(env, effects);
-  gv_voice *v = gv_voice_start(list, n, (uint32_t)session, k, &s, (unsigned)period);
+  gv_voice *v = gv_voice_start(list, n, (uint32_t)session, k, &s, (unsigned)period, NULL);
   for (int i = 0; i < n; i++) (*env)->ReleaseStringUTFChars(env, strs[i], list[i]);
   return (jlong)(intptr_t)v;
 }

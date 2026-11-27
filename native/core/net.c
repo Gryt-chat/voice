@@ -4,6 +4,7 @@
 #include "net.h"
 
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -24,6 +25,7 @@
 #endif
 
 #include "seal.h"
+#include "ws.h"
 
 #define MAX_ADDRS 8
 
@@ -47,6 +49,9 @@ typedef socklen_t gv_socklen;
 /* The SFU learns an address only from a sealed packet, so a muted listener on a new network must send one. */
 #define GV_KEEPALIVE_MS 2000
 #define GV_ROUTE_CHECK_MS 200
+/* How long sealed UDP gets to bring something back before /audio-ws, as the web engine gives WebTransport. */
+#define GV_UDP_WAIT_MS 2000
+#define GV_WS_CONNECT_MS 3000
 
 struct gv_net {
   gv_engine *engine;
@@ -54,7 +59,11 @@ struct gv_net {
   struct sockaddr_storage addrs[MAX_ADDRS];
   gv_socklen addr_len[MAX_ADDRS];
   int n_addrs;
-  atomic_int chosen, stop;
+  atomic_int chosen, stop, on_ws;
+  /* Tried once: the ticket in it is single use. Freed only on close, since the audio thread may be sending. */
+  char ws_url[1024];
+  gv_ws *ws;
+  uint64_t opened_ms;
   uint32_t session;
   /* Bumped from the audio thread and the receive thread: a repeated counter reuses a nonce. */
   _Atomic uint32_t counter;
@@ -124,6 +133,10 @@ static int same(const struct sockaddr_storage *a, const struct sockaddr_storage 
 
 static void send_packet(void *user, const uint8_t *packet, size_t len) {
   gv_net *n = user;
+  if (atomic_load(&n->on_ws)) {
+    gv_ws_send(n->ws, packet, len);
+    return;
+  }
   uint8_t out[GV_SEAL_PREFIX + GV_QUEUE_BYTES + GV_TAG_BYTES];
   size_t sealed = gv_seal(n->key, GV_TO_SFU, n->session, atomic_fetch_add(&n->counter, 1) + 1, packet, GV_HEADER_BYTES,
                           packet + GV_HEADER_BYTES, len - GV_HEADER_BYTES, out, sizeof out);
@@ -162,6 +175,27 @@ static void receive_loop_body(gv_net *n) {
   uint64_t check_at = 0, kept_at = 0;
   while (!atomic_load(&n->stop)) {
     uint64_t t = now_ms();
+    if (atomic_load(&n->on_ws)) {
+      /* The keep-alive here only keeps proxies from closing an idle socket; the hub forwards nothing that short. */
+      if (t - kept_at >= GV_KEEPALIVE_MS) {
+        keep_alive(n);
+        kept_at = t;
+      }
+      int got = gv_ws_recv(n->ws, buf, sizeof buf, GV_RECV_TIMEOUT_MS);
+      if (got > 0) gv_engine_queue(n->engine, buf, (size_t)got);
+      /* Back to UDP, whose next keep-alive puts us in the hub again: a new network may let it through. */
+      if (got < 0) atomic_store(&n->on_ws, 0), check_at = kept_at = 0;
+      continue;
+    }
+    if (n->ws_url[0] && !n->ws && atomic_load(&n->chosen) < 0 && t - n->opened_ms >= GV_UDP_WAIT_MS) {
+      n->ws = gv_ws_connect(n->ws_url, GV_WS_CONNECT_MS);
+      n->ws_url[0] = 0;
+      if (n->ws) {
+        atomic_store(&n->on_ws, 1);
+        kept_at = 0;
+        continue;
+      }
+    }
     if (t >= check_at) {
       check_at = t + GV_ROUTE_CHECK_MS;
       if (moved(n) || t - kept_at >= GV_KEEPALIVE_MS) {
@@ -235,7 +269,8 @@ static int set_recv_timeout(gv_socket fd) {
 #endif
 }
 
-gv_net *gv_net_open(gv_engine *engine, const char *const *addrs, int n_addrs, uint32_t session, const uint8_t key[32]) {
+gv_net *gv_net_open(gv_engine *engine, const char *const *addrs, int n_addrs, uint32_t session, const uint8_t key[32],
+                    const char *ws_url) {
   if (wsa_acquire() != 0) return NULL;
   gv_net *n = calloc(1, sizeof *n);
   if (!n) {
@@ -248,6 +283,9 @@ gv_net *gv_net_open(gv_engine *engine, const char *const *addrs, int n_addrs, ui
   memcpy(n->key, key, GV_KEY_BYTES);
   atomic_init(&n->chosen, -1);
   atomic_init(&n->stop, 0);
+  atomic_init(&n->on_ws, 0);
+  if (ws_url) snprintf(n->ws_url, sizeof n->ws_url, "%s", ws_url);
+  n->opened_ms = now_ms();
   for (int i = 0; i < n_addrs && n->n_addrs < MAX_ADDRS; i++)
     if (resolve(addrs[i], &n->addrs[n->n_addrs], &n->addr_len[n->n_addrs]) == 0) n->n_addrs++;
   /* One socket for both families: an IPv6 socket that also takes IPv4 would differ per OS, so v4 only for now. */
@@ -272,9 +310,13 @@ void gv_net_close(gv_net *n) {
   join_thread(n);
   gv_close_socket(n->fd);
   gv_close_socket(n->route_fd);
+  gv_ws_close(n->ws);
   n->engine->send = NULL;
   free(n);
   wsa_release();
 }
 
-int gv_net_chosen(const gv_net *n) { return atomic_load(&((gv_net *)n)->chosen); }
+int gv_net_chosen(const gv_net *n) {
+  gv_net *m = (gv_net *)n;
+  return atomic_load(&m->on_ws) ? m->n_addrs : atomic_load(&m->chosen);
+}

@@ -9,7 +9,7 @@ execFileSync("sh", ["native/opus/build.sh"], { stdio: "inherit" });
 const bin = join(mkdtempSync(join(tmpdir(), "gv-net-")), "net_test");
 execFileSync("cc", [
   "-std=c11", "-O2", "-Wall", "-Wextra", "-Werror", "-D_DEFAULT_SOURCE", "-Inative/build/opus/include/opus", "-o", bin,
-  "native/test/net_test.c", "native/core/net.c", "native/core/seal.c", "native/core/engine.c", "native/core/effects.c",
+  "native/test/net_test.c", "native/core/net.c", "native/core/ws.c", "native/core/seal.c", "native/core/engine.c", "native/core/effects.c",
   "native/core/jitter.c", "native/core/packet.c", "native/vendor/monocypher/monocypher.c", "codec/opus/shim.c",
   "native/build/opus/lib/libopus.a", "-lm", "-lpthread",
 ]);

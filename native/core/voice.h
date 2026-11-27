@@ -10,9 +10,10 @@
 
 typedef struct gv_voice gv_voice;
 
-/* The room_joined offer's udp part: addresses, session, the 32-byte key. NULL if any piece fails. */
+/* The room_joined offer's udp part: addresses, session, the 32-byte key. NULL if any piece fails.
+   ws_url is the SFU's /audio-ws with the ticket, or NULL for UDP only (net.h). */
 gv_voice *gv_voice_start(const char *const *addrs, int n_addrs, uint32_t session, const uint8_t key[32],
-                         const gv_effect_settings *effects, unsigned period);
+                         const gv_effect_settings *effects, unsigned period, const char *ws_url);
 void gv_voice_stop(gv_voice *v);
 /* The mic with no call, for a settings page: levels only, or with hear set, your own voice back through the
    engine as the far side would get it. */
@@ -26,7 +27,7 @@ void gv_voice_set_output_gain(gv_voice *v, float gain);
 void gv_voice_set_effects(gv_voice *v, const gv_effect_settings *effects);
 /* Mono bits per second; stereo follows at 4/3 (GRYT-1823). */
 void gv_voice_set_bitrate(gv_voice *v, int bitrate);
-/* Which offered address answered, or -1 while none has. */
+/* Which offered address answered, -1 while none has, or n_addrs while on /audio-ws. */
 int gv_voice_route(const gv_voice *v);
 /* The sender ids heard speaking, up to max (GRYT-1830). */
 int gv_voice_speaking(gv_voice *v, uint32_t *ids, int max);

@@ -22,7 +22,7 @@ public final class GrytVoiceModule: Module {
       // 64 frames is 1.3 ms; iOS rounds it to what the hardware takes.
       self.voice = keyData.withUnsafeBytes { raw in
         pointers.withUnsafeBufferPointer { list in
-          gv_voice_start(list.baseAddress, Int32(list.count), UInt32(session), raw.bindMemory(to: UInt8.self).baseAddress, &settings, 64)
+          gv_voice_start(list.baseAddress, Int32(list.count), UInt32(session), raw.bindMemory(to: UInt8.self).baseAddress, &settings, 64, nil)
         }
       }
       if self.voice == nil { Self.webRTCAudio(enabled: true) }

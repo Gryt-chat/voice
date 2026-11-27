@@ -22,7 +22,7 @@ Pod::Spec.new do |s|
   opus = 'native/build/opus-src'
   s.source_files = [
     'ios/*.{swift,m}',
-    'native/core/{voice,net,seal,engine,effects,jitter,packet}.{c,h}',
+    'native/core/{voice,net,ws,seal,engine,effects,jitter,packet}.{c,h}',
     'native/core/{device,codec}.h',
     'codec/opus/shim.c',
     'native/vendor/monocypher/monocypher.{c,h}',
