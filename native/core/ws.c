@@ -111,19 +111,21 @@ static gv_socket dial(const char *host, const char *port, int ms) {
   return fd;
 }
 
+/* How many bytes went, 0 when none can go now, -1 once closed. */
+static int write_some(gv_ws *w, const uint8_t *b, size_t len) {
+  if (w->tls) return gv_tls_write(w->tls, b, len);
+  int n = (int)send(w->fd, (const char *)b, (int)len, SEND_FLAGS);
+  return n >= 0 ? n : WOULD_BLOCK() ? 0 : -1;
+}
+
 static void flush_locked(gv_ws *w) {
-  /* The out buffer only ever holds whole frames for TLS, which takes all or none, so one it won't take is dropped. */
-  if (w->tls && w->out_len) {
-    if (gv_tls_write(w->tls, w->out, w->out_len) < 0) atomic_store(&w->dead, 1);
-    w->out_len = 0;
-  }
   while (w->out_len) {
-    int n = (int)send(w->fd, (const char *)w->out, (int)w->out_len, SEND_FLAGS);
+    int n = write_some(w, w->out, w->out_len);
     if (n > 0) {
       memmove(w->out, w->out + n, w->out_len - (size_t)n);
       w->out_len -= (size_t)n;
     } else {
-      if (n < 0 && !WOULD_BLOCK()) atomic_store(&w->dead, 1);
+      if (n < 0) atomic_store(&w->dead, 1);
       return;
     }
   }

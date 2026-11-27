@@ -9,6 +9,7 @@
 
 #include "tls.h"
 
+/* Takes all or none, and none once this much is waiting; ws.c then holds frames and drops past its own 16 KB. */
 #define OUT_CAP (16 * 1024)
 #define IN_CAP 4096
 
