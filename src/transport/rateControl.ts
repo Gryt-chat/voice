@@ -72,7 +72,7 @@ export class QueueDelay {
   private excess = 0;
   private frames = 0;
 
-  /** A frame made whole: its capture stamp in µs (u32) and when it came, in ms. */
+  /** A frame's first piece: its capture stamp in µs (u32) and when it came, in ms. */
   arrived(timestamp: number, at: number): void {
     const age = (Math.round(at * 1000) - timestamp) >>> 0;
     this.firstAge ??= age;

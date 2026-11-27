@@ -4,6 +4,7 @@
 import { dialPipe, type Pipe } from "./session";
 import { LayerControl, QueueDelay, RateControl } from "./rateControl";
 import { VideoAssembler } from "./videoAssembly";
+import { Pacer } from "./videoPacer";
 import { startVideoReceive, type VideoReceiver, type VideoReceiveStats } from "./videoReceive";
 import { MIN_BITRATE, startVideoSend, type VideoSender, type VideoSendOptions, type VideoSendStats } from "./videoSend";
 import { CONTROL_RESEND, type Demand, demandRequest, keyframeRequest, LAYERS_ALL, LAYERS_NONE, layersRequest, readForwardedVideo } from "./videoWire";
@@ -112,10 +113,8 @@ export async function startVideoTransport(o: {
     }
     rx.layers.received();
     const now = performance.now();
-    for (const f of assembler.push(sender, got.piece, now)) {
-      rx.delay.arrived(f.timestamp, now);
-      rx.r.push(f);
-    }
+    const { delay } = rx;
+    for (const f of assembler.push(sender, got.piece, now, (stamp) => delay.arrived(stamp, now))) rx.r.push(f);
   });
 
   const poll = setInterval(() => {
@@ -139,6 +138,23 @@ export async function startVideoTransport(o: {
   const sendPiece = (piece: Uint8Array) => {
     sentBytes += piece.length;
     pipe.send(piece);
+  };
+  const pacer = new Pacer();
+  const paced: { at: number; piece: Uint8Array }[] = [];
+  let pacing: ReturnType<typeof setTimeout> | null = null;
+  const flush = () => {
+    pacing = null;
+    const now = performance.now();
+    while (paced.length && paced[0].at <= now) {
+      const [next] = paced.splice(0, 1);
+      sendPiece(next.piece);
+    }
+    if (paced.length) pacing = setTimeout(flush, paced[0].at - now);
+  };
+  const sendFrame = (track: number) => (pieces: Uint8Array[]) => {
+    const due = pacer.plan(track, pieces.length, performance.now());
+    pieces.forEach((piece, i) => paced.push({ at: due[i], piece }));
+    if (!pacing) flush();
   };
   const readStats = setInterval(() => {
     if (!senders.size) return;
@@ -167,6 +183,7 @@ export async function startVideoTransport(o: {
     clearInterval(poll);
     clearInterval(readStats);
     clearInterval(hello);
+    if (pacing) clearTimeout(pacing);
     for (const s of senders.values()) s.sender.stop();
     for (const rx of receivers.values()) {
       rx.r.close();
@@ -180,7 +197,7 @@ export async function startVideoTransport(o: {
     url: pipe.url,
     send(track, source, options) {
       senders.get(track)?.sender.stop();
-      senders.set(track, { options, wanted: null, sender: startVideoSend({ track, source, options, send: sendPiece }) });
+      senders.set(track, { options, wanted: null, sender: startVideoSend({ track, source, options, send: sendFrame(track) }) });
     },
     configure(track, options) {
       const s = senders.get(track);

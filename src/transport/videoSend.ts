@@ -60,7 +60,8 @@ export function startVideoSend(o: {
   track: number;
   source: MediaStreamTrack;
   options: VideoSendOptions;
-  send: (piece: Uint8Array) => void;
+  /** One frame's pieces, in order. */
+  send: (pieces: Uint8Array[]) => void;
   /** Capture time in µs, low 32 bits, as client-rs stamps it. */
   clock?: () => number;
 }): VideoSender {
@@ -89,7 +90,7 @@ export function startVideoSend(o: {
     const pieces = splitFrame({ keyframe, track: o.track, codec: CODEC_H264, frame: frameNo, layer, timestamp: t0?.stamp ?? clock() }, data);
     if (!pieces) return;
     frameNo = (frameNo + 1) & 0xffff;
-    for (const p of pieces) o.send(p);
+    o.send(pieces);
     s.frames++;
     s.bytes += data.length;
     if (keyframe) s.keyframes++;
