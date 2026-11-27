@@ -7,6 +7,40 @@
 #define FN(name) Java_chat_gryt_voice_GrytVoiceModule_00024Native_##name
 #define V ((gv_voice *)(intptr_t)h)
 
+static JavaVM *vm;
+static jclass tls_pipe;
+static jmethodID tls_open;
+
+/* Only here does FindClass see the app's classes. A missing TlsPipe costs wss://, not the whole library. */
+JNIEXPORT jint JNI_OnLoad(JavaVM *jvm, void *reserved) {
+  (void)reserved;
+  JNIEnv *env;
+  vm = jvm;
+  if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
+  jclass c = (*env)->FindClass(env, "chat/gryt/voice/TlsPipe");
+  if (c) tls_open = (*env)->GetStaticMethodID(env, c, "open", "(Ljava/lang/String;II)I");
+  if (tls_open) tls_pipe = (*env)->NewGlobalRef(env, c);
+  if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+  return JNI_VERSION_1_6;
+}
+
+/* tls_android.c's way to TlsPipe.open, from the engine's own receive thread. */
+int gv_android_tls_fd(const char *host, const char *port, int timeout_ms) {
+  JNIEnv *env;
+  int attached = 0;
+  if (!tls_pipe) return -1;
+  if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+    if ((*vm)->AttachCurrentThread(vm, &env, NULL) != JNI_OK) return -1;
+    attached = 1;
+  }
+  jstring h = (*env)->NewStringUTF(env, host);
+  int fd = h ? (*env)->CallStaticIntMethod(env, tls_pipe, tls_open, h, atoi(port), timeout_ms) : -1;
+  if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env), fd = -1;
+  if (h) (*env)->DeleteLocalRef(env, h);
+  if (attached) (*vm)->DetachCurrentThread(vm);
+  return fd;
+}
+
 /* Order: volume, gateThreshold, gateReleaseMs, gateSmoothing, autoGain, autoGainTargetDb, compressor,
    compressorAmount, limiter, as GrytVoiceModule.kt packs them. */
 static gv_effect_settings settings(JNIEnv *env, jdoubleArray a) {
