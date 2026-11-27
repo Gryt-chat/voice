@@ -13,7 +13,7 @@ list(FILTER OPUS_SOURCES EXCLUDE REGEX "/(opus_demo|opus_compare|repacketizer_de
 add_library(gryt_voice SHARED
   gryt_voice_jni.c
   ${GV_DEVICE}
-  ${ROOT}/native/core/voice.c ${ROOT}/native/core/net.c ${ROOT}/native/core/ws.c ${ROOT}/native/core/seal.c ${ROOT}/native/core/engine.c
+  ${ROOT}/native/core/voice.c ${ROOT}/native/core/net.c ${ROOT}/native/core/ws.c ${ROOT}/native/core/tls.c ${ROOT}/native/core/seal.c ${ROOT}/native/core/engine.c
   ${ROOT}/native/core/effects.c ${ROOT}/native/core/jitter.c ${ROOT}/native/core/packet.c
   ${ROOT}/codec/opus/shim.c ${ROOT}/native/vendor/monocypher/monocypher.c
   ${OPUS_SOURCES})

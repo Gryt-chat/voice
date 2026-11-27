@@ -3,6 +3,8 @@
 #endif
 #include "ws.h"
 
+#include "tls.h"
+
 #include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,6 +58,7 @@ typedef int gv_socket;
 
 struct gv_ws {
   gv_socket fd;
+  gv_tls *tls;
   atomic_int dead;
   LOCK_T lock;
   uint32_t mask;
@@ -109,6 +112,11 @@ static gv_socket dial(const char *host, const char *port, int ms) {
 }
 
 static void flush_locked(gv_ws *w) {
+  /* The out buffer only ever holds whole frames for TLS, which takes all or none, so one it won't take is dropped. */
+  if (w->tls && w->out_len) {
+    if (gv_tls_write(w->tls, w->out, w->out_len) < 0) atomic_store(&w->dead, 1);
+    w->out_len = 0;
+  }
   while (w->out_len) {
     int n = (int)send(w->fd, (const char *)w->out, (int)w->out_len, SEND_FLAGS);
     if (n > 0) {
@@ -161,43 +169,46 @@ static int send_all(gv_socket fd, const char *s, size_t len, int ms) {
   return 0;
 }
 
-static gv_ws *handshake(gv_socket fd, const char *host, const char *port, const char *path, int ms) {
+/* Into w->in, up to cap: how many, 0 when nothing came within ms, -1 once closed. */
+static int read_some(gv_ws *w, size_t cap, int ms) {
+  if (w->tls) return gv_tls_read(w->tls, w->in + w->in_len, cap - w->in_len, ms);
+  if (wait_fd(w->fd, 0, ms) <= 0) return 0;
+  int got = (int)recv(w->fd, (char *)w->in + w->in_len, (int)(cap - w->in_len), 0);
+  return got > 0 ? got : got == 0 || !WOULD_BLOCK() ? -1 : 0;
+}
+
+static int handshake(gv_ws *w, const char *host, const char *port, const char *path, int ms) {
   char req[1024];
   /* The key only proves the server speaks WebSocket; nothing here checks its answer, so one fixed key does. */
   int n = snprintf(req, sizeof req,
                    "GET %s HTTP/1.1\r\nHost: %s:%s\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
                    "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n",
                    path, host, port);
-  if (n <= 0 || (size_t)n >= sizeof req || send_all(fd, req, (size_t)n, ms) != 0) return NULL;
-  gv_ws *w = calloc(1, sizeof *w);
-  if (!w) return NULL;
+  if (n <= 0 || (size_t)n >= sizeof req ||
+      (w->tls ? gv_tls_write(w->tls, (const uint8_t *)req, (size_t)n) != n : send_all(w->fd, req, (size_t)n, ms) != 0))
+    return -1;
   char *end = NULL;
   while (!end) {
-    if (w->in_len >= IN_CAP - 1 || wait_fd(fd, 0, ms) <= 0) break;
-    int got = (int)recv(fd, (char *)w->in + w->in_len, (int)(IN_CAP - 1 - w->in_len), 0);
+    if (w->in_len >= IN_CAP - 1) break;
+    int got = read_some(w, IN_CAP - 1, ms);
     if (got <= 0) break;
     w->in_len += (size_t)got;
     w->in[w->in_len] = 0;
     end = strstr((char *)w->in, "\r\n\r\n");
   }
-  if (!end || strncmp((char *)w->in, "HTTP/1.1 101", 12) != 0) {
-    free(w);
-    return NULL;
-  }
+  if (!end || strncmp((char *)w->in, "HTTP/1.1 101", 12) != 0) return -1;
   size_t used = (size_t)(end + 4 - (char *)w->in);
   memmove(w->in, w->in + used, w->in_len - used);
   w->in_len -= used;
-  w->fd = fd;
-  w->mask = (uint32_t)time(NULL) ^ (uint32_t)(uintptr_t)w ^ 0x9e3779b9u;
-  atomic_init(&w->dead, 0);
-  LOCK_INIT(&w->lock);
-  return w;
+  return 0;
 }
 
 gv_ws *gv_ws_connect(const char *url, int timeout_ms) {
-  if (strncmp(url, "ws://", 5) != 0) return NULL;
-  const char *h = url + 5, *path = h + strcspn(h, "/?");
-  char host[256], port[8] = "80", where[1024];
+  int tls = strncmp(url, "wss://", 6) == 0;
+  if (!tls && strncmp(url, "ws://", 5) != 0) return NULL;
+  const char *h = url + (tls ? 6 : 5), *path = h + strcspn(h, "/?");
+  char host[256], port[8], where[1024];
+  snprintf(port, sizeof port, "%s", tls ? "443" : "80");
   size_t hl = (size_t)(path - h);
   if (hl == 0 || hl >= sizeof host) return NULL;
   memcpy(host, h, hl);
@@ -210,10 +221,20 @@ gv_ws *gv_ws_connect(const char *url, int timeout_ms) {
   char *name = host;
   if (name[0] == '[' && name[strlen(name) - 1] == ']') name[strlen(name) - 1] = 0, name++;
   snprintf(where, sizeof where, "%s%s", *path == '/' ? "" : "/", path);
-  gv_socket fd = dial(name, port, timeout_ms);
-  if (fd == GV_BAD_SOCKET) return NULL;
-  gv_ws *w = handshake(fd, host, port, where, timeout_ms);
-  if (!w) gv_close_socket(fd);
+  gv_ws *w = calloc(1, sizeof *w);
+  if (!w) return NULL;
+  w->fd = GV_BAD_SOCKET;
+  if (tls) w->tls = gv_tls_open(name, port, timeout_ms);
+  else w->fd = dial(name, port, timeout_ms);
+  if ((tls ? !w->tls : w->fd == GV_BAD_SOCKET) || handshake(w, host, port, where, timeout_ms) != 0) {
+    if (w->tls) gv_tls_close(w->tls);
+    if (w->fd != GV_BAD_SOCKET) gv_close_socket(w->fd);
+    free(w);
+    return NULL;
+  }
+  w->mask = (uint32_t)time(NULL) ^ (uint32_t)(uintptr_t)w ^ 0x9e3779b9u;
+  atomic_init(&w->dead, 0);
+  LOCK_INIT(&w->lock);
   return w;
 }
 
@@ -247,16 +268,16 @@ int gv_ws_recv(gv_ws *w, uint8_t *out, size_t cap, int timeout_ms) {
     if (atomic_load(&w->dead)) return -1;
     if (waited) return 0;
     waited = 1;
-    if (wait_fd(w->fd, 0, timeout_ms) <= 0) return 0;
-    int got = (int)recv(w->fd, (char *)w->in + w->in_len, (int)(IN_CAP - w->in_len), 0);
+    int got = read_some(w, IN_CAP, timeout_ms);
     if (got > 0) w->in_len += (size_t)got;
-    else if (got == 0 || !WOULD_BLOCK()) atomic_store(&w->dead, 1);
+    else if (got < 0) atomic_store(&w->dead, 1);
   }
 }
 
 void gv_ws_close(gv_ws *w) {
   if (!w) return;
-  gv_close_socket(w->fd);
+  if (w->tls) gv_tls_close(w->tls);
+  else gv_close_socket(w->fd);
   LOCK_FREE(&w->lock);
   free(w);
 }

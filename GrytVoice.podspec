@@ -22,7 +22,7 @@ Pod::Spec.new do |s|
   opus = 'native/build/opus-src'
   s.source_files = [
     'ios/*.{swift,m}',
-    'native/core/{voice,net,ws,seal,engine,effects,jitter,packet}.{c,h}',
+    'native/core/{voice,net,ws,tls,tls_apple,seal,engine,effects,jitter,packet}.{c,h}',
     'native/core/{device,codec}.h',
     'codec/opus/shim.c',
     'native/vendor/monocypher/monocypher.{c,h}',
@@ -34,7 +34,7 @@ Pod::Spec.new do |s|
     "#{opus}/celt/opus_custom_demo.c",
   ]
   s.public_header_files = 'native/core/{voice,effects}.h'
-  s.frameworks = 'AVFoundation', 'CoreAudio', 'AudioToolbox'
+  s.frameworks = 'AVFoundation', 'CoreAudio', 'AudioToolbox', 'Network', 'Security'
   s.pod_target_xcconfig = {
     'GCC_C_LANGUAGE_STANDARD' => 'c11',
     'GCC_PREPROCESSOR_DEFINITIONS' => '$(inherited) OPUS_BUILD=1 USE_ALLOCA=1 HAVE_LRINTF=1 HAVE_LRINT=1',

@@ -1,5 +1,5 @@
 /* The SFU's /audio-ws for when UDP is blocked (GRYT-2431): an HTTP upgrade, then each packet as one binary
-   message, unsealed, the way the web engine sends them. ws:// only; wss:// has no TLS here yet. */
+   message, unsealed, the way the web engine sends them. wss:// goes through tls.h, where the OS has TLS for it. */
 #ifndef GRYT_VOICE_WS_H
 #define GRYT_VOICE_WS_H
 
@@ -8,7 +8,7 @@
 
 typedef struct gv_ws gv_ws;
 
-/* NULL if the URL isn't ws:// or the upgrade fails within timeout_ms. */
+/* NULL if the URL isn't ws:// or wss://, or the upgrade fails within timeout_ms. */
 gv_ws *gv_ws_connect(const char *url, int timeout_ms);
 /* Never blocks: past 16 KB still unsent the packet is dropped, as the web engine drops it. -1 once closed. */
 int gv_ws_send(gv_ws *w, const uint8_t *b, size_t len);
