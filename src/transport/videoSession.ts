@@ -2,7 +2,7 @@
     out and everyone else's in, with the requests that keep them whole. client-rs video_receive.rs is the twin. */
 
 import { dialWebTransport, type Pipe } from "./session";
-import { LayerControl, RateControl } from "./rateControl";
+import { LayerControl, QueueDelay, RateControl } from "./rateControl";
 import { VideoAssembler } from "./videoAssembly";
 import { startVideoReceive, type VideoReceiver, type VideoReceiveStats } from "./videoReceive";
 import { MIN_BITRATE, startVideoSend, type VideoSender, type VideoSendOptions, type VideoSendStats } from "./videoSend";
@@ -63,7 +63,7 @@ export async function startVideoTransport(o: {
     maxHeight: Math.min(s.options.maxHeight ?? Infinity, HEIGHTS.find((h) => h >= (s.wanted?.height ?? 0)) ?? Infinity) || s.options.maxHeight,
     maxFramerate: Math.min(s.options.maxFramerate, s.wanted.fps || Infinity),
   });
-  const receivers = new Map<string, { sender: number; track: number; r: VideoReceiver; layers: LayerControl; watched: boolean; drawn: Demand | null }>();
+  const receivers = new Map<string, { sender: number; track: number; r: VideoReceiver; layers: LayerControl; delay: QueueDelay; watched: boolean; drawn: Demand | null }>();
   const assembler = new VideoAssembler();
   const rate = new RateControl(0, MIN_BITRATE, 0);
   const key = (sender: number, track: number) => `${sender}/${track}`;
@@ -88,6 +88,7 @@ export async function startVideoTransport(o: {
       const s = senders.get(got.track);
       if (!s) return;
       viewerLoss = Math.max(viewerLoss, got.demand.loss ?? 0);
+      viewerDelay = Math.max(viewerDelay, got.demand.delay ?? 0);
       s.sender.pause(got.watchers === 0);
       s.wanted = got.watchers > 0 ? got.demand : null;
       s.sender.setOptions(applied(s));
@@ -100,12 +101,16 @@ export async function startVideoTransport(o: {
     let rx = receivers.get(k);
     if (!rx) {
       const r = startVideoReceive({ onBroken: () => pipe.send(keyframeRequest(sender, head.track)) });
-      rx = { sender, track: head.track, r, layers: new LayerControl(3, performance.now()), watched: true, drawn: null };
+      rx = { sender, track: head.track, r, layers: new LayerControl(3, performance.now()), delay: new QueueDelay(), watched: true, drawn: null };
       receivers.set(k, rx);
       o.onStream(sender, head.track, r.stream);
     }
     rx.layers.received();
-    for (const f of assembler.push(sender, got.piece, performance.now())) rx.r.push(f);
+    const now = performance.now();
+    for (const f of assembler.push(sender, got.piece, now)) {
+      rx.delay.arrived(f.timestamp, now);
+      rx.r.push(f);
+    }
   });
 
   const poll = setInterval(() => {
@@ -113,11 +118,11 @@ export async function startVideoTransport(o: {
     for (const req of assembler.poll(now)) request(req);
     for (const rx of receivers.values()) {
       if (!rx.watched) continue;
-      const before = rx.layers.loss;
+      const ticked = rx.layers.ticks;
       const top = rx.layers.tick(now);
       if (top !== null) setTop(rx.sender, rx.track, top >= 2 ? LAYERS_ALL : top);
-      // Once a second, with what this viewer draws, so the sender hears about loss.
-      if (rx.drawn && rx.layers.loss !== before) pipe.send(demandRequest(rx.sender, rx.track, { ...rx.drawn, loss: rx.layers.loss }));
+      // Once a second, with what this viewer draws, so the sender hears about loss and queueing.
+      if (rx.layers.ticks !== ticked && rx.drawn) pipe.send(demandRequest(rx.sender, rx.track, { ...rx.drawn, loss: rx.layers.loss, delay: rx.delay.take() }));
     }
   }, POLL_MS);
 
@@ -125,6 +130,7 @@ export async function startVideoTransport(o: {
   // Chromium 144 has no WebTransport.getStats(); then only our own byte count and what viewers report are known.
   let sentBytes = 0;
   let viewerLoss = 0;
+  let viewerDelay = 0;
   const sendPiece = (piece: Uint8Array) => {
     sentBytes += piece.length;
     pipe.send(piece);
@@ -145,8 +151,9 @@ export async function startVideoTransport(o: {
         minRtt: st.minRtt ?? st.smoothedRtt ?? 0,
         dropped: (st.datagrams?.expiredOutgoing ?? 0) + (st.datagrams?.lostOutgoing ?? 0),
         viewerLoss,
+        viewerDelay,
       });
-      viewerLoss = 0;
+      viewerLoss = viewerDelay = 0;
       for (const s of senders.values()) s.sender.setBitrate((target * s.options.maxBitrate) / max);
     }, () => undefined);
   }, STATS_MS);

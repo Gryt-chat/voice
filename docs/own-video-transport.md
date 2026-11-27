@@ -39,21 +39,23 @@ AV1 has a codec byte and a decoder entry, but nothing sends it yet. Rust only de
 
 A tile that isn't drawn (0×0, from `drawnVideoSize`) sends `layers none`, and the SFU stops forwarding that stream. Drawn again, it sends `layers all` and a keyframe request. That part works on the SFUs we have now.
 
-The sender can't scale down for a small tile yet, the way `videoDemand.ts` does over WebRTC, because the hub has no way to tell it. So the task proposes a new control for the Rust SFU:
+The `demand` control (type 4) tells the sender what its viewers draw. The bytes are in client-rs's `SFU.md`, and the Rust SFU and the Rust client speak it too:
 
-- `demand` (type 4): the viewer sends width, height, fps and its loss.
-- The SFU sends the sender the max over its viewers, the number of watchers, and the worst loss.
+- The viewer sends width, height and fps, its loss, and its queueing delay in 4 ms steps, when what it draws changes and once a second while it draws.
+- The SFU sends the sender the max size and fps over its viewers, the number of watchers, and the worst loss and delay.
 
-The browser already sends it and acts on it. It pauses with no watchers, and caps the height (rounded up to 360/540/720/1080/1440/2160) and the frame rate. The Go SFU drops it as malformed, so nothing happens there.
+The browser pauses with no watchers, and caps the height (rounded up to 360/540/720/1080/1440/2160) and the frame rate. The Rust client sends `0xffff` for all three, so it never caps a sender. The Go SFU drops type 4 as malformed, so nothing happens there.
 
 ## Congestion control: what was chosen
 
 It's the biggest risk, and the first version is simple.
 
 1. **Viewer side, works now.** Each viewer counts how many pieces it had to ask for again. Over 5% for 2 s drops one temporal layer (`layers` with a lower top), and under 1% for 5 s brings it back. The SFU already filters on this. It halves or quarters that viewer's frame rate without touching anyone else's.
-2. **Sender side, AIMD.** The target bitrate drops to 85% of what actually went out on a bad second, holds for 1.5 s, then grows 8% plus 50 kbps every 500 ms up to the user's ceiling. It is split across windows by their ceilings. A bad second is any of these:
-   - viewer-reported loss over 5% (from `demand`, so it needs the Rust SFU)
+2. **Sender side, AIMD.** The target bitrate drops to 85% of what actually went out on a bad second, holds for 1.5 s, then grows 8% plus 50 kbps every 500 ms up to the user's ceiling. The first cut of a bad spell with viewer loss over 10% goes half the loss deeper, so a full link gets below its limit in a second or two. It is split across windows by their ceilings. A bad second is any of these:
+   - viewer-reported loss over 5%, or queueing over 60 ms (from `demand`, so it needs the Rust SFU)
    - the connection's own QUIC loss over 5%, a round trip 60 ms over its best, or datagrams the browser dropped, when `WebTransport.getStats()` exists
+
+   The viewer's queueing delay is how far each frame arrives behind the quickest of the last 5 to 10 s, from its capture stamp, so the two clocks' offset cancels (`QueueDelay`). `video_rate.rs` in client-rs is the same controller, number for number, for the Rust sender.
 
 What was tried and dropped:
 
@@ -61,7 +63,7 @@ What was tried and dropped:
 - The datagram writer's `desiredSize` stays at 1 whatever `outgoingHighWaterMark` is set to, so it says nothing about the queue.
 - Write promises resolve straight away.
 
-Until the SFU passes loss back, the sender has no congestion signal in Electron. Only the viewer-side layer drop protects a call. The next step is either the `demand` loss field or a pacing estimate in the SFU itself.
+So in Electron the viewers' `demand` is the sender's only congestion signal, and it needs the Rust SFU.
 
 ## Not done
 

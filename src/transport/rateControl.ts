@@ -13,6 +13,8 @@ export interface LinkSample {
   dropped: number;
   /** The worst share of pieces any viewer had to ask for again, 0 to 1, since the last reading. */
   viewerLoss: number;
+  /** The worst queueing delay any viewer reported since the last reading, in ms. */
+  viewerDelay?: number;
 }
 
 export const LOSS_LIMIT = 0.05;
@@ -22,10 +24,13 @@ const BACK_OFF = 0.85;
 const GROW = 1.08;
 const GROW_STEP = 50_000;
 const HOLD_MS = 1500;
+/** Over this much viewer loss the first cut of a bad spell goes deeper, by half the loss: a full link loses far more. */
+const HEAVY_LOSS = 0.1;
 
 export class RateControl {
   private last: LinkSample | null = null;
   private holdUntil = 0;
+  private bad = false;
   constructor(public target: number, private readonly min: number, private max: number) {}
 
   setMax(max: number): void {
@@ -41,15 +46,52 @@ export class RateControl {
     const sent = s.packetsSent - p.packetsSent;
     const loss = sent > 0 ? (s.packetsLost - p.packetsLost) / sent : 0;
     const rate = ((s.bytesSent - p.bytesSent) * 8 * 1000) / (s.at - p.at);
-    const over = loss > LOSS_LIMIT || s.viewerLoss > LOSS_LIMIT || s.smoothedRtt - s.minRtt > QUEUE_DELAY_MS || s.dropped > p.dropped;
+    const queued = s.smoothedRtt - s.minRtt > QUEUE_DELAY_MS || (s.viewerDelay ?? 0) > QUEUE_DELAY_MS;
+    const over = loss > LOSS_LIMIT || s.viewerLoss > LOSS_LIMIT || queued || s.dropped > p.dropped;
+    const deeper = over && !this.bad && s.viewerLoss > HEAVY_LOSS ? 1 - s.viewerLoss / 2 : 1;
+    this.bad = over;
     if (over) {
       // What actually went, not what was asked for: an encoder under its target would otherwise hide the cut.
-      this.target = Math.max(this.min, Math.min(this.target, rate || this.target) * BACK_OFF);
+      this.target = Math.max(this.min, Math.min(this.target, rate || this.target) * BACK_OFF * deeper);
       this.holdUntil = s.at + HOLD_MS;
     } else if (s.at >= this.holdUntil) {
       this.target = Math.min(this.max, this.target * GROW + GROW_STEP);
     }
     return this.target;
+  }
+}
+
+const BASE_WINDOW_MS = 5000;
+
+/** A viewer's queueing delay for one stream: how far its frames arrive behind the quickest of the last 5 to
+    10 s, so the two clocks' offset cancels. `Tally` in client-rs's video_rate.rs, number for number. */
+export class QueueDelay {
+  private firstAge: number | null = null;
+  private base: [number | null, number | null] = [null, null];
+  private baseSince: number | null = null;
+  private excess = 0;
+  private frames = 0;
+
+  /** A frame made whole: its capture stamp in µs (u32) and when it came, in ms. */
+  arrived(timestamp: number, at: number): void {
+    const age = (Math.round(at * 1000) - timestamp) >>> 0;
+    this.firstAge ??= age;
+    const rel = (age - this.firstAge) | 0;
+    if (this.baseSince === null || at - this.baseSince >= BASE_WINDOW_MS) {
+      this.base = [null, this.base[0]];
+      this.baseSince = at;
+    }
+    const nowMin = this.base[0] === null ? rel : Math.min(this.base[0], rel);
+    this.base[0] = nowMin;
+    this.excess += rel - (this.base[1] === null ? nowMin : Math.min(this.base[1], nowMin));
+    this.frames++;
+  }
+
+  /** The mean since the last call, in ms. */
+  take(): number {
+    const ms = this.frames > 0 ? this.excess / this.frames / 1000 : 0;
+    this.excess = this.frames = 0;
+    return ms;
   }
 }
 
@@ -63,6 +105,8 @@ export class LayerControl {
   top: number;
   /** The last second's share of pieces asked for again, for the sender. */
   loss = 0;
+  /** Seconds tallied, so a caller can tell a tick that acted. */
+  ticks = 0;
   private streak: "lossy" | "clean" | "mid" = "clean";
   private since: number;
   private got = 0;
@@ -87,6 +131,7 @@ export class LayerControl {
     if (now - this.window < 1000) return null;
     const ratio = this.got > 0 ? this.asked / this.got : 0;
     this.loss = Math.min(1, ratio);
+    this.ticks++;
     this.got = this.asked = 0;
     this.window = now;
     let streak: "lossy" | "clean" | "mid" = "mid";
