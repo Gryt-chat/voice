@@ -2,7 +2,7 @@
 
 import assert from "node:assert/strict";
 
-import { LayerControl, QueueDelay, RateControl } from "../dist/transport/rateControl.js";
+import { FAST_TICK_MS, LayerControl, RateControl, Tally } from "../dist/transport/rateControl.js";
 import { Pacer } from "../dist/transport/videoPacer.js";
 import { GIVE_UP_MS, KEYFRAME_EVERY_MS, RESEND_AFTER_MS, RESEND_EVERY_MS, VideoAssembler } from "../dist/transport/videoAssembly.js";
 import {
@@ -161,35 +161,56 @@ back.set(demandRequest(0, 1, { width: 640, height: 360, fps: 30 }), 4);
 back[4 + 3] = 2;
 assert.deepEqual(readForwardedVideo(back), { kind: "demand", track: 1, watchers: 2, demand: { width: 640, height: 360, fps: 30, loss: 0, delay: 0 } });
 
-// The sender's rate: backs off to below what went on loss, queueing or drops, holds, then grows to the ceiling.
-const link = (at: number, mbit: number, extra: Partial<Parameters<RateControl["update"]>[0]> = {}) =>
-  ({ at, bytesSent: (mbit * 1e6 * at) / 8000, packetsSent: at, packetsLost: 0, smoothedRtt: 20, minRtt: 10, dropped: 0, viewerLoss: 0, ...extra });
-const rc = new RateControl(8e6, 3e5, 8e6);
-rc.update(link(0, 6));
-assert.equal(rc.update(link(500, 6)), 8e6, "grew past its ceiling");
-const cut = rc.update(link(1000, 6, { smoothedRtt: 120 }));
-assert.ok(cut < 6e6 && cut > 4e6, `a queue cut to ${cut}, not below what went`);
-assert.equal(rc.update(link(1500, 6)), cut, "grew inside the hold");
-assert.ok(rc.update(link(2600, 6)) > cut, "never grew again");
-assert.ok(rc.update(link(3100, 6, { packetsLost: 3100 * 0.1 })) < cut, "ignored 10% loss");
-const floor = new RateControl(4e5, 3e5, 8e6);
-floor.update(link(0, 0.1));
-assert.equal(floor.update(link(500, 0.1, { viewerLoss: 0.2 })), 3e5, "went under the floor on a viewer's loss");
-const queued = new RateControl(8e6, 3e5, 8e6);
-queued.update(link(0, 6));
-const byViewer = queued.update(link(500, 6, { viewerDelay: 110 }));
-assert.ok(byViewer < 6e6 && byViewer > 4e6, `a viewer's queueing cut to ${byViewer}`);
-// client-rs's a_full_link_cuts_deep_once_then_as_usual.
-const full = new RateControl(6e6, 3e5, 6e6);
-full.update(link(0, 6));
-assert.equal(full.update(link(500, 6, { viewerLoss: 1 })), 6e6 * 0.85 * 0.5, "a full link's first cut wasn't deeper");
-assert.equal(full.update(link(1000, 6, { viewerLoss: 1 })), 6e6 * 0.85 * 0.5 * 0.85, "the rest of the spell cut deep too");
+// The sender's rate, as client-rs's rate_control_matches_the_web_sender, number for number: 6 Mbit/s goes.
+type Viewer = { loss: number; delay: number } | undefined;
+const link = (at: number, mbit: number, viewer?: Viewer) =>
+  ({ at, bytesSent: (mbit * 1e6 * at) / 8000, packetsSent: at, packetsLost: 0, smoothedRtt: 20, minRtt: 10, dropped: 0, viewer });
+const run = (rc: RateControl, steps: [number, Viewer, number, string][]) => {
+  for (const [at, viewer, want, why] of steps) assert.equal(rc.update(link(at, 6, viewer)), want, `${why} at ${at} ms`);
+};
+run(new RateControl(4e6, 3e5, 8e6), [
+  [0, undefined, 4e6, "first reading"],
+  [250, undefined, 4_185_000, "grew 16% and 100 kbit/s a second"],
+  [500, { loss: 0.15, delay: 4 }, 4_377_400, "cut on loss with no queueing"],
+  [750, { loss: 0, delay: 20 }, 4_577_496, "cut on jitter"],
+  [1000, { loss: 0, delay: 40 }, 3_735_236.736, "didn't cut on a rising delay, by its share of a second"],
+  [1250, { loss: 0, delay: 45 }, 3_735_236.736, "grew inside the hold, or cut on a steady delay"],
+  [1500, { loss: 0.2, delay: 45 }, 2_728_870.5784032, "didn't cut deeper on loss with a queue"],
+  [3000, undefined, 3_533_799.517219968, "didn't grow by the time since the last reading"],
+  [3250, { loss: 0, delay: 120 }, 2_643_282.038880536, "didn't cut on a long queue"],
+  [3500, { loss: 0.6, delay: 0 }, 2_246_789.7330484553, "didn't cut on a link going out"],
+]);
+run(new RateControl(4e5, 3e5, 8e6), [[0, undefined, 4e5, "first reading"], [250, { loss: 0.9, delay: 0 }, 3e5, "went under the floor"]]);
+run(new RateControl(5.5e6, 3e5, 8e6), [
+  [0, undefined, 5.5e6, "first reading"],
+  [250, { loss: 0, delay: 120 }, 4_114_000, "didn't cut on a long queue"],
+  [1750, undefined, 5_251_360, "didn't grow as usual under the knee"],
+  [2000, undefined, 5_356_387.2, "grew more than 8% a second near the rate cut from"],
+  [5250, undefined, 6_749_047.872, "grew more than 8% a second near the rate cut from"],
+  [5500, undefined, 7_044_009.7868800005, "didn't grow as usual past the rate cut from"],
+]);
+const rtt = new RateControl(8e6, 3e5, 8e6);
+rtt.update(link(0, 6));
+const byRtt = rtt.update({ ...link(250, 6), smoothedRtt: 120 });
+assert.ok(byRtt < 6e6 && byRtt > 4e6, `the browser's own queueing cut to ${byRtt}`);
 
-// Queueing delay, as client-rs's a_tally_gives_resends_and_queueing_once_a_second: the later half 40 ms behind.
-const qd = new QueueDelay();
-for (let i = 0; i < 90; i++) qd.arrived(7_000_000 + i * 10_000, i * 10 + (i >= 45 ? 40 : 0));
-assert.equal(qd.take(), 20, "queueing isn't the mean over the quickest");
-assert.equal(qd.take(), 0, "a second take kept the last one's");
+// A viewer's tally, as client-rs's a_tally_gives_resends_and_queueing_once_a_second: the later half 40 ms behind.
+const tally = new Tally();
+assert.equal(tally.tick(0), null);
+for (let i = 0; i < 90; i++) {
+  tally.received();
+  tally.arrived(7_000_000 + i * 10_000, i * 10 + (i >= 45 ? 40 : 0));
+}
+tally.resent(9);
+const sent = (r: Viewer | null) => r && [Math.round(r.loss * 255), Math.round(r.delay / 4)];
+assert.equal(tally.tick(500), null, "inside the second");
+assert.deepEqual(sent(tally.tick(1000)), [26, 5], "10% asked again, 20 ms behind");
+tally.received();
+assert.deepEqual(sent(tally.tick(1000 + FAST_TICK_MS)), [0, 0], "waited a second after a lossy one");
+tally.received();
+assert.equal(tally.tick(1000 + FAST_TICK_MS * 2), null, "hurried after a clean one");
+assert.deepEqual(sent(tally.tick(2000 + FAST_TICK_MS)), [0, 0], "a second after the clean one");
+assert.equal(tally.tick(4000), null, "nothing came");
 
 // As client-rs's queueing_is_timed_on_a_frames_first_piece: a last piece resent 57 ms late isn't queueing.
 const timed = new VideoAssembler();

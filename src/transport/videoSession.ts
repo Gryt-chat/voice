@@ -2,7 +2,7 @@
     out and everyone else's in, with the requests that keep them whole. client-rs video_receive.rs is the twin. */
 
 import { dialPipe, type Pipe } from "./session";
-import { LayerControl, QueueDelay, RateControl } from "./rateControl";
+import { LayerControl, RateControl, Tally } from "./rateControl";
 import { VideoAssembler } from "./videoAssembly";
 import { Pacer } from "./videoPacer";
 import { startVideoReceive, type VideoReceiver, type VideoReceiveStats } from "./videoReceive";
@@ -43,7 +43,7 @@ export interface VideoTransportSession {
 /** Drawn heights round up to one of these, so resizing a tile doesn't reconfigure the encoder at every step. */
 const HEIGHTS = [360, 540, 720, 1080, 1440, 2160];
 const POLL_MS = 5;
-const STATS_MS = 500;
+const STATS_MS = 250;
 /** A request for nobody, as client-rs sends: keeps an idle session from timing out. */
 const HELLO_MS = 5000;
 
@@ -69,13 +69,17 @@ export async function startVideoTransport(o: {
     maxHeight: Math.min(s.options.maxHeight ?? Infinity, HEIGHTS.find((h) => h >= (s.wanted?.height ?? 0)) ?? Infinity) || s.options.maxHeight,
     maxFramerate: Math.min(s.options.maxFramerate, s.wanted.fps || Infinity),
   });
-  const receivers = new Map<string, { sender: number; track: number; r: VideoReceiver; layers: LayerControl; delay: QueueDelay; watched: boolean; drawn: Demand | null }>();
+  const receivers = new Map<string, { sender: number; track: number; r: VideoReceiver; layers: LayerControl; tally: Tally; watched: boolean; drawn: Demand | null }>();
   const assembler = new VideoAssembler();
   const rate = new RateControl(0, MIN_BITRATE, 0);
   const key = (sender: number, track: number) => `${sender}/${track}`;
 
   const request = (b: Uint8Array) => {
-    if (b[1] === CONTROL_RESEND) receivers.get(key(new DataView(b.buffer).getUint32(4), b[2]))?.layers.resent(b[3]);
+    if (b[1] === CONTROL_RESEND) {
+      const rx = receivers.get(key(new DataView(b.buffer).getUint32(4), b[2]));
+      rx?.layers.resent(b[3]);
+      rx?.tally.resent(b[3]);
+    }
     pipe.send(b);
   };
   const setTop = (sender: number, track: number, top: number) => {
@@ -93,8 +97,7 @@ export async function startVideoTransport(o: {
     if (got.kind === "demand") {
       const s = senders.get(got.track);
       if (!s) return;
-      viewerLoss = Math.max(viewerLoss, got.demand.loss ?? 0);
-      viewerDelay = Math.max(viewerDelay, got.demand.delay ?? 0);
+      viewer = { loss: Math.max(viewer?.loss ?? 0, got.demand.loss ?? 0), delay: Math.max(viewer?.delay ?? 0, got.demand.delay ?? 0) };
       s.sender.pause(got.watchers === 0);
       s.wanted = got.watchers > 0 ? got.demand : null;
       s.sender.setOptions(applied(s));
@@ -107,14 +110,15 @@ export async function startVideoTransport(o: {
     let rx = receivers.get(k);
     if (!rx) {
       const r = startVideoReceive({ onBroken: () => pipe.send(keyframeRequest(sender, head.track)) });
-      rx = { sender, track: head.track, r, layers: new LayerControl(3, performance.now()), delay: new QueueDelay(), watched: true, drawn: null };
+      rx = { sender, track: head.track, r, layers: new LayerControl(3, performance.now()), tally: new Tally(), watched: true, drawn: null };
       receivers.set(k, rx);
       o.onStream(sender, head.track, r.stream);
     }
     rx.layers.received();
+    rx.tally.received();
     const now = performance.now();
-    const { delay } = rx;
-    for (const f of assembler.push(sender, got.piece, now, (stamp) => delay.arrived(stamp, now))) rx.r.push(f);
+    const { tally } = rx;
+    for (const f of assembler.push(sender, got.piece, now, (stamp) => tally.arrived(stamp, now))) rx.r.push(f);
   });
 
   const poll = setInterval(() => {
@@ -122,19 +126,18 @@ export async function startVideoTransport(o: {
     for (const req of assembler.poll(now)) request(req);
     for (const rx of receivers.values()) {
       if (!rx.watched) continue;
-      const ticked = rx.layers.ticks;
       const top = rx.layers.tick(now);
       if (top !== null) setTop(rx.sender, rx.track, top >= 2 ? LAYERS_ALL : top);
-      // Once a second, with what this viewer draws, so the sender hears about loss and queueing.
-      if (rx.layers.ticks !== ticked && rx.drawn) pipe.send(demandRequest(rx.sender, rx.track, { ...rx.drawn, loss: rx.layers.loss, delay: rx.delay.take() }));
+      // With what this viewer draws, so the sender hears about loss and queueing.
+      const report = rx.tally.tick(now);
+      if (report && rx.drawn) pipe.send(demandRequest(rx.sender, rx.track, { ...rx.drawn, ...report }));
     }
   }, POLL_MS);
 
   const hello = setInterval(() => pipe.send(keyframeRequest(0, 0)), HELLO_MS);
   // Chromium 144 has no WebTransport.getStats(); then only our own byte count and what viewers report are known.
   let sentBytes = 0;
-  let viewerLoss = 0;
-  let viewerDelay = 0;
+  let viewer: { loss: number; delay: number } | undefined;
   const sendPiece = (piece: Uint8Array) => {
     sentBytes += piece.length;
     pipe.send(piece);
@@ -171,10 +174,9 @@ export async function startVideoTransport(o: {
         smoothedRtt: st.smoothedRtt ?? 0,
         minRtt: st.minRtt ?? st.smoothedRtt ?? 0,
         dropped: (st.datagrams?.expiredOutgoing ?? 0) + (st.datagrams?.lostOutgoing ?? 0),
-        viewerLoss,
-        viewerDelay,
+        viewer,
       });
-      viewerLoss = viewerDelay = 0;
+      viewer = undefined;
       for (const s of senders.values()) s.sender.setBitrate((target * s.options.maxBitrate) / max);
     }, () => undefined);
   }, STATS_MS);
