@@ -1,6 +1,7 @@
 /** One outgoing video track on the video hub (GRYT-2261): WebCodecs H.264 with temporal layers, Annex B as
     client-rs sends it, cut into pieces. The bitrate follows rateControl's estimate of what the uplink takes. */
 
+import { readFrames } from "./frameTrack";
 import { CODEC_H264, splitFrame } from "./videoWire";
 
 export interface VideoSendOptions {
@@ -110,7 +111,7 @@ export function startVideoSend(o: {
     wantKey = true;
   };
 
-  const reader = new MediaStreamTrackProcessor({ track: o.source }).readable.getReader();
+  const reader = readFrames(o.source).getReader();
   void (async () => {
     try {
       for (;;) {

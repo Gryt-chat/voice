@@ -7,8 +7,8 @@ const dist = resolve(import.meta.dirname, "../dist");
 const entry = resolve(dist, "native.js");
 
 // Constructs a bundler can see, which is narrower than "web-only APIs" on purpose. Metro
-// follows `new Worker(new URL(...))`; unreachable web code costs bundle size and nothing.
-const FORBIDDEN = ["new Worker", "import.meta.url"];
+// follows `new Worker(new URL(...))`; a Worker from a Blob URL is unreachable web code, which costs bundle size and nothing.
+const FORBIDDEN = ["new Worker(new URL", "import.meta.url"];
 
 const seen = new Set<string>();
 

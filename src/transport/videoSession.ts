@@ -1,6 +1,7 @@
 /** The browser's end of the SFU's video hub (GRYT-2261): one WebTransport session at /video carrying our tracks
     out and everyone else's in, with the requests that keep them whole. client-rs video_receive.rs is the twin. */
 
+import { frameTracksSupported } from "./frameTrack";
 import { dialPipe, type Pipe } from "./session";
 import { LayerControl, RateControl, Tally } from "./rateControl";
 import { VideoAssembler } from "./videoAssembly";
@@ -52,7 +53,7 @@ const WS_MAX_BUFFERED = 1024 * 1024;
 
 /** WebTransport is optional: without it, or with UDP blocked, the session goes over `wsUrl`. */
 export const videoTransportSupported = (): boolean =>
-  typeof VideoEncoder === "function" && typeof MediaStreamTrackProcessor === "function" && typeof MediaStreamTrackGenerator === "function";
+  typeof VideoEncoder === "function" && typeof VideoDecoder === "function" && frameTracksSupported();
 
 export async function startVideoTransport(o: {
   offer: VideoTransportOffer;
@@ -112,7 +113,7 @@ export async function startVideoTransport(o: {
       const r = startVideoReceive({ onBroken: () => pipe.send(keyframeRequest(sender, head.track)) });
       rx = { sender, track: head.track, r, layers: new LayerControl(3, performance.now()), tally: new Tally(), watched: true, drawn: null };
       receivers.set(k, rx);
-      o.onStream(sender, head.track, r.stream);
+      void r.stream.then((stream) => receivers.get(k)?.r === r && o.onStream(sender, head.track, stream), (e) => console.warn("[video] receive", e));
     }
     rx.layers.received();
     rx.tally.received();
